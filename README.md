@@ -12,9 +12,10 @@ Larissa Vieira, Miguel Correira, Monique Jesus, Ronaldo Alves de Souza <br>
 ![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
 ![Design Thinking](https://img.shields.io/badge/Design_Thinking-FF5722?style=for-the-badge)
 ![CSS](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
 ![Figma](https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white)
 ![UX/UI](https://img.shields.io/badge/UX%2FUI-FF69B4?style=for-the-badge)
-![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+
 
 
 Antes de começar a desenvolver, faça as seguintes checagens:
