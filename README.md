@@ -5,6 +5,18 @@ Projeto integrador e conta com os participantes: <br>
 Alexandre Fortunato, Allan Ferreira, Jackeline, Jose Venancio Filho <br>
 Larissa Vieira, Miguel Correira, Monique Jesus, Ronaldo Alves de Souza <br>
 
+## 🛠️ Tecnologias e Conceitos
+
+![UML](https://img.shields.io/badge/UML-2566E8?style=for-the-badge&logo=uml&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![Design Thinking](https://img.shields.io/badge/Design_Thinking-FF5722?style=for-the-badge)
+![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
+![CSS](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+![Figma](https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white)
+![UX/UI](https://img.shields.io/badge/UX%2FUI-FF69B4?style=for-the-badge)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+
+
 Antes de começar a desenvolver, faça as seguintes checagens:
 - Verifique se o MySQL está ativo e rodando em sua máquina
 - Verifique se o banco já está criado
