@@ -3,7 +3,7 @@
 
 Este é um projeto universitario ( PI - Univesp ) <br>
 Projeto integrador ( participantes ): <br>
-&bull Alexandre Fortunato, Allan Ferreira, Jaqueline Moratto, Jose Venancio Filho <br>
+&bull; Alexandre Fortunato, Allan Ferreira, Jaqueline Moratto, Jose Venancio Filho <br>
 Larissa Vieira, Miguel Correira, Monique Jesus, Ronaldo Alves de Souza <br>
 
 ## 🛠️ Tecnologias e Conceitos
