@@ -1,9 +1,7 @@
 # JB-Ferramentas
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
-Este é um projeto universitario ( PI - Univesp ) <br>
-Projeto integrador <br>
-Sobre orientação: <br>
+Projeto universitario ( Univesp ) <br>
 Orientadora: "Nome" <br>
 Participantes: <br>
 
