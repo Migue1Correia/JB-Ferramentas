@@ -10,7 +10,7 @@ Participantes: <br>
 &bull; Alexandre Fortunato &emsp;&emsp; &bull; Allan Ferreira <br> 
 &bull; Jaqueline Moratto &emsp;&emsp;&emsp; &bull; Jose Venancio Filho <br>
 &bull; Larissa Vieira &emsp;&emsp;&emsp;&emsp;&emsp;&emsp; &bull; Miguel Correira<br>
-&bull; Monique Jesus &emsp;&emsp; &bull; Ronaldo Alves de Souza <br>
+&bull; Monique Jesus &emsp;&emsp;&emsp;&emsp; &bull; Ronaldo Alves de Souza <br>
 
 ## 🛠️ Tecnologias e Conceitos
 
