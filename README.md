@@ -2,7 +2,8 @@
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
 Este é um projeto universitario ( PI - Univesp ) <br>
-Projeto integrador ( participantes ): <br>
+Projeto integrador <br>.( Desenvolvedores ): <br>
+Sobre orientação: 
 &bull; Alexandre Fortunato <br> &bull; Allan Ferreira <br> &bull; Jaqueline Moratto <br> &bull; Jose Venancio Filho <br>
 &bull; Larissa Vieira <br> &bull; Miguel Correira<br> &bull; Monique Jesus<br> &bull; Ronaldo Alves de Souza <br>
 
