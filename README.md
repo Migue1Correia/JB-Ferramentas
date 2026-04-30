@@ -9,7 +9,7 @@ Participantes: <br>
 | | |
 | :--- | :--- |
  Alexandre Fortunato Larissa Vieira 
-| Allan Ferreira | Miguel Correira |
+| Allan Ferreira  Miguel Correira |
 | Jaqueline Moratto  | Ronaldo Alves de Souza |
 | Nome 4 | Nome 8 |
 |&bull; Alexandre Fortunato <br> &bull; Allan Ferreira <br> &bull; Jaqueline Moratto <br> &bull; Jose Venancio Filho <br>|
