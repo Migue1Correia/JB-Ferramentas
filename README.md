@@ -7,7 +7,7 @@ Sobre orientação: <br>
 Orientadora: "Nome" <br>
 Participantes: <br>
 | | |
-| :--- | :--- |
+ :--- :--- 
  Alexandre Fortunato Larissa Vieira 
 | Allan Ferreira  Miguel Correira |
 | Jaqueline Moratto  | Ronaldo Alves de Souza |
