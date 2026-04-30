@@ -8,9 +8,9 @@ Orientadora: "Nome" <br>
 Participantes: <br>
 | | |
 | :--- | :--- |
-| Alexandre Fortunato| Larissa Vieira |
-| Allan Ferreira | Nome 6 |
-| Jaqueline Moratto  | Nome 7 |
+ Alexandre Fortunato Larissa Vieira 
+| Allan Ferreira | Miguel Correira |
+| Jaqueline Moratto  | Ronaldo Alves de Souza |
 | Nome 4 | Nome 8 |
 |&bull; Alexandre Fortunato <br> &bull; Allan Ferreira <br> &bull; Jaqueline Moratto <br> &bull; Jose Venancio Filho <br>|
 |&bull; Larissa Vieira <br> &bull; Miguel Correira<br> &bull; Monique Jesus<br> &bull; Ronaldo Alves de Souza <br>|
