@@ -7,7 +7,8 @@ Sobre orientação: <br>
 Orientadora: "Nome" <br>
 Participantes: <br>
 
-&bull; Alexandre Fortunato          &bull; Allan Ferreira <br> &bull; Jaqueline Moratto <br> &bull; Jose Venancio Filho <br>
+&bull; Alexandre Fortunato &emsp;&emsp; &bull; Allan Ferreira <br> 
+&bull; Jaqueline Moratto &emsp;&emsp; &bull; Jose Venancio Filho <br>
 &bull; Larissa Vieira <br> &bull; Miguel Correira<br> &bull; Monique Jesus<br> &bull; Ronaldo Alves de Souza <br>
 
 ## 🛠️ Tecnologias e Conceitos
