@@ -1,8 +1,8 @@
-# JB-Ferramentas
+# <center>JB-Ferramentas</center>
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
 Projeto universitario ( Univesp ) <br>
-Orientadora: "Nome" <br>
+Orientadora: Crislandy Barreiro <br>
 Participantes: <br>
 
 <pre>
