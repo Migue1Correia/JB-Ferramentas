@@ -9,12 +9,6 @@
   </font>
 </div>
 
-<br>
-<span style="background-color: yellow; color: black; font-weight: bold;">
-  Texto com fundo amarelo
-</span>
-
-
 Projeto universitario ( Univesp ) <br>
 Orientadora: Crislandy Barreiro <br>
 Participantes: <br>
@@ -40,8 +34,8 @@ Monique Jesus               Ronaldo Alves de Souza
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 
 
-
-Antes de começar a desenvolver, faça as seguintes checagens:
+[!IMPORTANT]
+**Aviso**Antes de começar a desenvolver, faça as seguintes checagens:
 - Verifique se o MySQL está ativo e rodando em sua máquina
 - Verifique se o banco já está criado
 - Verifique em **main.py** se as informações para acessar o seu banco estão corretos
