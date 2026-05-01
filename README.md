@@ -35,7 +35,7 @@ Monique Jesus               Ronaldo Alves de Souza
 
 
 > [!IMPORTANT]
-**Orientação** <br>
+**Orientações** <br>
 Antes de começar a desenvolver, faça as seguintes checagens:
 - Verifique se o MySQL está ativo e rodando em sua máquina
 - Verifique se o banco já está criado
