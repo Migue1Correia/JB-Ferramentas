@@ -4,9 +4,9 @@
 </div>
 
 <div align="center">
-  <span style="color: orange"; font-weight: bold; font-size: 20px;">
+  <font style="color: orange"; font-weight: bold; font-size: 20px;">
     <u></u>Gestão comércio & manutenção de ferramentas.<u>
-  </span>
+  </font>
 </div>
 <br>
 
