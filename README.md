@@ -1,4 +1,4 @@
-<img width="384" height="256" alt="Image" src="https://github.com/user-attachments/assets/52cf25e1-af6a-46cb-b785-67593763611a" />
+<img width="150" height="90" alt="Image" src="https://github.com/user-attachments/assets/52cf25e1-af6a-46cb-b785-67593763611a" />
 <h1 text align= "center">JB-Ferramentas</h1>
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
