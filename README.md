@@ -3,7 +3,7 @@
   <h1>JB-Ferramentas</h1>
 </div>
 
-<div style="text-align: center; color: red; font-weight: bold;">
+<div style="text-align: center;">
   Gestão comércio & manutenção de ferramentas.
 </div>
 
