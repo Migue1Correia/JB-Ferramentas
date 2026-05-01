@@ -2,7 +2,6 @@
 
 <h1 align="center" style="margin-top: 0; padding-top: 0;">JB-Ferramentas</h1>
 
-<br clear="left" />
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
 Projeto universitario ( Univesp ) <br>
