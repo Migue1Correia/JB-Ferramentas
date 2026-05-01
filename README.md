@@ -4,8 +4,8 @@
 </div>
 
 <div align="center">
-  <font style="color: orange"; font-weight: bold; font-size: 20px;">
-    <u></u>Gestão comércio & manutenção de ferramentas.<u>
+  <font style="color: orange; font-weight: bold; font-size: 20px;">
+  </u>Gestão comércio & manutenção de ferramentas.
   </font>
 </div>
 <br>
