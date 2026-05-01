@@ -1,5 +1,5 @@
-# <p align="center">JB-Ferramentas</p>
-*Gestão de comercio e manutenção de ferramentas.* <br>
+# - <p align="center">JB-Ferramentas</p>
+- *Gestão de comercio e manutenção de ferramentas.* <br>
 
 Projeto universitario ( Univesp ) <br>
 Orientadora: Crislandy Barreiro <br>
