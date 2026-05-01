@@ -8,7 +8,12 @@
   </u>Gestão comércio & manutenção de ferramentas.
   </font>
 </div>
+
 <br>
+<span style="background-color: yellow; color: black; font-weight: bold;">
+  Texto com fundo amarelo
+</span>
+
 
 Projeto universitario ( Univesp ) <br>
 Orientadora: Crislandy Barreiro <br>
