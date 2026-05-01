@@ -3,7 +3,7 @@
   <h1>JB-Ferramentas</h1>
 </div>
 
-*Gestão de comercio e manutenção de ferramentas.* <br>
+< text align="center">*Gestão de comercio e manutenção de ferramentas.* </center><br>
 
 Projeto universitario ( Univesp ) <br>
 Orientadora: Crislandy Barreiro <br>
