@@ -4,7 +4,7 @@
     width="300" 
     height="80" 
     align="left" 
-    style="border-radius: 20px 2px 2px 20px;"
+    style="border-radius: 20px 20px 20px 20px;"
   />
   <h1>JB-Ferramentas</h1>
   <br clear="left" />
