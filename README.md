@@ -3,7 +3,11 @@
   <h1>JB-Ferramentas</h1>
 </div>
 
-<div align= "center" span style="color: #ff5733;" ; strong>Gestão comercio & manutenção de ferramentas.</strong></span></div> <br>
+<div align="center">
+
+$$\Large\color{red}{\mathbf{Gestão\ comércio\ \&\ manutenção\ de\ ferramentas.}}$$
+
+</div>
 
 Projeto universitario ( Univesp ) <br>
 Orientadora: Crislandy Barreiro <br>
