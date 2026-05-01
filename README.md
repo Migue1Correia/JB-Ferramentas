@@ -1,14 +1,5 @@
-<div align="center">
-  <img 
-    src="https://github.com/user-attachments/assets/69ef93bb-faf4-4519-b056-e92e5ab10060" 
-    width="300" 
-    height="80" 
-    align="left" 
-    style="border-radius: 20px 20px 20px 20px;"
-  />
-  <h1>JB-Ferramentas</h1>
-  <br clear="left" />
-</div>
+
+<h1>JB-Ferramentas</h1>
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
 Projeto universitario ( Univesp ) <br>
