@@ -3,10 +3,8 @@
   <h1>JB-Ferramentas</h1>
 </div>
 
-<div align="center">
-
-$$\Large\color{red}{\mathbf{Gestão\ comércio\ \&\ manutenção\ de\ ferramentas.}}$$
-
+<div style="text-align: center; color: red; font-weight: bold;">
+  Gestão comércio & manutenção de ferramentas.
 </div>
 
 Projeto universitario ( Univesp ) <br>
