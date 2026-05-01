@@ -1,8 +1,9 @@
-<img width="150" height="70" align="left" alt="Image" src="https://github.com/user-attachments/assets/52cf25e1-af6a-46cb-b785-67593763611a" style="display: block; margin-right: 20px; margin-bottom: 10px;" />
+<img width="150" height="70" align="left" alt="Image" src="https://github.com/user-attachments/assets/52cf25e1-af6a-46cb-b785-67593763611a" />
 
-<h1 align="center" style="margin-top: 0; padding-top: 0; line-height: 1;">
-  JB-Ferramentas
-</h1>
+<p align="center">
+  <br>
+  <b style="font-size: 200%;">JB-Ferramentas</b>
+</p>
 
 <br clear="left" />
 
