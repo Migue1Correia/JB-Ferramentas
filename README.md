@@ -34,7 +34,7 @@ Monique Jesus               Ronaldo Alves de Souza
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 
 
-> [!IMPORTANTE]
+> [!IMPORTANT]
 **Aviso**Antes de começar a desenvolver, faça as seguintes checagens:
 - Verifique se o MySQL está ativo e rodando em sua máquina
 - Verifique se o banco já está criado
