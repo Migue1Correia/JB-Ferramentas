@@ -1,7 +1,7 @@
 <div align="center">
   <img 
     src="https://github.com/user-attachments/assets/69ef93bb-faf4-4519-b056-e92e5ab10060" 
-    width="100" 
+    width="300" 
     height="80" 
     align="left" 
     style="border-radius: 20px 2px 2px 20px;"
