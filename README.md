@@ -1,5 +1,5 @@
-<img width="150" height="70" alt="Image" src="https://github.com/user-attachments/assets/52cf25e1-af6a-46cb-b785-67593763611a" />
-<h1> <div align-"center"> JB Ferramentas </div> </h1> <br>
+<div cabeçalho> <img width="150" height="70" alt="Image" src="https://github.com/user-attachments/assets/52cf25e1-af6a-46cb-b785-67593763611a" />
+<h1> <div align-"center"> JB Ferramentas </div> </h1> </div>div></div><br>
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
 Projeto universitario ( Univesp ) <br>
