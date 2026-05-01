@@ -35,7 +35,7 @@ Monique Jesus               Ronaldo Alves de Souza
 
 
 [!IMPORTANT]
-**Aviso**Antes de começar a desenvolver, faça as seguintes checagens:
+**Aviso:** Antes de começar a desenvolver, faça as seguintes checagens:
 - Verifique se o MySQL está ativo e rodando em sua máquina
 - Verifique se o banco já está criado
 - Verifique em **main.py** se as informações para acessar o seu banco estão corretos
