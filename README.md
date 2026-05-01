@@ -1,4 +1,4 @@
-# $\color{red}<p align="center">JB-Ferramentas</p>$
+# $\color{red}{<p align="center">JB-Ferramentas</p>}$
 *Gestão de comercio e manutenção de ferramentas.* <br>
 
 Projeto universitario ( Univesp ) <br>
