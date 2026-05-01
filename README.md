@@ -5,7 +5,7 @@
 
 <div align="center">
   <span style="color: red; font-weight: bold; font-size: 20px;">
-    <u></u>Gestão comércio & manutenção de ferramentas.</span><u>
+    <u></u>Gestão comércio & manutenção de ferramentas.<u>
   </span>
 </div>
 <br>
