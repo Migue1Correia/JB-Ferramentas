@@ -1,8 +1,12 @@
 from flask_mysqldb import MySQL
+from flask_bcrypt import Bcrypt
 
 # Objecto que armazena todas as infos para acessar o seu banco de dados.
 # Para configurar o acesso ao seu banco de dados, adicione as infos que estão em flaskr/main.py em app.config
 jb_solucoes_db = MySQL()
+
+# Importei aqui por enquanto... Talvez mudar depois
+jb_bcrypt = Bcrypt()
 
 def db_execute(arg, *parsing, fetch_type="all"):
     """
