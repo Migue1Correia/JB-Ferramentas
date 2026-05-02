@@ -11,8 +11,28 @@ def auth(user, password):
         return False
     return True if (res[1][0] > 0) else False
 
+def user_create(username, password, person_id, access_type, active=True):
+    if username == "" or password == "" or person_id == "" or access_type == "" or active == "":
+        return False
 
-def user_create(name, type, code, address, email, phone_number):
+    person_id   = int(person_id)
+    access_type = int(access_type)
+    active      = bool(active)
+
+    # PS: Gerar e armazenar apenas o HASH da senha depois
+
+    arg = "INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo) VALUES (%s, %s, %s, %s, %s)"
+    res = db_execute(arg, username, password, person_id, access_type, active, fetch_type="all")
+
+    if not res[0]:
+        print(res[1])
+        return False
+    return True
+
+
+
+
+def person_create(name, type, code, address, email, phone_number):
     if name == "" or type == "" or code == "" or address == "" or email == "" or phone_number == "":
         return False
 
@@ -23,11 +43,13 @@ def user_create(name, type, code, address, email, phone_number):
         return False
     return True
 
-def user_get(code):
+def person_get(code):
     if code == "":
-        return False
+        return None
 
     arg = "SELECT * FROM pessoas WHERE codigo=%s"
-    res = db_execute(arg, code, fetch_type="all")
-    print(res)
-    return True
+    res = db_execute(arg, code, fetch_type="one")
+    if not res[0]:
+        print(res[1])
+        return None
+    return res[1]
