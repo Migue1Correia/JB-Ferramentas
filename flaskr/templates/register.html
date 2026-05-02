@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastrar usuário</title>
+</head>
+<body>
+  <a href="/">Voltar</a>
+  <h3>{{ status }}</h3>
+  <label for="id_register">Teste de cadastro</label>
+  <form method="post" action="/register" id="id_register">
+    <label for="id_nome">Nome: </label>
+    <input type="text" name="nome" id="id_nome" required><br>
+
+      <label for="id_codigo">CPF/CNPJ: </label>
+    <input type="text" name="codigo" id="id_codigo" required><br>
+
+      <label for="id_endereco">Endereço: </label>
+    <input type="text" name="endereco" id="id_endereco" required><br>
+
+      <label for="id_email">Email: </label>
+    <input type="text" name="email" id="id_email" required><br>
+
+      <label for="id_code">Telefône: </label>
+    <input type="text" name="telefone" id="id_telefone" required><br>
+
+      <h4>Selecione tipo de pessoa:</h4>
+    <input type="radio" id="pf" name="tipo" value="pf" checked>
+      <label for="pf">Pessoa Física</label><br>
+    <input type="radio" id="pj" name="tipo" value="pj">
+       <label for="pj">Pessoa Jurídica</label><br>
+
+      <h4>Criar usuário</h4>
+
+      <label for="id_usuario">Novo usuário: </label>
+      <input type="text" name="usuario" id="id_usuario" required>
+      <label for="id_senha">Nova senha: </label>
+    <input type="password" name="senha" id="id_senha" required>
+    <input type="submit" value="Entrar">
+  </form>
+</body>
+</html>
