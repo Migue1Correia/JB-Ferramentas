@@ -1,6 +1,12 @@
-from db import db_execute
+from .db import db_execute
 
 def auth(user, password):
+    """
+    Função para fazer a autenticação do usuário
+    :param user: Usuario
+    :param password: Senha
+    :return: True, se autenticação estiver certo. False se autenticação estiver errado.
+    """
     if user == "" or password == "":
         return False
 
@@ -12,6 +18,15 @@ def auth(user, password):
     return True if (res[1][0] > 0) else False
 
 def user_create(username, password, person_id, access_type, active=True):
+    """
+    Função para criação de um novo usuário
+    :param username: Nome de usuário
+    :param password: Senha
+    :param person_id: Id da pessoa cadastrada
+    :param access_type: Id do tipo de acesso (perfil)
+    :param active: Se conta de usuário está ativo. Padrão como True
+    :return: True se conta foi criado. False se ocorreu um erro no meio do processo.
+    """
     if username == "" or password == "" or person_id == "" or access_type == "" or active == "":
         return False
 
@@ -29,6 +44,15 @@ def user_create(username, password, person_id, access_type, active=True):
     return True
 
 def user_update(current_username, username="", password="", id_perfil="", active=True):
+    """
+    Função para atualização dos dados de usuário
+    :param current_username: nome do usuário em que os dados serão atualizados
+    :param username: nome de usuário. Padrão como "".
+    :param password: Senha. Padrão como "".
+    :param id_perfil: Id do perfil. Padrão como "".
+    :param active: Se conta está ativo. Padrão como True.
+    :return: True, se dados foram atualizados. False se ocorreu um erro no meio do processo.
+    """
     if (current_username is None) or (current_username == ""):
         return False
 
@@ -53,6 +77,11 @@ def user_update(current_username, username="", password="", id_perfil="", active
     return True
 
 def user_get(username):
+    """
+    Função para extrair dados do usuário
+    :param username: Nome do usuário
+    :return: None se ocorrer um erro no meio do processo. Um hash table contendo os dados do usuário.
+    """
     if username == "":
         return None
 
@@ -77,6 +106,16 @@ def user_get(username):
     }
 
 def person_create(name, type, code, address, email, phone_number):
+    """
+    Função para um novo cadastro
+    :param name: Nome Completo
+    :param type: Tipo do usuário (pf ou pj)
+    :param code: Código (CPF ou CNPJ)
+    :param address: Endereço
+    :param email: Email
+    :param phone_number: Número de telefône
+    :return: True, se a pessoa foi cadastrada no sistema. False, se ocorreu um erro no meio do processo.
+    """
     if name == "" or type == "" or code == "" or address == "" or email == "" or phone_number == "":
         return False
 
@@ -88,6 +127,17 @@ def person_create(name, type, code, address, email, phone_number):
     return True
 
 def person_update(id, name="", type="", code="", address="", email="", phone_number=""):
+    """
+    Função para atualizar os dados de cadastro da pessoa
+    :param id: Id do usuário.
+    :param name: Nome Completo. Padrão como ""
+    :param type: Tipo do usuário (pf ou pj). Padrão como ""
+    :param code: Código (CPF ou CNPJ). Padrão como ""
+    :param address: Endereço. Padrão como ""
+    :param email: Email. Padrão como ""
+    :param phone_number: Número de telefône. Padrão como ""
+    :return: True, se dados de cadastro foram atualizados. False, se ocorreu um erro no meio do processo.
+    """
     if (id is None) or (id == ""):
         return False
 
@@ -116,6 +166,12 @@ def person_update(id, name="", type="", code="", address="", email="", phone_num
     return True
 
 def person_get(code, by="code"):
+    """
+    Função para extrair dados de cadastro
+    :param code: Código que será usado para filtro.
+    :param by: Parâmetro para filtrar cadasstro na busca. code="code" para filtrar por (CNPJ/CPF), code="id" ou qualquer outra coisa para filtrar por id. Padrão como "code".
+    :return: None, se ocorrer um erro no meio do processo. Hash table contendo os dados de cadastro.
+    """
     if code == "":
         return None
 
@@ -144,6 +200,12 @@ def person_get(code, by="code"):
     }
 
 def person_exist(code, by="code"):
+    """
+    Função para checar se cadastro existe ou não no banco
+    :param code: Código que será usado para filtro.
+    :param by: Parâmetro para filtrar cadasstro na busca. code="code" para filtrar por (CNPJ/CPF), code="id" ou qualquer outra coisa para filtrar por id. Padrão como "code".
+    :return: None, se ocorreu um erro no meio do processo. True, se cadastro já existe. False, se cadastro não existir.
+    """
     if code == "":
         return None
 
