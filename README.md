@@ -34,41 +34,33 @@ Monique Jesus               Ronaldo Alves de Souza
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 
 
-> [!IMPORTANT]
-**Orientações** <br>
-Antes de começar a desenvolver, faça as seguintes checagens:
-- Verifique se o MySQL está ativo e rodando em sua máquina
-- Verifique se o banco já está criado
-- Verifique em **main.py** se as informações para acessar o seu banco estão corretos
-- Verifique se já está instalado em seu ambiente python os pacotes **flask** e **flask_mysqldb**
+> [!IMPORTANT] \
+> Antes de começar a desenvolver, faça as seguintes checagens:
+> - Verifique se o MySQL está ativo e rodando em sua máquina
+> - Verifique se o banco já está criado
+> - Verifique em **main.py** se as informações para acessar o seu banco estão corretos
+> - Verifique se já está instalado em seu ambiente python os pacotes **flask**, **flask_mysqldb** e **flask-bcrypt**
 
-## Como rodar?
+## Executar projeto
 
-Dentro da pasta **flaskr**, no terminal execute o comando:
-- flask --app main run
-
-Clique na URL gerado para acessar o site.
+Dentro do diretório raiz do projeto, execute os seguintes comandos:
+```
+cd flaskr
+flask --app main run
+```
+e logo em seguida clique na _URL_ gerado para acessar o site.
 
 ## Estrutura inicial de arquivos do projeto (Modelo do Flask)
-- [Recomendação do Flask](https://flask.palletsprojects.com/en/stable/tutorial/layout/).
 
-Na pasta **flaskr** está todo o conteudo de nosso projeto. Na pasta **flaskr/templates** estarão todos os HTMLS que o flask consegue enxergar.
-Dentro da pasta **flaskr** teremos arquivos python, alguns exemplos são:
-- **main.py**: Onde estarão todas as rotas
-- **db.py**: Onde estão armazenados a conexão com o banco e a função de execução
-- **auth.py**: Onde estão as funções para manipular dados de pessoa/usuario
-- **...**: Add novos arquivos python
+> [!TIP] \
+> Dê uma olhada na documentaçao do flask sobre estrutura de projetos: [Estruturando projeto com Flask](https://flask.palletsprojects.com/en/stable/tutorial/layout/).
 
-## db.py - db_execute(arg, *parsing, fetch_type)
+Na pasta **flaskr** está toda a estrutura do projeto.
 
-Importa a função com o comando: _from db import db_execute_
+- **Pasta model**: Arquivos que contem classes que fazer conexão direta com banco de dados e manejam algumas regras de negócio.
+- **Pasta templates**: Arquivos que contém o HTML.
+- **main.py**: Arquivo com todas as rotas (por enquanto), e configurações para conexão com o banco.
 
-- **arg**: Comando MySql. Exemplo: _"SELECT * FROM pessoas WHERE nome=%s AND tipo=%s"_, onde %s será substituido pelo parâmetro ***parsing**
-- ***parsing**: Usando o exemplo de cima, e supondo que já temos definido as variaveis **nome** e **tipo**: _nome, tipo_
-- **fetch_type**: Se a função deve retornar somente o primeiro registro **"one"** ou todos os registros achandos na consulta **"all"**
 
-- **Exemplo completo**: _db_execute("SELECT * FROM pessoas WHERE nome=%s AND tipo=%s", nome, tipo, fetch_type="all")_
-
-## Antes de fazer o commit
-
-- Tome cuidado para não vazar as informações de conexão para o seu banco que estão em **main.py**
+> [!CAUTION] \
+> Antes de fazer o commit, tome cuidado para não vazar as informações de conexão para o seu banco que estão na pasta **main.py**.
