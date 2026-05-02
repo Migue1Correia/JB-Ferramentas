@@ -34,7 +34,7 @@ Monique Jesus               Ronaldo Alves de Souza
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
 
 
-> [!IMPORTANT] \
+> [!IMPORTANT]
 > Antes de começar a desenvolver, faça as seguintes checagens:
 > - Verifique se o MySQL está ativo e rodando em sua máquina
 > - Verifique se o banco já está criado
@@ -52,7 +52,7 @@ e logo em seguida clique na _URL_ gerado para acessar o site.
 
 ## Estrutura inicial de arquivos do projeto (Modelo do Flask)
 
-> [!TIP] \
+> [!TIP]
 > Dê uma olhada na documentaçao do flask sobre estrutura de projetos: [Estruturando projeto com Flask](https://flask.palletsprojects.com/en/stable/tutorial/layout/).
 
 Na pasta **flaskr** está toda a estrutura do projeto.
@@ -62,5 +62,5 @@ Na pasta **flaskr** está toda a estrutura do projeto.
 - **main.py**: Arquivo com todas as rotas (por enquanto), e configurações para conexão com o banco.
 
 
-> [!CAUTION] \
+> [!CAUTION]
 > Antes de fazer o commit, tome cuidado para não vazar as informações de conexão para o seu banco que estão na pasta **main.py**.
