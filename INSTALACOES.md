@@ -6,6 +6,8 @@
 - [x] Item concluído (com validação)
 - [ ] Item não concluido
 
+
+```text
 Alexandre Fortunato 
 - [ ] Python
 - [ ] Flask
@@ -40,3 +42,4 @@ Nome7
 - [ ] Python
 - [ ] Flask
 - [ ] MySQL
+...
