@@ -1,2 +1,4 @@
 ### INSTALAÇẼOS DE APLICATIVOS
-## Confirmar as intalações.
+## Confirmar as intalações, acessos, conexões.
+
+
