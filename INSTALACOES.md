@@ -9,7 +9,7 @@
 
 ```text
 Alexandre Fortunato        Nome2
-[ ] Python               [ ] Python  
+[ ] Python                 [ ] Python  
 - [ ] Flask
 - [ ] MySQL
 
