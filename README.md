@@ -13,12 +13,12 @@ Projeto universitario ( Univesp ) <br>
 Orientadora: Crislandy Barreiro <br>
 Participantes: <br>
 
-<pre>
+```text
 Alexandre Fortunato         Allan Ferreira
 Jose Venancio Filho         Jaqueline Moratto
-Larissa  Vieira             Miguel Correira
+Larissa Vieira              Miguel Correira
 Monique Jesus               Ronaldo Alves de Souza
-</pre>
+```
 
 ## 🛠️ Tecnologias e Conceitos
 
