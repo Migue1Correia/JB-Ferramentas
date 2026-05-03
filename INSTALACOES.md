@@ -8,13 +8,12 @@
 
 
 ```text
-Alexandre Fortunato 
-- [ ] Python
+Alexandre Fortunato        Nome2
+[ ] Python               [ ] Python  
 - [ ] Flask
 - [ ] MySQL
 
-Nome2
-- [ ] Python
+
 - [ ] Flask
 - [ ] MySQL
 
