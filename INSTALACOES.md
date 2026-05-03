@@ -9,19 +9,19 @@
 
 
 
-Ronaldo          Nome2              
-[ ] Python       [ ] Python       
-[ ] Flask        [ ] Flask         
-[ ] MySQL        [ ] MySQL        
-[ ] Git          [ ] Git
-[ ] GitHub       [ ] GitHub
+Ronaldo          Nome2            Nome3      
+[ ] Python       [ ] Python       [ ] Python  
+[ ] Flask        [ ] Flask        [ ] Flask
+[ ] MySQL        [ ] MySQL        [ ] MySQL
+[ ] Git          [ ] Git          [ ] Git  
+[ ] GitHub       [ ] GitHub       [ ] GitHub
 
 
 
-Nome3
-- [ ] Python
-- [ ] Flask
-- [ ] MySQL
+
+
+
+
 
 Nome4
 - [ ] Python
