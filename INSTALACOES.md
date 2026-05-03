@@ -3,19 +3,20 @@
 
 # Lista de confirmação
 
+```text
 - [x] Item concluído (com validação)
 - [ ] Item não concluido
 
 
-```text
+
 Alexandre Fortunato        Nome2
 [ ] Python                 [ ] Python  
-- [ ] Flask
-- [ ] MySQL
+[ ] Flask                  [ ] Flask
+[ ] MySQL                  [ ] MySQL
 
 
-- [ ] Flask
-- [ ] MySQL
+
+
 
 Nome3
 - [ ] Python
