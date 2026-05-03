@@ -9,12 +9,12 @@
 
 
 
-Alexandre Fortunato        Nome2
-[ ] Python                 [ ] Python  
-[ ] Flask                  [ ] Flask
-[ ] MySQL                  [ ] MySQL
-
-
+Ronaldo          Nome2              
+[ ] Python       [ ] Python       
+[ ] Flask        [ ] Flask         
+[ ] MySQL        [ ] MySQL        
+[ ] Git          [ ] Git
+[ ] GitHub       [ ] GitHub
 
 
 
