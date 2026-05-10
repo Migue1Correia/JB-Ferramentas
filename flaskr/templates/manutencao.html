@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bodyferramentas.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Manutenção - JB Ferramentas</title>
+</head>
+<body class="dark-theme">
+    <header class="header-main">
+        <div class="nav-icons">
+            <a href="{{ url_for('main_page') }}" class="icon-link"><i class="fa-solid fa-arrow-left"></i></a>
+        </div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='jb_logo.png') }}" alt="JB Ferramentas">
+        </div>
+        <div class="user-access">
+            <a href="{{ url_for('main_page') }}" class="icon-link"> <i class="fa-solid fa-user"></i></a>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="welcome-section">
+            <h1>Painel de Manutenção</h1>
+            <p>Acompanhe seus reparos ou solicite uma nova manutenção.</p>
+        </section>
+
+        <div class="grid-status">
+            <div class="card-status">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <div>
+                    <span>Em análise</span>
+                    <p>01 Equipamentos - teste</p>
+                </div>
+            </div>
+            <div class="card-status">
+                <i class="fa-solid fa-gears"></i>
+                <div>
+                    <span>Em manutenção</span>
+                    <p>01 Equipamento - teste</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h3><i class="fa-solid fa-file-signature"></i> Solicitar Novo Reparo</h3>
+            <form action="/manutencao" method="POST">
+                <div class="input-group">
+                    <label>ID ou Nome da Ferramenta</label>
+                    <input type="text" name="id_ferramenta" placeholder="Ex: FUR-001 ou Furadeira Bosch" required>
+                </div>
+                
+                <div class="input-group">
+                    <label>Descrição do Problema (Diagnóstico)</label>
+                    <textarea name="diagnostico" rows="4" placeholder="Descreva o que está acontecendo com o equipamento..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn-action btn-Comprar">Enviar para Oficina</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

@@ -15,9 +15,9 @@ app = Flask(__name__)
 
 # Altere com os seus dados reais do MySQL:
 app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'seu_usuario'      
-app.config['MYSQL_PASSWORD'] = 'sua_senha'    
-app.config['MYSQL_DB'] = 'seu_banco_de_dados' 
+app.config['MYSQL_USER'] = 'root'      
+app.config['MYSQL_PASSWORD'] = '@lexandre2026*'    
+app.config['MYSQL_DB'] = 'jb_ferramentas' 
 
 mysql = MySQL(app)
 
