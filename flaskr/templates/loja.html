@@ -34,7 +34,7 @@
 
         <div class="grid-ferramentas">
             {% for item in ferramentas %}
-            <div class="card-ferramenta">
+            <div class="card-ferramenta" data-tipo="{{ item.tipo|lower }}">
                 <div class="img-container">
                     <img src="{{ url_for('static', filename='produto3.png') }}" alt="{{ item.nome }}">
                 </div>
@@ -44,11 +44,40 @@
                         <span class="tool-price">R$ {{ item.preco }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</span>
                     </div>
                     
-                    <button class="btn-action btn-{{ item.tipo|lower }}">{{ item.tipo }}</button>
+                    <a href="{{ url_for('detalhe_produto', id=item.id) }}" class="btn-action btn-{{ item.tipo|lower }}">
+                        {{ item.tipo }}
+                    </a>
                 </div>
             </div>
             {% endfor %}
         </div>
     </main>
+
+    <script>
+        const filters = document.querySelectorAll('.filter-btn');
+        const cards = document.querySelectorAll('.card-ferramenta');
+
+        filters.forEach(filter => {
+            filter.addEventListener('click', () => {
+                // Estilização do botão ativo
+                filters.forEach(btn => btn.classList.remove('active'));
+                filter.classList.add('active');
+
+                const categoria = filter.textContent.toLowerCase();
+
+                cards.forEach(card => {
+                    const cardTipo = card.getAttribute('data-tipo');
+                    
+                    // Lógica: se for 'todos', mostra tudo. 
+                    // Se clicar em 'Para Comprar', filtra apenas por 'comprar'.
+                    if (categoria === 'todos' || categoria.includes(cardTipo)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

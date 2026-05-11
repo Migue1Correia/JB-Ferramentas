@@ -98,7 +98,14 @@ def manutencao_page():
 
 @app.route('/loja')
 def loja_page():
-    return render_template('loja.html')
+    # Esta lista simula os dados que virão do seu banco de dados
+    lista_ferramentas = [
+        {"id": 1, "nome": "Furadeira Bosch", "preco": "450,00", "tipo": "Comprar"},
+        {"id": 2, "nome": "Martelete Makita", "preco": "80,00", "tipo": "Alugar"},
+        {"id": 3, "nome": "Serra Circular", "preco": "320,00", "tipo": "Comprar"},
+        {"id": 4, "nome": "Andaime", "preco": "50,00", "tipo": "Alugar"}
+    ]
+    return render_template('loja.html', ferramentas=lista_ferramentas)
 
 @app.route('/detalhe/<int:id>')
 def detalhe_produto(id):
