@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Link para o CSS na pasta static -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>Login</title>
+</head>
+<body>
+  <div class="bg-container"></div>
+    <div class="page-wrapper">
+        <section class="main-container">
+            <div class="logo-area">
+                <div class="logo-box"><h1>JB</h1></div>
+                <p>FERRAMENTAS</p>
+            </div>
+            <div class="form-card">
+                <h2>Bem-vindo(a)</h2>
+                <form method="POST">
+                    <div class="input-group">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" name="usuario" placeholder="CPF ou CNPJ">
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" name="senha" placeholder="Senha">
+                    </div>
+                    <button type="submit" class="btn-submit">ENTRAR</button>
+                </form>
+                <div class="form-footer" style="text-align: center; margin-top: 20px;">
+                    <p>Primeiro acesso? <a href="{{ url_for('register') }}" style="color:#fff; font-weight:700; border-bottom: 2px solid #fff; text-decoration:none;">Concluir cadastro.</a></p>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

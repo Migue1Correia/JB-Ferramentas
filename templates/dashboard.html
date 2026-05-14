@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+    <header class="dashboard-header">
+        <a href="{{ url_for('main_page') }}" class="back-link">
+        <div class="logo-mini"><h1>JB</h1><span>FERRAMENTAS</span></div>
+        <div class="user-icon-top"><i class="fas fa-user-circle"></i></div>
+    </header>
+
+    <main class="dashboard-content">
+        <section class="welcome-box">
+            <h1>Olá, {{ nome }}!</h1>
+            <p>Selecione um serviço para continuar</p>
+        </section>
+
+        <section class="service-cards">
+            <div class="card-item card-orange">
+                <div class="card-info">
+                    <i class="fas fa-tools icon-main"></i>
+                    <div>
+                        <h3>Manutenção</h3>
+                        <p>Serviço especializado para reparo de ferramentas.</p>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right arrow"></i>
+            </div>
+
+            <div class="card-item card-glass">
+                <div class="card-info">
+                    <i class="fas fa-shopping-cart icon-main"></i>
+                    <div>
+                        <h3>Compra ou Aluguel</h3>
+                        <p>Ferramentas para comprar ou alugar de forma prática.</p>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right arrow"></i>
+            </div>
+        </section>
+
+        <section class="showcase-section">
+            <h2 class="section-title">Destaques da semana</h2>
+            <div class="products-grid">
+                <div class="product-card">
+                    <img src="https://images.tcdn.com.br/img/img_prod/737435/furadeira_de_impacto_hp1640_110v_makita_743_1_20200722152643.jpg" alt="Furadeira">
+                    <div class="prod-details">
+                        <h3>Furadeira</h3>
+                        <p class="price">R$ 25/dia</p>
+                        <button class="btn-buy">Alugar</button>
+                    </div>
+                </div>
+                <div class="product-card">
+                    <img src="https://images.tcdn.com.br/img/img_prod/737435/furadeira_de_impacto_hp1640_110v_makita_743_1_20200722152643.jpg" alt="Furadeira">
+                    <div class="prod-details">
+                        <h3>Furadeira</h3>
+                        <p class="price">R$ 658</p>
+                        <button class="btn-dark">Comprar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
