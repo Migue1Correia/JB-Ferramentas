@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bodyferramentas.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>JB Ferramentas</title>
+</head>
+
+<body class="dark-theme">
+    <header class="header-main">
+        <div class="nav-icons">
+            <a href="{{ url_for('main_page') }}" class="icon-link"><i class="fa-solid fa-arrow-left"></i></a>
+        </div>
+        
+        <div class="logo">
+            <img src="{{ url_for('static', filename='jb_logo.png') }}" alt="JB Ferramentas">
+        </div>
+
+        <div class="user-access">
+            <a href="{{ url_for('main_page') }}" class="icon-link"> <i class="fa-solid fa-user"></i></a>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="welcome-section">
+            <h1>Olá, Alexandre!</h1>
+            <p>Selecione um serviço para continuar</p>
+        </section>
+
+      <section class="servicos">
+    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; flex: 1; display: flex;">
+        <div class="card-grande manutencao">
+            <div class="card-content">
+                <div class="icon-box"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                <div class="text-box">
+                    <h3>Manutenção</h3>
+                    <p>Serviço especializado para reparo e manutenção de ferramentas.</p>
+                </div>
+                <i class="fa-solid fa-chevron-right arrow-detail"></i>
+            </div>
+        </div>
+    </a>
+    
+    <a href="{{ url_for('loja_page') }}" style="text-decoration: none; flex: 1; display: flex;">
+        <div class="card-grande compra">
+            <div class="card-content">
+                <div class="icon-box"><i class="fa-solid fa-cart-shopping"></i></div>
+                <div class="text-box">
+                    <h3>Compra ou Aluguel</h3>
+                    <p>Encontre ferramentas para comprar ou alugar de forma prática e segura.</p>
+                </div>
+                <i class="fa-solid fa-chevron-right arrow-detail"></i>
+            </div>
+        </div>
+    </a>
+</section>
+
+        <h2 class="section-title">Destaques da semana</h2>
+        
+       <div class="grid-ferramentas">
+    {% for item in ferramentas %}
+    <div class="card-ferramenta">
+        <div class="img-container">
+            <img src="{{ url_for('static', filename='produto.png') }}" alt="{{ item.nome }}">
+        </div>
+        <div class="info">
+            <div class="text-info">
+                <p class="tool-name">{{ item.nome }}</p>
+                <span class="tool-price">R$ {{ item.preco }}{% if item.tipo == 'Alugar' %}/dia{% endif %}</span>
+            </div>
+    
+                <a href="{{ url_for('detalhe_produto', id=item.id) }}" class="btn-action btn-{{ item.tipo|lower }}">
+                {{ item.tipo }}
+                </a>
+            </div>
+         </div>
+        {% endfor %}
+</div>
+
+
+    </main>
+</body>
+</html>

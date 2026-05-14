@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bodyferramentas.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Detalhes do Produto - JB Ferramentas</title>
+</head>
+<body class="dark-theme">
+    <header class="header-main">
+        <div class="nav-icons">
+            <a href="{{ url_for('loja_page') }}" class="icon-link"><i class="fa-solid fa-arrow-left"></i></a>
+        </div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='jb_logo.png') }}" alt="JB Ferramentas">
+        </div>
+        <div class="user-access">
+            <a href="{{ url_for('main_page') }}" class="icon-link"> <i class="fa-solid fa-user"></i></a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="product-detail-container">
+            <div class="product-image-section">
+                <div class="main-image-card">
+                    <img src="{{ url_for('static', filename='produto.png') }}" alt="Ferramenta">
+                </div>
+            </div>
+
+            <div class="product-info-section">
+                <span class="category-tag">Categoria: Elétricas</span>
+                <h1>Furadeira de Impacto Bosch</h1>
+                <p class="product-description">
+                    Potência e precisão para os seus projetos. Esta ferramenta conta com motor de alto desempenho, 
+                    ideal para perfurações em concreto, madeira e metal. Design ergonômico para maior conforto.
+                </p>
+
+                <div class="specs-grid">
+                    <div class="spec-item">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>750W</span>
+                    </div>
+                    <div class="spec-item">
+                        <i class="fa-solid fa-weight-hanging"></i>
+                        <span>2.5kg</span>
+                    </div>
+                    <div class="spec-item">
+                        <i class="fa-solid fa-microchip"></i>
+                        <span>Velocidade Variável</span>
+                    </div>
+                </div>
+
+                <div class="price-label">
+                    <span>Valor do {% if ferramenta.tipo|lower == 'alugar' %}aluguel (diária){% else %}investimento{% endif %}</span>
+                    <h2>R$ {{ ferramenta.preco }}{% if ferramenta.tipo|lower == 'alugar' %}/dia{% endif %}</h2>
+                </div>
+
+                <button class="btn-action btn-{{ ferramenta.tipo|lower }}" style="width: 100%;"> {% if ferramenta.tipo|lower == 'alugar' %}Reservar para Alugar{% else %}Confirmar Compra{% endif %}
+                </button>
+                
+                <p class="stock-status"><i class="fa-solid fa-check-circle"></i> Disponível em estoque (Filial Caieiras)</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

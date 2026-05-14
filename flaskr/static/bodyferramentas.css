@@ -1,0 +1,384 @@
+/* Reset e Configurações Globais */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Imagem de Fundo Transparente */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('../static/furadeira-fundo.jpg'); 
+    background-size: cover;
+    background-position: center;
+    opacity: 0.15; 
+    z-index: -1;
+}
+
+/* Header Alinhado (Seta - Logo - Perfil) */
+.header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 5%;
+    background: rgba(0, 0, 0, 0.5);
+    margin-bottom: 40px;
+}
+
+.nav-icons, .user-access {
+    flex: 1;
+    display: flex;
+}
+
+.user-access { justify-content: flex-end; }
+.logo img { height: 50px; }
+
+.icon-link {
+    color: #fff;
+    font-size: 1.2rem;
+    text-decoration: none;
+}
+
+/* Conteúdo Principal */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.welcome-section h1 {
+    font-size: 2.2rem;
+    margin-bottom: 5px;
+}
+
+.welcome-section p {
+    color: #aaa;
+    margin-bottom: 30px;
+}
+
+/* Cards de Serviço (Manutenção e Compra) */
+.servicos {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 50px;
+}
+
+.card-grande {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1.5px solid #333;
+    border-radius: 25px;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.card-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    position: relative;
+}
+
+.icon-box {
+    font-size: 1.5rem;
+    color: #fff;
+}
+
+.text-box h3 { font-size: 1.6rem; margin-bottom: 10px; }
+.text-box p { color: #ccc; font-size: 0.9rem; line-height: 1.4; max-width: 80%; }
+
+.arrow-detail {
+    position: absolute;
+    right: 0;
+    top: 5px;
+    font-size: 1.2rem;
+}
+
+/* Efeitos de Bordas Coloridas (Fiel à Imagem) */
+.manutencao { border-color: #8b5a2b; }
+.manutencao:hover { border-color: #ff8c00; box-shadow: 0 0 15px rgba(255, 140, 0, 0.2); }
+
+.compra { border-color: #3b4d1a; }
+.compra:hover { border-color: #82b300; box-shadow: 0 0 15px rgba(130, 179, 0, 0.2); }
+
+/* Grid de Ferramentas */
+.section-title {
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+}
+
+.grid-ferramentas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+    padding-bottom: 50px;
+}
+
+.card-ferramenta {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #222;
+    border-radius: 15px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.img-container img {
+    width: 100%;
+    height: 180px;
+    object-fit: contain; 
+    background-color: rgba(255, 255, 255, 0.03); /* Fundo sutil para destacar o produto */
+    padding: 10px;
+}
+
+.info {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tool-name { font-weight: 500; margin-bottom: 5px; }
+.tool-price { color: #ff8c00; font-weight: bold; font-size: 0.9rem; }
+
+/* Botões de Ação */
+.btn-action {
+    border: none;
+    padding: 12px 30px;      /* Aumenta o tamanho interno do botão */
+    border-radius: 25px;     /* Deixa os cantos bem arredondados (estilo pílula) */
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #ffffff !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: capitalize; /* Garante que a primeira letra seja maiúscula */
+    min-width: 120px;        /* Garante que o botão tenha um tamanho mínimo bonito */
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+}
+
+/* Cor Laranja para COMPRAR (Tenta pegar todas as variações de nome) */
+.btn-Comprar, .btn-comprar, .btn-Compra {
+    background-color: #ff8c00 !important; 
+    display: inline-block;
+}
+
+/* Cor Verde para ALUGAR (Tenta pegar todas as variações de nome) */
+.btn-Alugar, .btn-alugar, .btn-Aluguel {
+    background-color: #6a8e10 !important; 
+    display: inline-block;
+}
+
+.btn-action:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Container do Formulário */
+.form-container {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 30px;
+    margin-top: 30px;
+}
+
+.form-container h3 {
+    margin-bottom: 20px;
+    color: #ff8c00; /* Laranja da JB */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Estilização dos Inputs */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+
+.form-container input, 
+.form-container textarea {
+    width: 100%;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid #444;
+    border-radius: 10px;
+    color: white;
+    font-size: 1rem;
+}
+
+/* Grid de Status Superior */
+.grid-status {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card-status {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border-left: 4px solid #ff8c00;
+}
+
+.card-status i {
+    font-size: 1.5rem;
+    color: #ff8c00;
+}
+
+.card-status span {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.card-status p {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Barra de Filtros */
+.filter-bar {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.filter-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #333;
+    color: #ccc;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.filter-btn.active, .filter-btn:hover {
+    background: #ff8c00;
+    color: white;
+    border-color: #ff8c00;
+}
+
+/* Layout de Detalhes */
+.product-detail-container {
+    display: flex;
+    gap: 40px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.product-image-section, .product-info-section {
+    flex: 1;
+    min-width: 300px;
+}
+
+.main-image-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #333;
+}
+
+.main-image-card img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Informações do Produto */
+.category-tag {
+    color: #ff8c00;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.product-info-section h1 {
+    font-size: 2.2rem;
+    margin: 10px 0;
+}
+
+.product-description {
+    color: #aaa;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+/* Especificações */
+.specs-grid {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.spec-item {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 15px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #ddd;
+    gap: 5px;
+}
+
+/* Card de Preço e Ação */
+.price-action-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.price-label span {
+    font-size: 0.9rem;
+    color: #888;
+}
+
+.stock-status {
+    margin-top: 15px;
+    font-size: 0.85rem;
+    color: #4CAF50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
