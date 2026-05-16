@@ -3,37 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='bodyferramentas.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <title>Detalhes do Produto - JB Ferramentas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/detalhes.css') }}?v=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="dark-theme">
-    <header class="header-main">
-        <div class="nav-icons">
-            <a href="{{ url_for('loja_page') }}" class="icon-link"><i class="fa-solid fa-arrow-left"></i></a>
+<body class="dashboard-body">
+    <div class="bg-container-detalhes"></div>
+
+    <header class="dashboard-header">
+        <div class="header-top-bar">
+            <a href="{{ url_for('loja_page') }}" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="user-icon-top">
+                <i class="fas fa-user-circle"></i>
+            </div>
         </div>
-        <div class="logo">
-            <img src="{{ url_for('static', filename='jb_logo.png') }}" alt="JB Ferramentas">
-        </div>
-        <div class="user-access">
-            <a href="{{ url_for('main_page') }}" class="icon-link"> <i class="fa-solid fa-user"></i></a>
-        </div>
+
+        <section class="logo-section">
+            <div class="logo-wrapper">
+                <div class="logo-box">
+                    <h1>JB</h1>
+                </div>
+                <h2 class="company-subname">FERRAMENTAS</h2>
+                <div class="tool-icons-row">
+                    <i class="fas fa-screwdriver"></i>
+                    <i class="fas fa-wrench"></i>
+                    <i class="fas fa-hammer"></i>
+                </div>
+            </div>
+        </section>
     </header>
 
-    <main class="container">
+    <main class="dashboard-content">
         <div class="product-detail-container">
+            
             <div class="product-image-section">
                 <div class="main-image-card">
-                    <img src="{{ url_for('static', filename='produto.png') }}" alt="Ferramenta">
+                    <img src="{{ url_for('static', filename='img/produto.png') }}" alt="{{ ferramenta.nome if ferramenta else 'Ferramenta' }}">
                 </div>
             </div>
 
             <div class="product-info-section">
                 <span class="category-tag">Categoria: Elétricas</span>
-                <h1>Furadeira de Impacto Bosch</h1>
+                <h1>{{ ferramenta.nome if ferramenta else 'Furadeira de Impacto Bosch' }}</h1>
                 <p class="product-description">
-                    Potência e precisão para os seus projetos. Esta ferramenta conta com motor de alto desempenho, 
-                    ideal para perfurações em concreto, madeira e metal. Design ergonômico para maior conforto.
+                    {{ ferramenta.descricao if ferramenta else 'Potência e precisão para os seus projetos. Esta ferramenta conta com motor de alto desempenho, ideal para perfurações em concreto, madeira e metal. Design ergonômico para maior conforto.' }}
                 </p>
 
                 <div class="specs-grid">
@@ -56,11 +71,15 @@
                     <h2>R$ {{ ferramenta.preco }}{% if ferramenta.tipo|lower == 'alugar' %}/dia{% endif %}</h2>
                 </div>
 
-                <button class="btn-action btn-{{ ferramenta.tipo|lower }}" style="width: 100%;"> {% if ferramenta.tipo|lower == 'alugar' %}Reservar para Alugar{% else %}Confirmar Compra{% endif %}
+                <button class="btn-main-action {% if ferramenta.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}">
+                    {% if ferramenta.tipo|lower == 'alugar' %}Reservar para Alugar{% else %}Confirmar Compra{% endif %}
                 </button>
                 
-                <p class="stock-status"><i class="fa-solid fa-check-circle"></i> Disponível em estoque (Filial Caieiras)</p>
+                <p class="stock-status">
+                    <i class="fa-solid fa-check-circle"></i> Disponível em estoque (Filial Caieiras)
+                </p>
             </div>
+
         </div>
     </main>
 </body>

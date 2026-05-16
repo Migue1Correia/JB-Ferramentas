@@ -1,42 +1,181 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Cadastrar usuário</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concluir Cadastro - JB Ferramentas</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+
 </head>
 <body>
-  <a href="/">Voltar</a>
-  <h3>{{ status }}</h3>
-  <label for="id_register">Teste de cadastro</label>
-  <form method="post" action="/register" id="id_register">
-    <label for="id_nome">Nome: </label>
-    <input type="text" name="nome" id="id_nome" required><br>
 
-      <label for="id_codigo">CPF/CNPJ: </label>
-    <input type="text" name="codigo" id="id_codigo" required><br>
+    <div class="bg-container-register"></div>
 
-      <label for="id_endereco">Endereço: </label>
-    <input type="text" name="endereco" id="id_endereco" required><br>
+        <!-- LOGO -->
+        <div class="logo-area">
 
-      <label for="id_email">Email: </label>
-    <input type="email" name="email" id="id_email" required><br>
+            <img
+                src="{{ url_for('static', filename='img/logo.png') }}"
+                alt="JB Ferramentas"
+                class="logo-img"
+            >
 
-      <label for="id_telefone">Telefône: </label>
-    <input type="text" name="telefone" id="id_telefone" required><br>
+        </div>
 
-      <h4>Selecione tipo de pessoa:</h4>
-    <input type="radio" id="pf" name="tipo" value="pf" checked>
-      <label for="pf">Pessoa Física</label><br>
-    <input type="radio" id="pj" name="tipo" value="pj">
-       <label for="pj">Pessoa Jurídica</label><br>
+        <!-- FORMULÁRIO -->
+        <div class="login-area">
 
-      <h4>Criar usuário</h4>
+            <h2>Concluir Cadastro</h2>
 
-      <label for="id_usuario">Novo usuário: </label>
-      <input type="text" name="usuario" id="id_usuario" required>
-      <label for="id_senha">Nova senha: </label>
-    <input type="password" name="senha" id="id_senha" required>
-    <input type="submit" value="Entrar">
-  </form>
+            {% if status %}
+                <div class="alert-overlay">
+                    <div class="alert-modal">
+                        <p>{{ status }}</p>
+                        <a href="/register" class="alert-btn">
+                          FECHAR
+                        </a>
+                    </div>  
+                </div>
+            {% endif %}
+
+            <form method="POST" action="/register">
+
+                <!-- NOME -->
+                <div class="input-group">
+                    <label for="id_nome">Nome Completo</label>
+
+                    <input
+                        type="text"
+                        name="nome"
+                        id="id_nome"
+                        placeholder="Digite seu nome completo"
+                        required
+                    >
+                </div>
+
+                <!-- CPF -->
+                <div class="input-group">
+                    <label for="id_codigo">CPF/CNPJ</label>
+
+                    <input type="text" name="code" placeholder="Digite seu CPF ou CNPJ" required>
+
+                </div>
+
+                <!-- ENDEREÇO -->
+                <div class="input-group">
+                    <label for="id_endereco">Endereço</label>
+
+                    <input
+                        type="text"
+                        name="endereco"
+                        id="id_endereco"
+                        placeholder="Digite seu endereço"
+                        required
+                    >
+                </div>
+
+                <!-- EMAIL -->
+                <div class="input-group">
+                    <label for="id_email">E-mail</label>
+
+                    <input
+                        type="email"
+                        name="email"
+                        id="id_email"
+                        placeholder="Digite seu e-mail"
+                        required
+                    >
+                </div>
+
+                <!-- TELEFONE -->
+                <div class="input-group">
+                    <label for="id_telefone">Telefone com DDD</label>
+
+                    <input
+                        type="text"
+                        name="telefone"
+                        id="id_telefone"
+                        placeholder="(11) 99999-9999"
+                        required
+                    >
+                </div>
+
+                <!-- TIPO -->
+                <div class="radio-group">
+
+                    <h4>Tipo de Pessoa</h4>
+
+                    <div class="radio-options">
+
+                        <label>
+                            <input
+                                type="radio"
+                                id="pf"
+                                name="tipo"
+                                value="pf"
+                                checked
+                            >
+                            Pessoa Física
+                        </label>
+
+                        <label>
+                            <input
+                                type="radio"
+                                id="pj"
+                                name="tipo"
+                                value="pj"
+                            >
+                            Pessoa Jurídica
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <!-- USUARIO -->
+                <div class="input-group">
+                    <label for="id_usuario">Usuário</label>
+
+                    <input
+                        type="text"
+                        name="usuario"
+                        id="id_usuario"
+                        placeholder="@seuusuario"
+                        required
+                    >
+                </div>
+
+                <!-- SENHA -->
+                <div class="input-group">
+                    <label for="id_senha">Senha</label>
+
+                    <input
+                        type="password"
+                        name="senha"
+                        id="id_senha"
+                        placeholder="************"
+                        required
+                    >
+                </div>
+
+                <!-- BOTÃO -->
+                <button type="submit" class="btn-login">
+                    CONCLUIR CADASTRO
+                </button>
+
+            </form>
+
+            <!-- LINKS -->
+            <div class="links">
+                <div class="register">
+                <a href="/login">Voltar para login</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
 </body>
 </html>

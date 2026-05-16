@@ -1,14 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang=\"pt-br\">
 <head>
     <meta charset="UTF-8">
-    <title>JB Ferramentas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.4">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <h1>Bem-vindo a JB Ferramentas</h1>
-    <h2>Landingpage</h2>
-    <a href="{{ url_for('login')}}">Fazer Login</a>
-    <a href="{{ url_for('register')}}">Cadastrar Usuario</a>
-    <a href="{{ url_for('ferramentas') }}">Ver Ferramentas</a>
+    <div class="bg-container-tela-inicial"></div>
+    
+    <div class="main-wrapper">
+        <section class="logo-section">
+            <div class="logo-box">
+                <h1>JB</h1>
+            </div>
+            <p>FERRAMENTAS</p>
+        </section>
+
+        <section class="form-card">
+            <h2>Bem-vindo(a)</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="background-color: #d4edda; color: #155724; padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; border: 1px solid #c3e6cb;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="/login" method="POST">
+                {% if status %}
+                <div style="background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; border: 1px solid #f5c6cb;">
+                    {{ status }}
+                </div>
+                {% endif %}
+                
+                <div class="input-group">
+                    <label>DIGITE O NOME DE USUÁRIO</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user"></i>
+                        <input type="text" name="usuario" placeholder="Digite seu nome de usuário" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Senha</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" name="senha" placeholder="Digite sua senha" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit">ENTRAR</button>
+            </form>
+
+            <div class="footer-links">
+                <a href="#">Esqueceu sua senha?</a><br><br>
+                <p>Primeiro acesso? 
+                    <a href="/register" class="link-amarelo">Concluir cadastro.</a>
+                </p>
+            </div>
+        </section>
+    </div>
 </body>
 </html>

@@ -8,11 +8,30 @@
   <a href="/">Voltar</a>
   <h3>{{ status }}</h3>
   <label for="id_login">Login</label>
-  <form method="post" action="/login" id="id_login">
-    <label for="id_usuario">Usuario: </label>
-    <input type="text" name="usuario" id="id_usuario" required>
-    <input type="password" name="senha" id="id_senha" required>
-    <input type="submit" value="Entrar">
-  </form>
+
+  {% if status %}
+    <div style="background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center;">
+        {{ status }}
+    </div>
+{% endif %}
+
+  <form method="POST" action="/login">
+    
+    <div class="input-group">
+        <label for="id_usuario">Usuário</label>
+        <input type="text" name="usuario" id="id_usuario" placeholder="Digite seu usuário" required>
+    </div>
+
+    <div class="input-group">
+        <label for="id_senha">Senha</label>
+        <input type="password" name="senha" id="id_senha" placeholder="************" required>
+    </div>
+
+    <button type="submit" class="btn-login">ENTRAR</button>
+</form>
+
+{% if status %}
+    <p style="color: red; text-align: center; margin-top: 10px;">{{ status }}</p>
+{% endif %}
 </body>
 </html>

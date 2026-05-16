@@ -1,0 +1,326 @@
+/* ==========================================================================
+   CSS EXCLUSIVO: TELA DE MANUTENÇÃO (JB FERRAMENTAS)
+   ========================================================================== */
+
+/* --- RESET INTEGRADO --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    color: #ffffff;
+    background-color: #000000;
+}
+
+/* --- PLANO DE FUNDO PADRÃO --- */
+.bg-container-manutencao {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.9)), 
+                url('/static/img/furadeira-fundo.jpg') no-repeat center center;
+    background-size: cover;
+    z-index: -1;
+}
+
+/* --- CABEÇALHO (HEADER GRID) --- */
+.dashboard-header {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.header-top-bar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+    position: absolute;
+    top: 25px;
+    left: 0;
+    z-index: 10;
+}
+
+.back-link, .user-icon-top {
+    color: #ffffff;
+    font-size: 1.6rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.back-link:hover {
+    color: #ff0000;
+    transform: translateX(-3px);
+}
+
+.user-icon-top:hover {
+    color: #ff6600;
+}
+
+/* --- LOGOTIPO IDÊNTICO --- */
+.logo-section {
+    text-align: center;
+    padding: 10px 0;
+    margin-top: 10px;
+    filter: drop-shadow(2px 4px 15px rgba(0, 0, 0, 0.9));
+}
+
+.logo-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    padding-bottom: 22px;
+}
+
+.logo-box {
+    background-color: #ff0000;
+    padding: 2px 25px;
+    border-radius: 5px;
+    display: inline-block;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+}
+
+.logo-box h1 {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 2px;
+    line-height: 1.1;
+    margin: 0;
+}
+
+.company-subname {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ff0000;
+    letter-spacing: 5px;
+    margin-top: 5px;
+}
+
+.tool-icons-row {
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    gap: 15px;
+}
+
+.tool-icons-row i {
+    color: #ffffff;
+    font-size: 0.95rem;
+    opacity: 0.9;
+}
+
+@media (min-width: 580px) {
+    .logo-wrapper {
+        flex-direction: row;
+        gap: 15px;
+        align-items: center;
+        justify-content: center;
+        padding-bottom: 25px;
+    }
+    .company-subname { margin-top: 0; }
+    .tool-icons-row { left: 50%; transform: translateX(-50%); }
+}
+
+/* --- CONTEÚDO PRINCIPAL --- */
+.dashboard-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px 40px;
+}
+
+.welcome-box {
+    margin-bottom: 30px;
+}
+
+.welcome-box h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.welcome-box p {
+    color: #aaaaaa;
+    font-size: 1rem;
+}
+
+/* --- GRID DE STATUS (ACOMPANHAMENTO) --- */
+.grid-status {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.card-status {
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.card-status:hover {
+    transform: translateY(-2px);
+}
+
+.status-icon-wrapper {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+/* Cores específicas de acordo com a etapa */
+.status-analise {
+    border-left: 4px solid #ff6600;
+}
+.status-analise:hover {
+    border-color: rgba(255, 102, 0, 0.4);
+}
+.status-analise .status-icon-wrapper {
+    background: rgba(255, 102, 0, 0.1);
+    color: #ff6600;
+}
+
+.status-reparo {
+    border-left: 4px solid #ccff00;
+}
+.status-reparo:hover {
+    border-color: rgba(204, 255, 0, 0.4);
+}
+.status-reparo .status-icon-wrapper {
+    background: rgba(204, 255, 0, 0.1);
+    color: #ccff00;
+}
+
+.status-info span {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 2px;
+}
+
+.status-info p {
+    color: #aaaaaa;
+    font-size: 0.9rem;
+}
+
+/* --- FORMULÁRIO DE SOLICITAÇÃO --- */
+.form-container {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.form-container h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 12px;
+}
+
+.form-container h3 i {
+    color: #ff6600;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #dddddd;
+}
+
+.input-group input, 
+.input-group textarea {
+    background: #141414;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #ffffff;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-group input:focus, 
+.input-group textarea:focus {
+    outline: none;
+    border-color: #ff6600;
+    box-shadow: 0 0 8px rgba(255, 102, 0, 0.2);
+}
+
+/* Customização do campo de Texto Longo */
+.input-group textarea {
+    resize: vertical;
+}
+
+/* Botão de Envio Laranja com Efeitos Neon */
+.btn-submit-oficina {
+    width: 100%;
+    background: #ff6600;
+    color: #ffffff;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.btn-submit-oficina:hover {
+    background: #e05900;
+    box-shadow: 0 5px 15px rgba(255, 102, 0, 0.35);
+}
+
+.btn-submit-oficina:active {
+    transform: scale(0.99);
+}
+
+/* --- RESPONSIVIDADE (MOBILE) --- */
+@media (max-width: 768px) {
+    .dashboard-content { padding: 20px; }
+    .header-top-bar { padding: 0 20px; top: 20px; }
+    .logo-box h1 { font-size: 2.8rem; }
+    .company-subname { font-size: 1.3rem; }
+    .welcome-box h1 { font-size: 1.8rem; }
+    .grid-status { grid-template-columns: 1fr; gap: 12px; }
+    .form-container { padding: 20px; }
+}

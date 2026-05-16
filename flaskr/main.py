@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 from flask_bcrypt import Bcrypt
-
+from flask import Flask, render_template, request, redirect, url_for # Garanta que importou redirect e url_for
 from model.db import jb_solucoes_db, jb_bcrypt
 
 from model.user_account import UserAccountModel
@@ -22,7 +22,7 @@ jb_bcrypt = Bcrypt(app)
 
 @app.route("/")
 def main_page():
-    return render_template('index.html')
+    return render_template('landing.html')
 ferramentas = [
         {'id': 1, 'nome': 'Furadeira', 'preco': '450,00', 'tipo': 'Comprar'},
         {'id': 2, 'nome': 'Martelete', 'preco': '80,00', 'tipo': 'Alugar'}
@@ -43,16 +43,20 @@ def ferramentas():
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     if request.method == "GET":
-        return render_template('auth.html')
+        return render_template('index.html')
     
-
     elif request.method == "POST":
-        status = "Usuário autenticado"
+        usuario_digitado = request.form['usuario']
+        senha_digitada = request.form['senha']
 
-        if not UserAccountModel.auth(request.form['usuario'], request.form['senha']):
+        # Executa a autenticação no banco de dados
+        if UserAccountModel.auth(usuario_digitado, senha_digitada):
+            # Se der certo, redireciona o utilizador para a página interna da loja
+            return redirect(url_for('loja_page'))
+        else:
+            # Se falhar, define a mensagem de erro e recarrega a página de login
             status = "Erro ao autenticar usuário."
-        UserAccountModel.update("alex", "Alex123")
-        return render_template('auth.html', status=status)
+            return render_template('index.html', status=status)
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
@@ -60,6 +64,9 @@ def register():
         return render_template('register.html')
 
     if request.method == "POST":
+        # 1. Inicializa a variável status como None ou vazia para garantir que ela exista
+        status = None 
+
         name = request.form.get('nome')
         user_type = request.form.get('tipo')
         code = request.form.get('code')
@@ -69,27 +76,28 @@ def register():
         user = request.form.get('usuario')
         password = request.form.get('senha')
 
+        # 2. Validações e inserções
         if PersonModel.exist(code, by="code"):
             status = "Já tem uma pessoa cadastrada com esse código de CPF/CNPJ. Por favor, faça o login."
-            return render_template('register.html', status=status)
-
-        if not PersonModel.create(name, user_type, code, address, email, phone_number):
+        
+        elif not PersonModel.create(name, user_type, code, address, email, phone_number):
             status = "Não foi possível fazer o cadastro"
-            return render_template('register.html', status=status)
+        
+        else:
+            person_infos = PersonModel.get(code)
 
-        person_infos = PersonModel.get(code)
+            if person_infos is None:
+                status = "Não foi possível extrair o código da pessoa (verifique se o CPF/CNPJ foi preenchido corretamente)."
+            
+            else:
+                hashed_password = jb_bcrypt.generate_password_hash(password).decode("utf-8")
 
-        if person_infos is None:
-            status = "Não foi possível extrair o código da pessoa"
-            return render_template('register.html', status=status)
+                if not UserAccountModel.create(user, hashed_password, person_infos["id"], 1, True):
+                    status = f"Não foi possível gerar uma conta usuário para o {person_infos.get('nome', user)}. Por favor, tente novamente!"
+                else:
+                    status = "Cadastro realizado com sucesso"
 
-        hashed_password = jb_bcrypt.generate_password_hash(password).decode("utf-8")
-
-        if not UserAccountModel.create(user, hashed_password, person_infos["id"], 1, True):
-            status = f"Não foi possível gerar uma conta usuário para o {person_infos.get('nome', user)}. Por favor, tente novamente!"
-            return render_template('register.html', status=status)
-
-        status = "Cadastro realizado com sucesso"
+        # 3. Retorna uma única vez no final usando o status que foi definido em algum dos blocos acima
         return render_template('register.html', status=status)
     
 @app.route('/manutencao')
@@ -98,13 +106,14 @@ def manutencao_page():
 
 @app.route('/loja')
 def loja_page():
-    # Esta lista simula os dados que virão do seu banco de dados
+   # 1. Definimos a lista de produtos que a loja vai exibir
     lista_ferramentas = [
-        {"id": 1, "nome": "Furadeira Bosch", "preco": "450,00", "tipo": "Comprar"},
-        {"id": 2, "nome": "Martelete Makita", "preco": "80,00", "tipo": "Alugar"},
-        {"id": 3, "nome": "Serra Circular", "preco": "320,00", "tipo": "Comprar"},
-        {"id": 4, "nome": "Andaime", "preco": "50,00", "tipo": "Alugar"}
+        {"id": 1, "nome": "Furadeira", "preco": "250,00", "tipo": "Comprar"},
+        {"id": 2, "nome": "Martelete", "preco": "80,00", "tipo": "Alugar"},
+        {"id": 3, "nome": "Serra Tico-Tico", "preco": "150,00", "tipo": "Comprar"}
     ]
+    
+    # 2. Passamos a lista para o template através do argumento ferramentas=lista_ferramentas
     return render_template('loja.html', ferramentas=lista_ferramentas)
 
 @app.route('/detalhe/<int:id>')

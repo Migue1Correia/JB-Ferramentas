@@ -3,25 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='bodyferramentas.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <title>Catálogo JB - Compra e Aluguel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/loja.css') }}?v=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="dark-theme">
-    <header class="header-main">
-        <div class="nav-icons">
-            <a href="{{ url_for('main_page') }}" class="icon-link"><i class="fa-solid fa-arrow-left"></i></a>
+<body class="dashboard-body">
+    <div class="bg-container-loja"></div>
+
+    <header class="dashboard-header">
+        <div class="header-top-bar">
+            <a href="{{ url_for('main_page') }}" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="user-icon-top">
+                <i class="fas fa-user-circle"></i>
+            </div>
         </div>
-        <div class="logo">
-            <img src="{{ url_for('static', filename='jb_logo.png') }}" alt="JB Ferramentas">
-        </div>
-        <div class="user-access">
-            <a href="{{ url_for('main_page') }}" class="icon-link"> <i class="fa-solid fa-user"></i></a>
-        </div>
+
+        <section class="logo-section">
+            <div class="logo-wrapper">
+                <div class="logo-box">
+                    <h1>JB</h1>
+                </div>
+                <h2 class="company-subname">FERRAMENTAS</h2>
+                <div class="tool-icons-row">
+                    <i class="fas fa-screwdriver"></i>
+                    <i class="fas fa-wrench"></i>
+                    <i class="fas fa-hammer"></i>
+                </div>
+            </div>
+        </section>
     </header>
 
-    <main class="container">
-        <section class="welcome-section">
+    <main class="dashboard-content">
+        <section class="welcome-box">
             <h1>Catálogo de Ferramentas</h1>
             <p>Escolha entre comprar equipamentos novos ou alugar por diária.</p>
         </section>
@@ -32,20 +47,17 @@
             <button class="filter-btn">Para Alugar</button>
         </div>
 
-        <div class="grid-ferramentas">
+        <div class="products-grid">
             {% for item in ferramentas %}
-            <div class="card-ferramenta" data-tipo="{{ item.tipo|lower }}">
-                <div class="img-container">
-                    <img src="{{ url_for('static', filename='produto3.png') }}" alt="{{ item.nome }}">
-                </div>
-                <div class="info">
-                    <div class="text-info">
-                        <p class="tool-name">{{ item.nome }}</p>
-                        <span class="tool-price">R$ {{ item.preco }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</span>
-                    </div>
-                    
-                    <a href="{{ url_for('detalhe_produto', id=item.id) }}" class="btn-action btn-{{ item.tipo|lower }}">
-                        {{ item.tipo }}
+            <div class="product-card" data-tipo="{{ item.tipo|lower }}">
+                <img src="{{ url_for('static', filename='img/produto.png') }}" alt="{{ item.nome }}">
+                <div class="prod-details">
+                    <h3>{{ item.nome }}</h3>
+                    <p class="price">R$ {{ item.preco }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
+                    <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
+                        <button class="{% if item.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}">
+                            {{ item.tipo }}
+                        </button>
                     </a>
                 </div>
             </div>
@@ -55,11 +67,10 @@
 
     <script>
         const filters = document.querySelectorAll('.filter-btn');
-        const cards = document.querySelectorAll('.card-ferramenta');
+        const cards = document.querySelectorAll('.product-card');
 
         filters.forEach(filter => {
             filter.addEventListener('click', () => {
-                // Estilização do botão ativo
                 filters.forEach(btn => btn.classList.remove('active'));
                 filter.classList.add('active');
 
@@ -68,10 +79,10 @@
                 cards.forEach(card => {
                     const cardTipo = card.getAttribute('data-tipo');
                     
-                    // Lógica: se for 'todos', mostra tudo. 
-                    // Se clicar em 'Para Comprar', filtra apenas por 'comprar'.
-                    if (categoria === 'todos' || categoria.includes(cardTipo)) {
-                        card.style.display = 'block';
+                    if (categoria === 'todos' || 
+                       (categoria.includes('comprar') && cardTipo !== 'alugar') || 
+                       (categoria.includes('alugar') && cardTipo === 'alugar')) {
+                        card.style.display = 'flex';
                     } else {
                         card.style.display = 'none';
                     }

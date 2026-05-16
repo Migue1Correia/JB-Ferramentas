@@ -3,40 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='bodyferramentas.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <title>Manutenção - JB Ferramentas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/manutencao.css') }}?v=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="dark-theme">
-    <header class="header-main">
-        <div class="nav-icons">
-            <a href="{{ url_for('main_page') }}" class="icon-link"><i class="fa-solid fa-arrow-left"></i></a>
+<body class="dashboard-body">
+    <div class="bg-container-manutencao"></div>
+
+    <header class="dashboard-header">
+        <div class="header-top-bar">
+            <a href="{{ url_for('main_page') }}" class="back-link">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="user-icon-top">
+                <i class="fas fa-user-circle"></i>
+            </div>
         </div>
-        <div class="logo">
-            <img src="{{ url_for('static', filename='jb_logo.png') }}" alt="JB Ferramentas">
-        </div>
-        <div class="user-access">
-            <a href="{{ url_for('main_page') }}" class="icon-link"> <i class="fa-solid fa-user"></i></a>
-        </div>
+
+        <section class="logo-section">
+            <div class="logo-wrapper">
+                <div class="logo-box">
+                    <h1>JB</h1>
+                </div>
+                <h2 class="company-subname">FERRAMENTAS</h2>
+                <div class="tool-icons-row">
+                    <i class="fas fa-screwdriver"></i>
+                    <i class="fas fa-wrench"></i>
+                    <i class="fas fa-hammer"></i>
+                </div>
+            </div>
+        </section>
     </header>
 
-    <main class="container">
-        <section class="welcome-section">
+    <main class="dashboard-content">
+        <section class="welcome-box">
             <h1>Painel de Manutenção</h1>
-            <p>Acompanhe seus reparos ou solicite uma nova manutenção.</p>
+            <p>Acompanhe seus reparos ou solicite uma nova manutenção na nossa oficina.</p>
         </section>
 
         <div class="grid-status">
-            <div class="card-status">
-                <i class="fa-solid fa-clock-rotate-left"></i>
-                <div>
+            <div class="card-status status-analise">
+                <div class="status-icon-wrapper">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div class="status-info">
                     <span>Em análise</span>
                     <p>01 Equipamentos - teste</p>
                 </div>
             </div>
-            <div class="card-status">
-                <i class="fa-solid fa-gears"></i>
-                <div>
+
+            <div class="card-status status-reparo">
+                <div class="status-icon-wrapper">
+                    <i class="fa-solid fa-gears"></i>
+                </div>
+                <div class="status-info">
                     <span>Em manutenção</span>
                     <p>01 Equipamento - teste</p>
                 </div>
@@ -45,18 +65,21 @@
 
         <div class="form-container">
             <h3><i class="fa-solid fa-file-signature"></i> Solicitar Novo Reparo</h3>
+            
             <form action="/manutencao" method="POST">
                 <div class="input-group">
-                    <label>ID ou Nome da Ferramenta</label>
-                    <input type="text" name="id_ferramenta" placeholder="Ex: FUR-001 ou Furadeira Bosch" required>
+                    <label for="id_ferramenta">ID ou Nome da Ferramenta</label>
+                    <input type="text" id="id_ferramenta" name="id_ferramenta" placeholder="Ex: FUR-001 ou Furadeira Bosch" required>
                 </div>
                 
                 <div class="input-group">
-                    <label>Descrição do Problema (Diagnóstico)</label>
-                    <textarea name="diagnostico" rows="4" placeholder="Descreva o que está acontecendo com o equipamento..." required></textarea>
+                    <label for="diagnostico">Descrição do Problema (Diagnóstico)</label>
+                    <textarea id="diagnostico" name="diagnostico" rows="4" placeholder="Descreva detalhadamente o que está acontecendo com o equipamento..." required></textarea>
                 </div>
 
-                <button type="submit" class="btn-action btn-Comprar">Enviar para Oficina</button>
+                <button type="submit" class="btn-submit-oficina">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar para Oficina
+                </button>
             </form>
         </div>
     </main>
