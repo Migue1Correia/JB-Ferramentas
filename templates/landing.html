@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Soluções Completas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.7">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="bg-container-tela-principal"></div>
+
+    <main class="landing-container">
+        <section class="logo-section">
+            <div class="logo-wrapper">
+                <div class="logo-box">
+                    <h1>JB</h1>
+                </div>
+                <h2 class="company-subname">FERRAMENTAS</h2>
+                <div class="tool-icons-row">
+                    <i class="fas fa-screwdriver"></i>
+                    <i class="fas fa-wrench"></i>
+                    <i class="fas fa-hammer"></i>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-collumn">
+            <div class="text-content">
+                <h1 class="main-headline">Soluções completas<br>em ferramentas</h1>
+                <p class="description-text">
+                    Venda, aluguel e manutenção de equipamentos com qualidade e confiança.
+                </p>
+            </div>
+
+            <div class="action-buttons-group">
+                <a href="#" class="btn-landing btn-red">
+                    <div class="btn-content">
+                        <i class="fas fa-tools"></i>
+                        <span>Serviços</span>
+                    </div>
+                    <i class="fas fa-chevron-right arrow-icon"></i>
+                </a>
+
+               <a href="{{ url_for('login_view') }}" class="btn-landing btn-dark">
+                    <div class="btn-content">
+                        <i class="fas fa-user"></i>
+                        <span>Entrar</span>
+                    </div>
+                    <i class="fas fa-chevron-right arrow-icon"></i>
+                </a>
+            </div>
+
+            <div class="first-purchase-info">
+                <p>É a sua primeira compra? <a href="{{ url_for('register') }}" class="link-cadastre">Cadastre-se.</a></p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
