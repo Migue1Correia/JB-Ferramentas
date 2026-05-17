@@ -9,7 +9,9 @@
 </head>
 <body class="dashboard-body">
     <header class="dashboard-header">
-        <a href="{{ url_for('main_page') }}" class="back-link">
+        <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+            <i class="fas fa-arrow-left"></i> Voltar
+        </a>
         <div class="logo-mini"><h1>JB</h1><span>FERRAMENTAS</span></div>
         <div class="user-icon-top"><i class="fas fa-user-circle"></i></div>
     </header>
@@ -21,27 +23,31 @@
         </section>
 
         <section class="service-cards">
-            <div class="card-item card-orange">
-                <div class="card-info">
-                    <i class="fas fa-tools icon-main"></i>
-                    <div>
-                        <h3>Manutenção</h3>
-                        <p>Serviço especializado para reparo de ferramentas.</p>
+            <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+                <div class="card-item card-orange">
+                    <div class="card-info">
+                        <i class="fas fa-tools icon-main"></i>
+                        <div>
+                            <h3>Manutenção</h3>
+                            <p>Serviço specialized para reparo de ferramentas.</p>
+                        </div>
                     </div>
+                    <i class="fas fa-chevron-right arrow"></i>
                 </div>
-                <i class="fas fa-chevron-right arrow"></i>
-            </div>
+            </a>
 
-            <div class="card-item card-glass">
-                <div class="card-info">
-                    <i class="fas fa-shopping-cart icon-main"></i>
-                    <div>
-                        <h3>Compra ou Aluguel</h3>
-                        <p>Ferramentas para comprar ou alugar de forma prática.</p>
+            <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+                <div class="card-item card-glass">
+                    <div class="card-info">
+                        <i class="fas fa-shopping-cart icon-main"></i>
+                        <div>
+                            <h3>Compra ou Aluguel</h3>
+                            <p>Ferramentas para comprar ou alugar de forma prática.</p>
+                        </div>
                     </div>
+                    <i class="fas fa-chevron-right arrow"></i>
                 </div>
-                <i class="fas fa-chevron-right arrow"></i>
-            </div>
+            </a>
         </section>
 
         <section class="showcase-section">

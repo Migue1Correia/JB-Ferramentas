@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Serviços</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/ferramentas.css') }}?v=2.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -12,33 +12,51 @@
 
 <header class="dashboard-header">
         <div class="header-top-bar">
-            <a href="{{ url_for('main_page') }}" class="back-link">
-                <i class="fa-solid fa-arrow-left"></i>
+            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+                <i class="fas fa-arrow-left"></i>
             </a>
             <div class="user-icon-top">
-                <i class="fas fa-user-circle"></i>
+                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
             </div>
         </div>
 
-        <section class="logo-section">
-            <div class="logo-wrapper">
-                <div class="logo-box">
-                    <h1>JB</h1>
-                </div>
-                <h2 class="company-subname">FERRAMENTAS</h2>
-                <div class="tool-icons-row">
-                    <i class="fas fa-screwdriver"></i>
-                    <i class="fas fa-wrench"></i>
-                    <i class="fas fa-hammer"></i>
-                </div>
+<section class="logo-section">
+    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
+        <div class="logo-wrapper">
+            <div class="logo-box">
+                <h1>JB</h1>
             </div>
-        </section>
+            <h2 class="company-subname">FERRAMENTAS</h2>
+            <div class="tool-icons-row">
+                <i class="fas fa-screwdriver"></i>
+                <i class="fas fa-wrench"></i>
+                <i class="fas fa-hammer"></i>
+            </div>
+        </div>
+    </a>
+</section>
     </header>
 
     <main class="dashboard-content">
-        <section class="welcome-box">
-            <h1>Olá, {{ nome if nome else 'Alexandre' }}!</h1>
-            <p>Selecione um serviço para continuar</p>
+        <section class="logo-section">
+                       
+<div class="welcome-container" style="margin-top: 25px; text-align: left;">
+    {% if usuario_logado %}
+        <h1 class="welcome-text" style="font-size: 2.5rem; font-weight: bold; margin-bottom: 5px; color: #ffffff;">
+            Olá, {{ usuario_logado }}!
+        </h1>
+        <p class="welcome-subtext" style="color: #888888; font-size: 1rem;">
+            Selecione um serviço para continuar
+        </p>
+    {% else %}
+        <h1 class="welcome-text" style="font-size: 2.5rem; font-weight: bold; margin-bottom: 5px; color: #ffffff;">
+            Olá!
+        </h1>
+        <p class="welcome-subtext" style="font-size: 1.1rem; color: #ffffff;">
+            Para continuar, <a href="{{ url_for('login') }}" style="color: #ff0000; text-decoration: underline; font-weight: bold;">faça seu login</a>
+        </p>
+    {% endif %}
+</div>
         </section>
 
         <section class="service-cards">

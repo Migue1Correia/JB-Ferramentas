@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manutenção - JB Ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/manutencao.css') }}?v=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -12,43 +12,81 @@
 
     <header class="dashboard-header">
         <div class="header-top-bar">
-            <a href="{{ url_for('main_page') }}" class="back-link">
-                <i class="fa-solid fa-arrow-left"></i>
+            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+                <i class="fas fa-arrow-left"></i> Voltar
             </a>
             <div class="user-icon-top">
-                <i class="fas fa-user-circle"></i>
+                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
             </div>
         </div>
 
         <section class="logo-section">
-            <div class="logo-wrapper">
-                <div class="logo-box">
-                    <h1>JB</h1>
-                </div>
-                <h2 class="company-subname">FERRAMENTAS</h2>
-                <div class="tool-icons-row">
-                    <i class="fas fa-screwdriver"></i>
-                    <i class="fas fa-wrench"></i>
-                    <i class="fas fa-hammer"></i>
-                </div>
+    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
+        <div class="logo-wrapper">
+            <div class="logo-box">
+                <h1>JB</h1>
             </div>
-        </section>
+            <h2 class="company-subname">FERRAMENTAS</h2>
+            <div class="tool-icons-row">
+                <i class="fas fa-screwdriver"></i>
+                <i class="fas fa-wrench"></i>
+                <i class="fas fa-hammer"></i>
+            </div>
+        </div>
+    </a>
+</section>
     </header>
 
-    <main class="dashboard-content">
-        <section class="welcome-box">
-            <h1>Painel de Manutenção</h1>
-            <p>Acompanhe seus reparos ou solicite uma nova manutenção na nossa oficina.</p>
-        </section>
+    <main class="oficina-main-content">
+       <section class="service-cards" style="margin-bottom: 30px;">
+    <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-home">
+            <div class="card-info">
+                <i class="fas fa-home icon-main"></i>
+                <div>
+                    <h3>Início</h3>
+                    <p>Voltar para a página principal.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
 
-        <div class="grid-status">
-            <div class="card-status status-analise">
+    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-orange">
+            <div class="card-info">
+                <i class="fas fa-tools icon-main"></i>
+                <div>
+                    <h3>Manutenção</h3>
+                    <p>Serviço especializado para reparo de ferramentas.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+
+    <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-glass">
+            <div class="card-info">
+                <i class="fas fa-shopping-cart icon-main"></i>
+                <div>
+                    <h3>Compra ou Aluguel</h3>
+                    <p>Ferramentas para comprar ou alugar de forma prática.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+</section>
+
+        <div class="status-overview-row">
+            <div class="card-status status-concluido">
                 <div class="status-icon-wrapper">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <i class="fa-solid fa-circle-check"></i>
                 </div>
                 <div class="status-info">
-                    <span>Em análise</span>
-                    <p>01 Equipamentos - teste</p>
+                    <span>Pronto para Retirada</span>
+                    <p>Nenhum equipamento pronto</p>
                 </div>
             </div>
 

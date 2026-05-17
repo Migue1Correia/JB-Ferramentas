@@ -4,56 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catálogo JB - Compra e Aluguel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/loja.css') }}?v=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
     <div class="bg-container-loja"></div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div style="background-color: #d4edda; color: #155724; padding: 15px; margin: 20px auto; max-width: 1200px; border-radius: 4px; text-align: center; border: 1px solid #c3e6cb; font-weight: bold; font-family: sans-serif;">
+                    <i class="fas fa-check-circle"></i> {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
     <header class="dashboard-header">
         <div class="header-top-bar">
-            <a href="{{ url_for('main_page') }}" class="back-link">
-                <i class="fa-solid fa-arrow-left"></i>
+            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+                <i class="fas fa-arrow-left"></i> Voltar
             </a>
             <div class="user-icon-top">
-                <i class="fas fa-user-circle"></i>
+                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
             </div>
         </div>
 
         <section class="logo-section">
-            <div class="logo-wrapper">
-                <div class="logo-box">
-                    <h1>JB</h1>
-                </div>
-                <h2 class="company-subname">FERRAMENTAS</h2>
-                <div class="tool-icons-row">
-                    <i class="fas fa-screwdriver"></i>
-                    <i class="fas fa-wrench"></i>
-                    <i class="fas fa-hammer"></i>
-                </div>
+    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
+        <div class="logo-wrapper">
+            <div class="logo-box">
+                <h1>JB</h1>
             </div>
-        </section>
+            <h2 class="company-subname">FERRAMENTAS</h2>
+            <div class="tool-icons-row">
+                <i class="fas fa-screwdriver"></i>
+                <i class="fas fa-wrench"></i>
+                <i class="fas fa-hammer"></i>
+            </div>
+        </div>
+    </a>
+</section>
+
+        <div class="category-filters-container">
+            <button class="filter-btn active">TODOS</button>
+            <button class="filter-btn"><i class="fas fa-shopping-basket"></i> COMPRAR</button>
+            <button class="filter-btn"><i class="fas fa-clock"></i> ALUGAR</button>
+        </div>
     </header>
 
-    <main class="dashboard-content">
-        <section class="welcome-box">
-            <h1>Catálogo de Ferramentas</h1>
-            <p>Escolha entre comprar equipamentos novos ou alugar por diária.</p>
-        </section>
-
-        <div class="filter-bar">
-            <button class="filter-btn active">Todos</button>
-            <button class="filter-btn">Para Comprar</button>
-            <button class="filter-btn">Para Alugar</button>
+    <main class="oficina-main-content">
+       <section class="service-cards" style="margin-bottom: 30px;">
+    <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-home">
+            <div class="card-info">
+                <i class="fas fa-home icon-main"></i>
+                <div>
+                    <h3>Início</h3>
+                    <p>Voltar para a página principal.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
         </div>
+    </a>
 
-        <div class="products-grid">
+    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-orange">
+            <div class="card-info">
+                <i class="fas fa-tools icon-main"></i>
+                <div>
+                    <h3>Manutenção</h3>
+                    <p>Serviço especializado para reparo de ferramentas.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+
+    <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-glass">
+            <div class="card-info">
+                <i class="fas fa-shopping-cart icon-main"></i>
+                <div>
+                    <h3>Compra ou Aluguel</h3>
+                    <p>Ferramentas para comprar ou alugar de forma prática.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+</section>
+
+        <div class="products-grid-layout">
             {% for item in ferramentas %}
             <div class="product-card" data-tipo="{{ item.tipo|lower }}">
-                <img src="{{ url_for('static', filename='img/produto.png') }}" alt="{{ item.nome }}">
+                <div class="prod-image-box">
+                    <i class="fa-solid fa-screwdriver-wrench placeholder-tool-icon"></i>
+                </div>
                 <div class="prod-details">
                     <h3>{{ item.nome }}</h3>
-                    <p class="price">R$ {{ item.preco }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
+                    <p class="price">R$ {{ "%.2f"|format(item.preco|float) }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
                     <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
                         <button class="{% if item.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}">
                             {{ item.tipo }}

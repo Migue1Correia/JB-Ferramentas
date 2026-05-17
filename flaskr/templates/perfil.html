@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Perfil do Usuário</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+    <div class="bg-container-perfil"></div>
+
+    <header class="dashboard-header">
+        <div class="header-top-bar">
+            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="user-icon-top">
+                <a href="{{ url_for('perfil_page') }}" style="color: inherit;"><i class="fas fa-user-circle"></i></a>
+            </div>
+        </div>
+
+       <section class="logo-section">
+    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
+        <div class="logo-wrapper">
+            <div class="logo-box">
+                <h1>JB</h1>
+            </div>
+            <h2 class="company-subname">FERRAMENTAS</h2>
+            <div class="tool-icons-row">
+                <i class="fas fa-screwdriver"></i>
+                <i class="fas fa-wrench"></i>
+                <i class="fas fa-hammer"></i>
+            </div>
+        </div>
+    </a>
+</section>
+    </header>
+
+    <main class="profile-container">
+        <section class="service-cards" style="margin-bottom: 30px;">
+    <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-home">
+            <div class="card-info">
+                <i class="fas fa-home icon-main"></i>
+                <div>
+                    <h3>Início</h3>
+                    <p>Voltar para a página principal.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+
+    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-orange">
+            <div class="card-info">
+                <i class="fas fa-tools icon-main"></i>
+                <div>
+                    <h3>Manutenção</h3>
+                    <p>Serviço especializado para reparo de ferramentas.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+
+    <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-glass">
+            <div class="card-info">
+                <i class="fas fa-shopping-cart icon-main"></i>
+                <div>
+                    <h3>Compra ou Aluguel</h3>
+                    <p>Ferramentas para comprar ou alugar de forma prática.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+</section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-id-card-alt"></i>
+                <h2>Meus Dados Cadastrais</h2>
+            </div>
+            
+            {% if status %}
+            <div style="background-color: #d4edda; color: #155724; padding: 12px; margin-bottom: 20px; border-radius: 4px; text-align: center; border: 1px solid #c3e6cb; font-weight: bold;">
+                <i class="fas fa-check-circle"></i> {{ status }}
+            </div>
+            {% endif %}
+
+            <form class="profile-form" method="POST" action="/perfil">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="nome">Nome Completo</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="nome" name="nome" value="{{ user_infos.nome if user_infos.nome else '' }}" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="cpf">CPF / Código de Identificação</label>
+                        <div class="input-wrapper disabled-wrapper" style="background-color: #f1f3f5; opacity: 0.8;">
+                            <i class="fas fa-id-card"></i>
+                            <input type="text" id="cpf" name="cpf" value="{{ user_infos.codigo if user_infos.codigo else (user_infos.cpf if user_infos.cpf else '') }}" readonly>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="email">E-mail</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="email" name="email" value="{{ user_infos.email if user_infos.email else '' }}" required>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="telefone">Telefone / Celular</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-phone"></i>
+                            <input type="text" id="telefone" name="telefone" value="{{ user_infos.telefone if user_infos.telefone else '' }}">
+                        </div>
+                    </div>
+
+                    <div class="input-group full-width">
+                        <label for="endereco">Endereço Residencial</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <input type="text" id="endereco" name="endereco" value="{{ user_infos.endereco if user_infos.endereco else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <a href="{{ url_for('logout') }}" class="btn-logout" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background-color: #dc3545; color: #fff; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-left: 10px;">
+                        <i class="fas fa-sign-out-alt"></i> Sair da Conta
+                    </a>
+                </div>
+            </form>
+        </section>
+
+        <section class="profile-card text-center">
+            <div class="card-header">
+                <i class="fas fa-history"></i>
+                <h2>Histórico de Pedidos</h2>
+            </div>
+            <div class="history-content">
+                <div class="table-responsive">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Cód. Pedido</th>
+                                <th>Ferramenta</th>
+                                <th>Data</th>
+                                <th>Operação</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>#1024</td>
+                                <td><strong>Furadeira de Impacto Bosch</strong></td>
+                                <td>15/Mai/2026</td>
+                                <td><span class="type-tag tag-comprar">Compra</span></td>
+                                <td><span class="status-tag status-success">Entregue</span></td>
+                            </tr>
+                            <tr>
+                                <td>#1019</td>
+                                <td><strong>Martelete Perfurador Makita</strong></td>
+                                <td>10/Mai/2026</td>
+                                <td><span class="type-tag tag-alugar">Aluguel</span></td>
+                                <td><span class="status-tag status-success">Entregue</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
