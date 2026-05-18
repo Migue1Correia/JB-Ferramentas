@@ -17,7 +17,7 @@ body {
     background-color: #000000;
 }
 
-/* --- CONTAINER DE PLANO DE FUNDO (GLOBAL) --- */
+/* --- CONTAINER DE PLANO DE FUNDO --- */
 .bg-container-ferramentas,
 .bg-container-loja,
 .bg-container-manutencao,
@@ -36,7 +36,7 @@ body {
 
 
 /* ==========================================================================
-   IDENTIDADE VISUAL: LOGOTIPO PADRÃO (IDENTICO A FERRAMENTAS)
+   IDENTIDADE VISUAL: LOGOTIPO PADRÃO 
    ========================================================================== */
 .logo-section {
     text-align: center;
@@ -114,7 +114,7 @@ body {
 
 
 /* ==========================================================================
-   ESTILIZAÇÃO E PADRONIZAÇÃO COMPLETA DOS BOTÕES (IDENTICO A FERRAMENTAS)
+   ESTILIZAÇÃO E PADRONIZAÇÃO COMPLETA DOS BOTÕES 
    ========================================================================== */
 
 /* --- 1. MENUS DE NAVEGAÇÃO SUPERIOR (TOOL NAV) --- */

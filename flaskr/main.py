@@ -38,6 +38,7 @@ def ferramentas_page():
     
     # 2. Resgata o nome de usuário salvo na sessão durante o login
     usuario_logado = session.get("user_name")
+
     # Passa os dados recuperados para o template
       
     lista_ferramentas = [
@@ -47,7 +48,7 @@ def ferramentas_page():
     ]
     return render_template('ferramentas.html', ferramentas=lista_ferramentas, usuario_logado=usuario_logado)
     
-# === 3. CATÁLOGO COMPLETO DA LOJA 
+# === 3. CATÁLOGO COMPLETO DA LOJA ===
 @app.route('/loja')
 def loja_page():
     if not session.get('logged_in'):
@@ -89,7 +90,7 @@ def detalhe_produto(id):
     return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
 
 
-# === 5. PROCESSAMENTO DE LOGIN 
+# === 5. PROCESSAMENTO DE LOGIN ===
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -119,7 +120,7 @@ def login():
     return render_template('index.html')
 
 
-# === 6. TELA DE PERFIL DO USUÁRIO ADAPTADA ===
+# === 6. TELA DE PERFIL DO USUÁRIO ===
 @app.route('/perfil', methods=['GET', 'POST'])
 def perfil_page():
     if not session.get('logged_in'):

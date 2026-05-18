@@ -316,8 +316,7 @@ body {
 .logo-section {
     text-align: center;
     margin-bottom: 30px;
-      /* Filtro de sombra pesada para destacar o logo vermelho */
-      filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.9));
+    filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.9));
 }
 
 .logo-box {
@@ -325,8 +324,7 @@ body {
     padding: 15px 40px;
     border-radius: 15px;
     display: inline-block;
-      /* Filtro de sombra pesada para destacar o logo vermelho */
-      filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.9));
+    filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.9));
 }
 
 .logo-box h1 {
@@ -452,7 +450,7 @@ body {
 @media (min-width: 800px) {
     .page-container {
         max-width: 500px;
-        background: rgba(0, 0, 0, 0.4); /* Leve fundo no PC para destacar */
+        background: rgba(0, 0, 0, 0.4); 
         padding: 40px;
         border-radius: 20px;
         backdrop-filter: blur(10px);
@@ -460,7 +458,7 @@ body {
 }
 
 /* =========================================
-   ESTILOS ESPECÍFICOS DA LANDING PAGE (image_3.png)
+   ESTILOS ESPECÍFICOS DA LANDING PAGE 
    ========================================= */
 
 /* Fundo específico para a Landing (com overlay mais escuro) */
