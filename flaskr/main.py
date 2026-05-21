@@ -8,10 +8,10 @@ from model.person import PersonModel
 app = Flask(__name__)
 
 # Configurações do Banco de Dados
-app.config['MYSQL_HOST']        = 'localhost'
-app.config['MYSQL_USER']        = 'root'
-app.config['MYSQL_PASSWORD']    = '@lexandre2026*'
-app.config['MYSQL_DB']          = 'jb_ferramentas'
+app.config['MYSQL_HOST']        = '' # Geralmente é localhost
+app.config['MYSQL_USER']        = '' # Seu nome de usuário no banco
+app.config['MYSQL_PASSWORD']    = '' # Ou deixa vazio se não tiver configurado senha
+app.config['MYSQL_DB']          = '' # Nome do banco
 
 # Chave secreta obrigatória para o funcionamento de sessões e mensagens flash
 app.config['SECRET_KEY']        = 'jb_ferramentas_2026'
