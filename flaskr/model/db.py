@@ -8,6 +8,7 @@ jb_solucoes_db = MySQL()
 # Importei aqui por enquanto... Talvez mudar depois
 jb_bcrypt = Bcrypt()
 
+
 def db_execute(arg, *parsing, fetch_type="all"):
     """
     Função para a execução de comandos MySQL
@@ -25,15 +26,21 @@ def db_execute(arg, *parsing, fetch_type="all"):
         return False, None
 
     try:
-        c               = jb_solucoes_db.connection.cursor()
-        p               = ()
-        result          = None
+        c = jb_solucoes_db.connection.cursor()
+        p = ()
+        result = None
 
         for parse in parsing:
             p += (parse,)
 
         c.execute(arg, p)
         jb_solucoes_db.connection.commit()
+
+        # AJUSTE: Se for um comando INSERT, retorna o ID gerado pelo banco
+        if arg.strip().upper().startswith("INSERT"):
+            inserted_id = c.lastrowid
+            c.close()
+            return True, inserted_id
 
         if fetch_type == "one":
             result = c.fetchone()
