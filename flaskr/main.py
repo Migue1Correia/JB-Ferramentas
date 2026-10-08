@@ -11,15 +11,22 @@ from model.service import ServiceModel
 from model.colaborador import ColaboradorModel
 from model.admin import AdminModel
 
+from dotenv import load_dotenv
+
+# Carrega as configurações do arquivo .env (que NÃO vai para o GitHub).
+# Use o arquivo .env.example como modelo.
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env'))
+
 app = Flask(__name__)
 swagger = Swagger(app)
 
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'Mm@965122613'
-app.config['MYSQL_DB'] = 'jb_ferramentas'
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'jb_ferramentas')
+app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', '3306'))
 
-app.config['SECRET_KEY'] = 'jb_ferramentas_2026'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'troque-esta-chave-no-env')
 
 UPLOAD_FOLDER = os.path.join(
     app.root_path, 'static', 'uploads', 'equipamentos')

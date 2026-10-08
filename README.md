@@ -37,18 +37,31 @@ Monique Jesus               Ronaldo Alves de Souza
 > [!IMPORTANT]
 > Antes de começar a desenvolver, faça as seguintes checagens:
 > - Verifique se o MySQL está ativo e rodando em sua máquina
-> - Verifique se o banco já está criado
-> - Verifique em **main.py** se as informações para acessar o seu banco estão corretos
-> - Verifique se já está instalado em seu ambiente python os pacotes **flask**, **flask_mysqldb** e **flask-bcrypt**
+> - Verifique se o banco `jb_ferramentas` já está criado
+> - Configure o arquivo `.env` com os dados do seu banco (passo 2 abaixo)
 
 ## Executar projeto
 
-Dentro do diretório raiz do projeto, execute os seguintes comandos:
+**1. Instalar as dependências** (dentro do diretório raiz do projeto):
+```
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate    # Linux/Mac
+pip install -r requirements.txt
+```
+
+**2. Configurar o acesso ao banco:** copie o arquivo `.env.example` para `.env` e preencha com o usuário e a senha do **seu** MySQL.
+```
+copy .env.example .env         # Windows
+# cp .env.example .env         # Linux/Mac
+```
+
+**3. Rodar:**
 ```
 cd flaskr
 flask --app main run
 ```
-e logo em seguida clique na _URL_ gerado para acessar o site.
+e logo em seguida clique na _URL_ gerada para acessar o site. A documentação da API (Swagger) fica em `/apidocs`.
 
 ## Estrutura inicial de arquivos do projeto (Modelo do Flask)
 
@@ -59,8 +72,9 @@ Na pasta **flaskr** está toda a estrutura do projeto.
 
 - **Pasta model**: Arquivos que contem classes que fazer conexão direta com banco de dados e manejam algumas regras de negócio.
 - **Pasta templates**: Arquivos que contém o HTML.
-- **main.py**: Arquivo com todas as rotas (por enquanto), e configurações para conexão com o banco.
+- **Pasta static**: CSS, imagens e scripts JavaScript (ex.: `js/register.js`, com busca de CEP e validações do cadastro).
+- **main.py**: Arquivo com todas as rotas (por enquanto). As configurações do banco são lidas do arquivo `.env`.
 
 
 > [!CAUTION]
-> Antes de fazer o commit, tome cuidado para não vazar as informações de conexão para o seu banco que estão na pasta **main.py**.
+> Nunca coloque senhas direto no código. Os dados de conexão ficam apenas no arquivo **.env**, que está no `.gitignore` e não vai para o GitHub.
