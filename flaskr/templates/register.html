@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Concluir Cadastro - JB Ferramentas</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}?v=1.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 </head>
 <body>
 
     <div class="bg-container-register"></div>
+
+    <div class="container">
 
         <!-- LOGO -->
         <div class="logo-area">
@@ -30,7 +33,7 @@
 
             {% if status %}
                 <div class="alert-overlay">
-                    <div class="alert-modal">
+                    <div class="alert-modal" role="alert">
                         <p>{{ status }}</p>
                         <a href="/register" class="alert-btn">
                           FECHAR
@@ -39,7 +42,8 @@
                 </div>
             {% endif %}
 
-            <form method="POST" action="/register">
+            <form method="POST" action="/register" id="form_cadastro">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <!-- NOME -->
                 <div class="input-group">
@@ -58,8 +62,34 @@
                 <div class="input-group">
                     <label for="id_codigo">CPF/CNPJ</label>
 
-                    <input type="text" name="code" placeholder="Digite seu CPF ou CNPJ" required>
+                    <input
+                        type="text"
+                        name="code"
+                        id="id_codigo"
+                        placeholder="000.000.000-00"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        aria-describedby="id_codigo_erro"
+                        required
+                    >
+                    <span class="input-erro" id="id_codigo_erro" aria-live="polite"></span>
 
+                </div>
+
+                <!-- CEP (preenche o endereço automaticamente via ViaCEP) -->
+                <div class="input-group">
+                    <label for="id_cep">CEP</label>
+
+                    <input
+                        type="text"
+                        id="id_cep"
+                        placeholder="00000-000"
+                        inputmode="numeric"
+                        autocomplete="postal-code"
+                        aria-describedby="id_cep_erro id_cep_status"
+                    >
+                    <span class="input-erro" id="id_cep_erro" aria-live="polite"></span>
+                    <span class="input-status" id="id_cep_status" aria-live="polite"></span>
                 </div>
 
                 <!-- ENDEREÇO -->
@@ -70,8 +100,20 @@
                         type="text"
                         name="endereco"
                         id="id_endereco"
-                        placeholder="Digite seu endereço"
+                        placeholder="Rua, bairro - cidade/UF"
+                        autocomplete="street-address"
                         required
+                    >
+                </div>
+
+                <!-- NÚMERO -->
+                <div class="input-group">
+                    <label for="id_numero">Número / complemento</label>
+
+                    <input
+                        type="text"
+                        id="id_numero"
+                        placeholder="Ex.: 123, apto 4"
                     >
                 </div>
 
@@ -97,8 +139,12 @@
                         name="telefone"
                         id="id_telefone"
                         placeholder="(11) 99999-9999"
+                        inputmode="tel"
+                        autocomplete="tel"
+                        aria-describedby="id_telefone_erro"
                         required
                     >
+                    <span class="input-erro" id="id_telefone_erro" aria-live="polite"></span>
                 </div>
 
                 <!-- TIPO -->
@@ -170,7 +216,7 @@
             <div class="links">
                 <div class="register">
                     <a href="{{ url_for('login') }}" style="color: inherit; text-decoration: none; font-weight: bold;">
-                        <i class="fas fa-arrow-left"></i> Voltar para login
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar para login
                     </a>
                 </div>
             </div>
@@ -178,6 +224,8 @@
         </div>
 
     </div>
+
+    <script src="{{ url_for('static', filename='js/register.js') }}"></script>
 
 </body>
 </html>

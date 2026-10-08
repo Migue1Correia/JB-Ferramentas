@@ -1,5 +1,9 @@
 from .db import db_execute
 
+# Colunas na mesma ordem em que o PersonModel.get monta o dicionário.
+# (Antes era SELECT *, e a ordem das colunas no banco é outra: os campos vinham trocados.)
+COLUNAS = "id, nome, tipo, codigo, endereco, email, telefone, criando_em, atualizado_em"
+
 class PersonModel:
 
     @staticmethod
@@ -76,9 +80,9 @@ class PersonModel:
             return None
 
         if by == "code":
-            arg = "SELECT * FROM pessoas WHERE codigo=%s"
+            arg = f"SELECT {COLUNAS} FROM pessoas WHERE codigo=%s"
         else:
-            arg = "SELECT * FROM pessoas WHERE id=%s"
+            arg = f"SELECT {COLUNAS} FROM pessoas WHERE id=%s"
         res = db_execute(arg, code, fetch_type="one")
         if not res[0]:
             print(res[1])
@@ -98,6 +102,23 @@ class PersonModel:
             "created_at": res[1][7],
             "updated_at": res[1][8]
         }
+
+    @staticmethod
+    def delete(id):
+        """
+        Função para apagar um cadastro. Usada quando a conta de usuário não pôde ser criada,
+        para não deixar uma pessoa cadastrada sem login.
+        :param id: Id da pessoa.
+        :return: True, se o cadastro foi apagado. False, se ocorreu um erro no meio do processo.
+        """
+        if (id is None) or (id == ""):
+            return False
+
+        res = db_execute("DELETE FROM pessoas WHERE id=%s;", id, fetch_type="all")
+        if not res[0]:
+            print(res[1])
+            return False
+        return True
 
     @staticmethod
     def exist(code, by="code"):

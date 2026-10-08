@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Perfis de acesso</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+{% include '_topo_colaborador.html' %}
+
+    <main class="dashboard-content">
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-plus" aria-hidden="true"></i>
+                <h2>Cadastrar perfil</h2>
+            </div>
+            <form method="POST" action="{{ url_for('admin_perfis') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="perfil">Nome do perfil (até 20 letras)</label>
+                        <input type="text" id="perfil" name="perfil" maxlength="20" placeholder="Ex.: Cliente" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="descricao">Descrição</label>
+                        <input type="text" id="descricao" name="descricao" placeholder="O que esse perfil pode fazer">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Cadastrar perfil</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-user-shield" aria-hidden="true"></i>
+                <h2>Perfis cadastrados</h2>
+            </div>
+            {% if perfis %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cód.</th>
+                            <th scope="col">Perfil</th>
+                            <th scope="col">Descrição</th>
+                            <th scope="col">Situação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for perfil in perfis %}
+                        <tr>
+                            <td>{{ perfil[0] }}</td>
+                            <td><strong>{{ perfil[1] }}</strong></td>
+                            <td>{{ perfil[2] or '-' }}</td>
+                            <td>{{ 'Ativo' if perfil[3] else 'Inativo' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhum perfil cadastrado ainda.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

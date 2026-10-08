@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Serviços</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -85,6 +85,8 @@
                     <i class="fas fa-chevron-right arrow"></i>
                 </div>
             </a>
+
+    {% include '_card_painel.html' %}
         </section>
 
         <section class="showcase-section">
@@ -92,10 +94,10 @@
             <div class="products-grid">
                 {% for item in ferramentas %}
                 <div class="product-card">
-                    <img src="{{ url_for('static', filename='img/produto.png') }}" alt="{{ item.nome }}">
+                    <img src="{{ url_for('static', filename=item.imagem) }}" alt="{{ item.nome }}">
                     <div class="prod-details">
                         <h3>{{ item.nome }}</h3>
-                        <p class="price">R$ {{ item.preco }}{% if item.tipo == 'Alugar' %}/dia{% endif %}</p>
+                        <p class="price">{{ item.preco|moeda }}{% if item.tipo == 'Alugar' %}/dia{% endif %}</p>
                         <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
                             <button class="{% if item.tipo == 'Alugar' %}btn-buy{% else %}btn-dark{% endif %}">
                                 {{ item.tipo }}

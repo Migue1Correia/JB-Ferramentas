@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catálogo JB - Compra e Aluguel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -13,8 +13,8 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div style="background-color: #d4edda; color: #155724; padding: 15px; margin: 20px auto; max-width: 1200px; border-radius: 4px; text-align: center; border: 1px solid #c3e6cb; font-weight: bold; font-family: sans-serif;">
-                    <i class="fas fa-check-circle"></i> {{ message }}
+                <div role="status" style="{% if category == 'danger' %}background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% else %}background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% endif %} padding: 15px; margin: 20px auto; max-width: 1200px; border-radius: 4px; text-align: center; font-weight: bold; font-family: sans-serif;">
+                    {{ message }}
                 </div>
             {% endfor %}
         {% endif %}
@@ -93,17 +93,19 @@
             <i class="fas fa-chevron-right arrow"></i>
         </div>
     </a>
+
+    {% include '_card_painel.html' %}
 </section>
 
         <div class="products-grid-layout">
             {% for item in ferramentas %}
             <div class="product-card" data-tipo="{{ item.tipo|lower }}">
                 <div class="prod-image-box">
-                    <i class="fa-solid fa-screwdriver-wrench placeholder-tool-icon"></i>
+                    <img src="{{ url_for('static', filename=item.imagem) }}" alt="{{ item.nome }}">
                 </div>
                 <div class="prod-details">
                     <h3>{{ item.nome }}</h3>
-                    <p class="price">R$ {{ "%.2f"|format(item.preco|float) }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
+                    <p class="price">{{ item.preco|moeda }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
                     <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
                         <button class="{% if item.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}">
                             {{ item.tipo }}

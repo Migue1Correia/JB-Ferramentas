@@ -1,5 +1,4 @@
 from .db import db_execute, jb_bcrypt
-from model.db import jb_solucoes_db  # Garanta que o banco está importado no topo
 
 class UserAccountModel:
 
@@ -115,14 +114,3 @@ class UserAccountModel:
             "created_at":   res[1][6],
             "updated_at":   res[1][7]
         }
-    
-    @classmethod
-    def get_by_username(cls, usuario):
-        cursor = jb_solucoes_db.connection.cursor()
-        
-        # Query usando a coluna real 'username' que confirmamos na tabela
-        cursor.execute("SELECT id, username, senha FROM usuarios WHERE username = %s", (usuario,))
-        
-        resultado = cursor.fetchone()
-        cursor.close()
-        return resultado  # Retorna a tupla (id, username, senha) ou None

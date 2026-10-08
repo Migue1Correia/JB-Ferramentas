@@ -1,4 +1,7 @@
 .venv
+venv/
 .env
 .idea
-__pycache__
+__pycache__/
+*.pyc
+flaskr/static/uploads/
