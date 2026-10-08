@@ -9,8 +9,10 @@
 
 body{
     width: 100%;
-    height: 100vh;
-    overflow: hidden;
+    /* min-height (e não height fixo) + rolagem: em telas baixas o formulário
+       não fica mais cortado em cima e embaixo */
+    min-height: 100vh;
+    overflow-x: hidden;
     background:
         linear-gradient(rgba(0,0,0,0.82), rgba(0,0,0,0.82)),
         url('/static/img/logo.png') no-repeat center center fixed;
