@@ -798,6 +798,11 @@ body {
     transition: 0.3s;
 }
 
+/* Campos com ícone (login): mantém o espaço do ícone na esquerda */
+.input-group .input-wrapper input{
+    padding-left: 45px;
+}
+
 .input-group input::placeholder{
     color: rgba(255,255,255,0.65);
 }
