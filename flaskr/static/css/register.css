@@ -309,3 +309,25 @@ body{
         transform: scale(1);
     }
 }
+/* ===== Mensagens de validação do cadastro (register.js) ===== */
+.input-erro,
+.input-status{
+    display: block;
+    margin-top: 4px;
+    padding-left: 16px;
+    font-size: 12px;
+}
+
+.input-erro{
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.input-status{
+    color: #9be09b;
+}
+
+.input-group input[aria-invalid="true"]{
+    border-color: #ff6b6b;
+    outline-color: #ff6b6b;
+}
