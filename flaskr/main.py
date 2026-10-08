@@ -1,8 +1,10 @@
 import os
+import secrets
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_bcrypt import Bcrypt
 from werkzeug.utils import secure_filename
 from flasgger import Swagger
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from model.db import jb_solucoes_db, jb_bcrypt
 from model.user_account import UserAccountModel
 from model.person import PersonModel
@@ -11,6 +13,7 @@ from model.service import ServiceModel
 from model.colaborador import ColaboradorModel
 from model.admin import AdminModel
 from model.painel import PainelModel
+from validacao import somente_numeros, cpf_valido, cnpj_valido
 
 from dotenv import load_dotenv
 
@@ -27,7 +30,17 @@ app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '')
 app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'jb_ferramentas')
 app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', '3306'))
 
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'troque-esta-chave-no-env')
+# Chave que protege a sessão de login. Se o .env não tiver uma chave própria, o sistema
+# cria uma aleatória (segura, mas todo mundo precisa logar de novo a cada reinício).
+chave_secreta = os.getenv('SECRET_KEY', '')
+if not chave_secreta or chave_secreta.startswith('troque'):
+    print("AVISO: defina SECRET_KEY no arquivo .env. Usando uma chave temporária.")
+    chave_secreta = secrets.token_hex(32)
+app.config['SECRET_KEY'] = chave_secreta
+
+# Proteção CSRF: todo formulário (POST) precisa enviar o campo escondido csrf_token.
+# Isso impede que outro site envie formulários em nome de um usuário logado.
+csrf = CSRFProtect(app)
 
 UPLOAD_FOLDER = os.path.join(
     app.root_path, 'static', 'uploads', 'equipamentos')
@@ -36,6 +49,20 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 jb_solucoes_db.init_app(app)
 jb_bcrypt = Bcrypt(app)
+
+
+@app.errorhandler(CSRFError)
+def formulario_expirado(erro):
+    """Quando o csrf_token falta ou venceu, volta para a tela anterior com um aviso."""
+    flash("O formulário expirou. Tente enviar de novo.", "danger")
+    return redirect(request.referrer or url_for('login'))
+
+
+@app.before_request
+def proteger_documentacao():
+    """A documentação da API (Swagger) só abre para quem está logado."""
+    if request.path.startswith(('/apidocs', '/apispec', '/flasgger_static')) and not session.get('logged_in'):
+        return redirect(url_for('login'))
 
 
 def pode_ver_painel():
@@ -216,7 +243,19 @@ def perfil_page():
     user_code = session.get('user_code')
     status = None
     if request.method == "POST":
-        status = "Dados atualizados com sucesso!"
+        nome = (request.form.get('nome') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        telefone = (request.form.get('telefone') or '').strip()
+        endereco = (request.form.get('endereco') or '').strip()
+
+        # O CPF/CNPJ não é alterado por aqui (o campo é só leitura).
+        if not nome or not email:
+            flash("Nome e e-mail são obrigatórios.", "danger")
+        elif PersonModel.update(user_code, name=nome, address=endereco, email=email, phone_number=telefone):
+            flash("Dados atualizados com sucesso!", "success")
+        else:
+            flash("Não foi possível salvar os dados. Tente novamente.", "danger")
+        return redirect(url_for('perfil_page'))
 
     try:
         cursor = jb_solucoes_db.connection.cursor()
@@ -262,19 +301,35 @@ def register():
     if request.method == "GET":
         return render_template('register.html')
     if request.method == "POST":
-        name = request.form.get('nome')
+        name = (request.form.get('nome') or '').strip()
         user_type = request.form.get('tipo')
-        code = request.form.get('code')
-        address = request.form.get('endereco')
-        email = request.form.get('email')
-        phone_number = request.form.get('telefone')
-        user = request.form.get('usuario')
-        password = request.form.get('senha')
+        code = somente_numeros(request.form.get('code'))  # guarda só os números do CPF/CNPJ
+        address = (request.form.get('endereco') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        phone_number = (request.form.get('telefone') or '').strip()
+        user = (request.form.get('usuario') or '').strip()
+        password = request.form.get('senha') or ''
+
+        # 1. Confere tudo ANTES de gravar qualquer coisa no banco
+        if user_type not in ('pf', 'pj'):
+            return render_template('register.html', status="Tipo de pessoa inválido.")
+
+        if not all([name, code, address, email, phone_number, user, password]):
+            return render_template('register.html', status="Preencha todos os campos.")
+
+        documento_ok = cnpj_valido(code) if user_type == 'pj' else cpf_valido(code)
+        if not documento_ok:
+            status = "CNPJ inválido." if user_type == 'pj' else "CPF inválido."
+            return render_template('register.html', status=status)
 
         if PersonModel.exist(code, by="code"):
             status = "CPF/CNPJ já cadastrado."
             return render_template('register.html', status=status)
 
+        if UserAccountModel.get(user) is not None:
+            return render_template('register.html', status="Este nome de usuário já está em uso.")
+
+        # 2. Grava a pessoa e depois a conta de usuário
         if not PersonModel.create(name, user_type, code, address, email, phone_number):
             status = "Erro no cadastro."
             return render_template('register.html', status=status)
@@ -284,7 +339,9 @@ def register():
             password).decode("utf-8")
 
         if not UserAccountModel.create(user, hashed_password, person_infos["id"], 1, True):
-            status = f"Erro na conta."
+            # Se a conta falhar, apaga a pessoa para não sobrar cadastro sem login
+            PersonModel.delete(person_infos["id"])
+            status = "Erro ao criar a conta. Tente novamente."
             return render_template('register.html', status=status)
 
         status = "Cadastro realizado com sucesso"
@@ -582,7 +639,8 @@ def gerenciar_ferramentas():
         return redirect(url_for('gerenciar_ferramentas'))
     tipos = ToolModel.get_tipos()
     todas_ferramentas = ToolModel.get_all()
-    return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas)
+    filiais = AdminModel.get_filiais()
+    return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais)
 
 
 # === 16. ADICIONAR PEÇAS ===

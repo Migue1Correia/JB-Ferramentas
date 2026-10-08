@@ -1,0 +1,107 @@
+{# Topo das telas de colaborador/administrador: cabeçalho, menu e mensagens.
+   Uso: {% include '_topo_colaborador.html' %} logo depois do <body>. #}
+    <div class="bg-container-perfil"></div>
+
+    <header class="dashboard-header">
+        <div class="header-top-bar">
+            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
+            </a>
+            <div class="user-icon-top">
+                <a href="{{ url_for('perfil_page') }}" style="color: inherit;" aria-label="Meu perfil"><i class="fas fa-user-circle" aria-hidden="true"></i></a>
+            </div>
+        </div>
+
+        <section class="logo-section">
+            <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
+                <div class="logo-wrapper">
+                    <div class="logo-box">
+                        <h1>JB</h1>
+                    </div>
+                    <h2 class="company-subname">FERRAMENTAS</h2>
+                    <div class="tool-icons-row">
+                        <i class="fas fa-screwdriver" aria-hidden="true"></i>
+                        <i class="fas fa-wrench" aria-hidden="true"></i>
+                        <i class="fas fa-hammer" aria-hidden="true"></i>
+                    </div>
+                </div>
+            </a>
+        </section>
+    </header>
+
+    <nav class="dashboard-content" style="padding-bottom: 0;" aria-label="Menu do colaborador">
+        <section class="service-cards" style="margin-bottom: 0;">
+            <a href="{{ url_for('ferramentas_page') }}">
+                <div class="card-item card-home">
+                    <div class="card-info">
+                        <i class="fas fa-home icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Início</h3>
+                            <p>Voltar para a página principal.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('painel_graficos') }}">
+                <div class="card-item card-painel">
+                    <div class="card-info">
+                        <i class="fas fa-chart-column icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Painel</h3>
+                            <p>Gráficos de vendas, aluguéis e manutenções.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('gerenciar_ferramentas') }}">
+                <div class="card-item card-orange">
+                    <div class="card-info">
+                        <i class="fas fa-toolbox icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Catálogo</h3>
+                            <p>Cadastrar ferramentas e unidades em estoque.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('admin_filiais') }}">
+                <div class="card-item card-glass">
+                    <div class="card-info">
+                        <i class="fas fa-store icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Filiais</h3>
+                            <p>Lojas físicas da JB Ferramentas.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('admin_perfis') }}">
+                <div class="card-item card-home">
+                    <div class="card-info">
+                        <i class="fas fa-user-shield icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Perfis</h3>
+                            <p>Níveis de permissão dos usuários.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+        </section>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div role="status" style="{% if category == 'danger' %}background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% else %}background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% endif %} padding: 12px; margin-top: 20px; border-radius: 4px; text-align: center; font-weight: bold;">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endwith %}
+    </nav>

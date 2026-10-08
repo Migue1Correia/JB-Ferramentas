@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Filiais</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+{% include '_topo_colaborador.html' %}
+
+    <main class="dashboard-content">
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-plus" aria-hidden="true"></i>
+                <h2>Cadastrar filial</h2>
+            </div>
+            <form method="POST" action="{{ url_for('admin_filiais') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="codigo_filial">Código (até 10 letras)</label>
+                        <input type="text" id="codigo_filial" name="codigo_filial" maxlength="10" placeholder="Ex.: GUAI" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="nome">Nome</label>
+                        <input type="text" id="nome" name="nome" maxlength="100" placeholder="Ex.: Filial Guaianases" required>
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="endereco">Endereço</label>
+                        <input type="text" id="endereco" name="endereco" maxlength="200" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Cadastrar filial</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-store" aria-hidden="true"></i>
+                <h2>Filiais cadastradas</h2>
+            </div>
+            {% if filiais %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Código</th>
+                            <th scope="col">Nome</th>
+                            <th scope="col">Endereço</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for filial in filiais %}
+                        <tr>
+                            <td>{{ filial[1] }}</td>
+                            <td><strong>{{ filial[2] }}</strong></td>
+                            <td>{{ filial[3] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhuma filial cadastrada ainda.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

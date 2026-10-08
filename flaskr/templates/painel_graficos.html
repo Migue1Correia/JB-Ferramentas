@@ -4,83 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Painel de Vendas e Serviços</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
-    <div class="bg-container-perfil"></div>
-
-    <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
-            </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" style="color: inherit;" aria-label="Meu perfil"><i class="fas fa-user-circle" aria-hidden="true"></i></a>
-            </div>
-        </div>
-
-        <section class="logo-section">
-            <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-                <div class="logo-wrapper">
-                    <div class="logo-box">
-                        <h1>JB</h1>
-                    </div>
-                    <h2 class="company-subname">FERRAMENTAS</h2>
-                    <div class="tool-icons-row">
-                        <i class="fas fa-screwdriver" aria-hidden="true"></i>
-                        <i class="fas fa-wrench" aria-hidden="true"></i>
-                        <i class="fas fa-hammer" aria-hidden="true"></i>
-                    </div>
-                </div>
-            </a>
-        </section>
-    </header>
+{% include '_topo_colaborador.html' %}
 
     <main class="dashboard-content">
-        <section class="service-cards" style="margin-bottom: 30px;">
-            <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-                <div class="card-item card-home">
-                    <div class="card-info">
-                        <i class="fas fa-home icon-main"></i>
-                        <div>
-                            <h3>Início</h3>
-                            <p>Voltar para a página principal.</p>
-                        </div>
-                    </div>
-                    <i class="fas fa-chevron-right arrow"></i>
-                </div>
-            </a>
-
-            <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-                <div class="card-item card-orange">
-                    <div class="card-info">
-                        <i class="fas fa-tools icon-main"></i>
-                        <div>
-                            <h3>Manutenção</h3>
-                            <p>Serviço especializado para reparo de ferramentas.</p>
-                        </div>
-                    </div>
-                    <i class="fas fa-chevron-right arrow"></i>
-                </div>
-            </a>
-
-            <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-                <div class="card-item card-glass">
-                    <div class="card-info">
-                        <i class="fas fa-shopping-cart icon-main"></i>
-                        <div>
-                            <h3>Compra ou Aluguel</h3>
-                            <p>Ferramentas para comprar ou alugar de forma prática.</p>
-                        </div>
-                    </div>
-                    <i class="fas fa-chevron-right arrow"></i>
-                </div>
-            </a>
-
-            {% include '_card_painel.html' %}
-        </section>
-
         <section class="welcome-box">
             <h1>Painel de vendas e serviços</h1>
             <p>Movimento dos últimos {{ dados.meses }} meses, pela data de abertura de cada serviço.</p>

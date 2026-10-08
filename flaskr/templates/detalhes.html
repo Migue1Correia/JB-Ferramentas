@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes do Produto - JB Ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -118,6 +118,7 @@
 
                 {% if ferramenta and ferramenta.tipo|lower == 'alugar' %}
                 <form method="POST" action="{{ url_for('alugar_ferramenta', ferramenta_id=ferramenta.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="input-group">
                         <label for="dias_aluguel">Quantos dias?</label>
                         <input type="number" id="dias_aluguel" name="dias_aluguel" value="1" min="1" max="30" required>
@@ -126,6 +127,7 @@
                 </form>
                 {% elif ferramenta %}
                 <form method="POST" action="{{ url_for('comprar_ferramenta', ferramenta_id=ferramenta.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-main-action btn-dark">Confirmar Compra</button>
                 </form>
                 {% endif %}
