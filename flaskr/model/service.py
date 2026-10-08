@@ -9,13 +9,32 @@ class ServiceModel:
         """
         # Nota: Presumi que você adicionou a coluna status_servico na tabela servicos.
         # Se não adicionou, rode no MySQL: ALTER TABLE servicos ADD status_servico VARCHAR(50) DEFAULT 'Aberto';
-        arg = "SELECT id, servico_solicitado, valor_servico, data_abertura FROM servicos WHERE id_pessoa_solicitante = %s ORDER BY data_abertura DESC;"
+        # Os LEFT JOIN buscam o nome da ferramenta do pedido (manutenção não tem ferramenta vinculada).
+        arg = """
+            SELECT s.id, s.servico_solicitado, s.valor_servico, s.data_abertura,
+                   s.titulo_servico, f.marca, f.modelo
+            FROM servicos s
+            LEFT JOIN servico_ferramentas sf ON sf.id_servico = s.id
+            LEFT JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
+            LEFT JOIN ferramentas f ON f.id = u.id_ferramenta
+            WHERE s.id_pessoa_solicitante = %s
+            ORDER BY s.data_abertura DESC, s.id DESC;
+        """
         res = db_execute(arg, user_id, fetch_type="all")
 
         if not res[0] or res[1] is None:
             return []
 
-        return res[1]
+        historico = []
+        for id_servico, tipo, valor, data, titulo, marca, modelo in res[1]:
+            historico.append({
+                "id": id_servico,
+                "tipo": tipo,
+                "valor": valor,
+                "data": data,
+                "descricao": f"{marca} {modelo}" if marca else titulo,
+            })
+        return historico
 
     @staticmethod
     def get_unidade_disponivel(ferramenta_id):

@@ -1,0 +1,17 @@
+{# Card de menu do Painel de gráficos. É incluído nos menus das outras telas com
+   {% include '_card_painel.html' %}. Quem pode ver é decidido em um só lugar:
+   a função pode_ver_painel() no main.py. #}
+{% if pode_ver_painel %}
+    <a href="{{ url_for('painel_graficos') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-painel">
+            <div class="card-info">
+                <i class="fas fa-chart-column icon-main"></i>
+                <div>
+                    <h3>Painel</h3>
+                    <p>Gráficos de vendas, aluguéis e manutenções.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow"></i>
+        </div>
+    </a>
+{% endif %}

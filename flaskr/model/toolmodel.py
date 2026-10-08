@@ -1,7 +1,37 @@
 from .db import db_execute
 
 
+# Preço, tipo de oferta e foto dos produtos de exemplo (cadastrados pelo cadastrar_exemplos.py).
+# A tabela "ferramentas" ainda não tem colunas para isso, então por enquanto esses dados
+# ficam aqui, ligados pelo modelo da ferramenta. Quando o banco ganhar essas colunas,
+# este dicionário pode ser apagado.
+CATALOGO_EXEMPLOS = {
+    "Parafusadeira e Furadeira a Bateria 20V": {"preco": 459.90, "tipo": "Comprar", "imagem": "img/produto2.png"},
+    "Parafusadeira e Furadeira 12V": {"preco": 329.90, "tipo": "Comprar", "imagem": "img/produto3.png"},
+    "Furadeira de Impacto 750W": {"preco": 35.00, "tipo": "Alugar", "imagem": "img/produto.png"},
+}
+
+# Usado para as ferramentas que não estão no catálogo de exemplos
+OFERTA_PADRAO = {"preco": 150.00, "tipo": "Comprar/Alugar", "imagem": "img/produto.png"}
+
+
 class ToolModel:
+
+    @staticmethod
+    def montar_item(tool_id, marca, modelo, descricao=None):
+        """
+        Junta os dados da ferramenta (vindos do banco) com preço, tipo de oferta e foto,
+        no formato que as telas da loja usam.
+        """
+        oferta = CATALOGO_EXEMPLOS.get(modelo, OFERTA_PADRAO)
+        return {
+            "id": tool_id,
+            "nome": f"{marca} {modelo}",
+            "descricao": descricao,
+            "preco": oferta["preco"],
+            "tipo": oferta["tipo"],
+            "imagem": oferta["imagem"],
+        }
 
     @staticmethod
     def get_all(limit=None):

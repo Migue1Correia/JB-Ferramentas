@@ -10,6 +10,7 @@ from model.toolmodel import ToolModel
 from model.service import ServiceModel
 from model.colaborador import ColaboradorModel
 from model.admin import AdminModel
+from model.painel import PainelModel
 
 from dotenv import load_dotenv
 
@@ -35,6 +36,28 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 jb_solucoes_db.init_app(app)
 jb_bcrypt = Bcrypt(app)
+
+
+def pode_ver_painel():
+    """
+    Diz se o usuário atual pode ver o painel de gráficos (e o card dele nos menus).
+    Por enquanto basta estar logado. Quando o sistema separar clientes de
+    colaboradores/administradores, é só mudar a regra aqui.
+    """
+    return bool(session.get('logged_in'))
+
+
+@app.context_processor
+def variaveis_dos_menus():
+    """Deixa a variável pode_ver_painel disponível em todos os templates."""
+    return {"pode_ver_painel": pode_ver_painel()}
+
+
+@app.template_filter('moeda')
+def formatar_moeda(valor):
+    """Formata um número como dinheiro no padrão brasileiro. Ex.: 1234.5 -> R$ 1.234,50"""
+    texto = f"{float(valor or 0):,.2f}"
+    return "R$ " + texto.replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 # === 1. TELA INICIAL (LANDING PAGE) ===
@@ -72,13 +95,8 @@ def ferramentas_page():
     lista_ferramentas = []
     if ferramentas_db:
         for f in ferramentas_db:
-            nome_completo = f"{f[1]} {f[2]}"
-            lista_ferramentas.append({
-                "id": f[0],
-                "nome": nome_completo,
-                "preco": "150,00",
-                "tipo": "Comprar/Alugar"
-            })
+            lista_ferramentas.append(
+                ToolModel.montar_item(f[0], f[1], f[2], f[3]))
 
     return render_template('ferramentas.html', ferramentas=lista_ferramentas, usuario_logado=usuario_logado)
 
@@ -103,13 +121,8 @@ def loja_page():
     lista_ferramentas = []
     if ferramentas_db:
         for f in ferramentas_db:
-            nome_completo = f"{f[1]} {f[2]}"
-            lista_ferramentas.append({
-                "id": f[0],
-                "nome": nome_completo,
-                "preco": "150,00",
-                "tipo": "Comprar/Alugar"
-            })
+            lista_ferramentas.append(
+                ToolModel.montar_item(f[0], f[1], f[2], f[3]))
 
     return render_template('loja.html', ferramentas=lista_ferramentas)
 
@@ -136,6 +149,10 @@ def detalhe_produto(id):
         return redirect(url_for('login'))
 
     ferramenta_selecionada = ToolModel.get_by_id(id)
+    if ferramenta_selecionada:
+        ferramenta_selecionada = ToolModel.montar_item(
+            ferramenta_selecionada["id"], ferramenta_selecionada["marca"],
+            ferramenta_selecionada["modelo"], ferramenta_selecionada["descricao"])
     return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
 
 
@@ -355,8 +372,22 @@ def alugar_ferramenta(ferramenta_id):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     user_id = session.get('user_code')
-    dias = request.form.get('dias_aluguel', 1)
-    valor_total = request.form.get('valor_total', 0)
+    ferramenta = ToolModel.get_by_id(ferramenta_id)
+    if not ferramenta:
+        flash("Ferramenta não encontrada.", "danger")
+        return redirect(url_for('loja_page'))
+
+    # Quantidade de dias: entre 1 e 30. Se vier algo inválido, considera 1 dia.
+    try:
+        dias = max(1, min(30, int(request.form.get('dias_aluguel', 1))))
+    except ValueError:
+        dias = 1
+
+    # O valor é calculado aqui no servidor (diária x dias), não vem do formulário,
+    # para ninguém conseguir alterar o preço pelo navegador.
+    diaria = ToolModel.montar_item(
+        ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])["preco"]
+    valor_total = round(diaria * dias, 2)
     sucesso, mensagem = ServiceModel.create_rental(
         user_id, ferramenta_id, dias, valor_total)
     if sucesso:
@@ -389,7 +420,14 @@ def comprar_ferramenta(ferramenta_id):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     user_id = session.get('user_code')
-    valor_total = request.form.get('valor_total', 0)
+    ferramenta = ToolModel.get_by_id(ferramenta_id)
+    if not ferramenta:
+        flash("Ferramenta não encontrada.", "danger")
+        return redirect(url_for('loja_page'))
+
+    # O preço vem do catálogo no servidor, não do formulário.
+    valor_total = ToolModel.montar_item(
+        ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])["preco"]
     sucesso, mensagem = ServiceModel.create_purchase(
         user_id, ferramenta_id, valor_total)
     if sucesso:
@@ -675,6 +713,28 @@ def admin_unidades():
         numero_serie, id_ferramenta, id_filial)
     flash(msg, "success" if sucesso else "danger")
     return redirect(url_for('gerenciar_ferramentas'))
+
+
+# === 21. PAINEL COM GRÁFICOS ===
+@app.route('/colaborador/graficos')
+def painel_graficos():
+    """
+    Painel com Gráficos
+    Exibe faturamento e quantidade de vendas, aluguéis e manutenções por mês.
+    ---
+    tags:
+      - Gestão / Colaborador
+    responses:
+      200:
+        description: HTML do painel com gráficos.
+    """
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    if not pode_ver_painel():
+        flash("Você não tem permissão para ver o painel.", "danger")
+        return redirect(url_for('ferramentas_page'))
+    dados = PainelModel.get_resumo_mensal()
+    return render_template('painel_graficos.html', dados=dados)
 
 
 if __name__ == "__main__":

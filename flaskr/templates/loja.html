@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catálogo JB - Compra e Aluguel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -93,17 +93,19 @@
             <i class="fas fa-chevron-right arrow"></i>
         </div>
     </a>
+
+    {% include '_card_painel.html' %}
 </section>
 
         <div class="products-grid-layout">
             {% for item in ferramentas %}
             <div class="product-card" data-tipo="{{ item.tipo|lower }}">
                 <div class="prod-image-box">
-                    <i class="fa-solid fa-screwdriver-wrench placeholder-tool-icon"></i>
+                    <img src="{{ url_for('static', filename=item.imagem) }}" alt="{{ item.nome }}">
                 </div>
                 <div class="prod-details">
                     <h3>{{ item.nome }}</h3>
-                    <p class="price">R$ {{ "%.2f"|format(item.preco|float) }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
+                    <p class="price">{{ item.preco|moeda }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
                     <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
                         <button class="{% if item.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}">
                             {{ item.tipo }}

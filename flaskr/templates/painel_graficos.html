@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Painel de Vendas e Serviços</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.3">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+    <div class="bg-container-perfil"></div>
+
+    <header class="dashboard-header">
+        <div class="header-top-bar">
+            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
+            </a>
+            <div class="user-icon-top">
+                <a href="{{ url_for('perfil_page') }}" style="color: inherit;" aria-label="Meu perfil"><i class="fas fa-user-circle" aria-hidden="true"></i></a>
+            </div>
+        </div>
+
+        <section class="logo-section">
+            <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
+                <div class="logo-wrapper">
+                    <div class="logo-box">
+                        <h1>JB</h1>
+                    </div>
+                    <h2 class="company-subname">FERRAMENTAS</h2>
+                    <div class="tool-icons-row">
+                        <i class="fas fa-screwdriver" aria-hidden="true"></i>
+                        <i class="fas fa-wrench" aria-hidden="true"></i>
+                        <i class="fas fa-hammer" aria-hidden="true"></i>
+                    </div>
+                </div>
+            </a>
+        </section>
+    </header>
+
+    <main class="dashboard-content">
+        <section class="service-cards" style="margin-bottom: 30px;">
+            <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+                <div class="card-item card-home">
+                    <div class="card-info">
+                        <i class="fas fa-home icon-main"></i>
+                        <div>
+                            <h3>Início</h3>
+                            <p>Voltar para a página principal.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+                <div class="card-item card-orange">
+                    <div class="card-info">
+                        <i class="fas fa-tools icon-main"></i>
+                        <div>
+                            <h3>Manutenção</h3>
+                            <p>Serviço especializado para reparo de ferramentas.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+                <div class="card-item card-glass">
+                    <div class="card-info">
+                        <i class="fas fa-shopping-cart icon-main"></i>
+                        <div>
+                            <h3>Compra ou Aluguel</h3>
+                            <p>Ferramentas para comprar ou alugar de forma prática.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow"></i>
+                </div>
+            </a>
+
+            {% include '_card_painel.html' %}
+        </section>
+
+        <section class="welcome-box">
+            <h1>Painel de vendas e serviços</h1>
+            <p>Movimento dos últimos {{ dados.meses }} meses, pela data de abertura de cada serviço.</p>
+        </section>
+
+        {% if dados.erro %}
+        <div class="painel-aviso" role="alert">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            Não foi possível consultar o banco de dados. Verifique a conexão e tente de novo.
+        </div>
+        {% elif dados.total_servicos == 0 %}
+        <div class="painel-aviso">
+            <i class="fas fa-circle-info" aria-hidden="true"></i>
+            Ainda não há vendas, aluguéis ou manutenções registrados nos últimos {{ dados.meses }} meses.
+            Os gráficos aparecem aqui assim que o primeiro serviço for registrado.
+        </div>
+        {% else %}
+
+        <!-- Números de destaque -->
+        <section class="painel-indicadores" aria-label="Resumo do período">
+            <div class="painel-indicador">
+                <span>Faturamento total</span>
+                <strong>{{ dados.faturamento_total|moeda }}</strong>
+            </div>
+            {% for serie in dados.series %}
+            <div class="painel-indicador">
+                <span><i class="painel-cor painel-cor-{{ serie.chave }}" aria-hidden="true"></i>{{ serie.nome }}</span>
+                <strong>{{ serie.total_quantidade }}</strong>
+                <small>{{ serie.total_valor|moeda }}</small>
+            </div>
+            {% endfor %}
+        </section>
+
+        <!-- Gráficos -->
+        <section class="painel-graficos">
+            <div class="profile-card painel-grafico">
+                <div class="card-header">
+                    <i class="fas fa-sack-dollar" aria-hidden="true"></i>
+                    <h2>Faturamento por mês (R$)</h2>
+                </div>
+                <div class="painel-area-grafico">
+                    <canvas id="grafico-faturamento" role="img"
+                            aria-label="Gráfico de barras do faturamento por mês, separado em vendas, aluguéis e manutenções. Os mesmos números estão na tabela abaixo."></canvas>
+                </div>
+            </div>
+
+            <div class="profile-card painel-grafico">
+                <div class="card-header">
+                    <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+                    <h2>Quantidade de serviços por mês</h2>
+                </div>
+                <div class="painel-area-grafico">
+                    <canvas id="grafico-quantidade" role="img"
+                            aria-label="Gráfico de barras da quantidade de serviços por mês, separada em vendas, aluguéis e manutenções. Os mesmos números estão na tabela abaixo."></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Os mesmos dados em tabela, para leitores de tela e para conferir os valores -->
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-table" aria-hidden="true"></i>
+                <h2>Dados mês a mês</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="history-table painel-tabela">
+                    <thead>
+                        <tr>
+                            <th scope="col">Mês</th>
+                            {% for serie in dados.series %}
+                            <th scope="col">{{ serie.nome }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rotulo in dados.rotulos %}
+                        {% set i = loop.index0 %}
+                        <tr>
+                            <th scope="row">{{ rotulo }}</th>
+                            {% for serie in dados.series %}
+                            <td>{{ serie.quantidades[i] }} · {{ serie.valores[i]|moeda }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row">Total</th>
+                            {% for serie in dados.series %}
+                            <td>{{ serie.total_quantidade }} · {{ serie.total_valor|moeda }}</td>
+                            {% endfor %}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <!-- Dados que o painel_graficos.js usa para desenhar os gráficos -->
+        <script id="dados-painel" type="application/json">{{ dados|tojson }}</script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+        <script src="{{ url_for('static', filename='js/painel_graficos.js') }}"></script>
+        {% endif %}
+    </main>
+</body>
+</html>
