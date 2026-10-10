@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Serviços e devoluções</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.2">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -73,6 +73,7 @@
                             <th scope="col">Problema</th>
                             <th scope="col">Valor</th>
                             <th scope="col">Resposta</th>
+                            <th scope="col">Pagamento</th>
                             <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
                         </tr>
                     </thead>
@@ -84,6 +85,7 @@
                             <td>{{ servico.descricao }}</td>
                             <td>{{ servico.valor|moeda }}</td>
                             <td><strong>{{ servico.status }}</strong></td>
+                            <td>{{ servico.pagamento or '-' }}</td>
                             <td>
                                 <form method="POST" action="{{ url_for('fechar_servico', id_servico=servico.id) }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -79,7 +79,7 @@ class ColaboradorModel:
         ou reprovado (falta devolver o equipamento ao cliente).
         """
         arg = """
-            SELECT s.id, p.nome, p.telefone, s.descricao_servico, s.status_servico, s.valor_servico
+            SELECT s.id, p.nome, p.telefone, s.descricao_servico, s.status_servico, s.valor_servico, s.pagamento
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
             WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN ('Aprovado', 'Reprovado')
@@ -89,7 +89,7 @@ class ColaboradorModel:
         if not res[0] or res[1] is None:
             return []
         return [{"id": linha[0], "cliente": linha[1], "telefone": linha[2], "descricao": linha[3],
-                 "status": linha[4], "valor": linha[5]} for linha in res[1]]
+                 "status": linha[4], "valor": linha[5], "pagamento": linha[6]} for linha in res[1]]
 
     @staticmethod
     def fechar_servico(id_servico):

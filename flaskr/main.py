@@ -10,7 +10,7 @@ from model.db import jb_solucoes_db, jb_bcrypt
 from model.user_account import UserAccountModel
 from model.person import PersonModel
 from model.toolmodel import ToolModel
-from model.service import ServiceModel
+from model.service import ServiceModel, PAGAMENTO_PENDENTE, PAGAMENTO_RETIRADA
 from model.colaborador import ColaboradorModel
 from model.admin import AdminModel
 from model.painel import PainelModel
@@ -151,8 +151,17 @@ def registrar_erro_de_login(usuario):
 
 @app.context_processor
 def variaveis_dos_menus():
-    """Deixa disponível em todos os templates: pode_ver_painel e a quantidade de itens no carrinho."""
-    return {"pode_ver_painel": pode_ver_painel(), "itens_no_carrinho": len(session.get('carrinho', []))}
+    """
+    Deixa disponível em todos os templates: pode_ver_painel, a quantidade de itens no carrinho
+    e para onde vai o card "Manutenção" do menu: o colaborador vai para a tela Serviços,
+    o cliente vai para o pedido de manutenção.
+    """
+    colaborador = pode_ver_painel()
+    return {
+        "pode_ver_painel": colaborador,
+        "itens_no_carrinho": len(session.get('carrinho', [])),
+        "link_manutencao": url_for('painel_colaborador' if colaborador else 'manutencao_page'),
+    }
 
 
 @app.template_filter('moeda')
@@ -482,22 +491,40 @@ def manutencao_page():
 def itens_do_carrinho():
     """
     Monta os itens do carrinho com nome, tipo e valor. O carrinho fica guardado na sessão
-    como uma lista de {"id": id da ferramenta, "dias": dias de aluguel ou None se for compra}.
+    como uma lista de {"id": id da ferramenta, "dias": dias de aluguel ou None se for compra}
+    ou {"servico": id da manutenção aprovada que o cliente vai pagar}.
     O valor é sempre calculado aqui no servidor (no aluguel, diária x dias),
     para ninguém conseguir alterar o preço pelo navegador.
     """
     itens = []
     for entrada in session.get('carrinho', []):
-        item = ToolModel.get_by_id(entrada["id"])
-        if not item:
-            continue
-        item["dias"] = entrada["dias"]
-        item["valor"] = round(item["preco"] * (entrada["dias"] or 1), 2)
+        if "servico" in entrada:
+            # Pagamento de uma manutenção aprovada: o valor vem do orçamento gravado no banco
+            orcamento = ServiceModel.get_orcamento(entrada["servico"], session.get('user_code'))
+            if not orcamento or orcamento["pagamento"] != PAGAMENTO_PENDENTE:
+                continue
+            item = {"servico": orcamento["id"], "nome": f"Manutenção #{orcamento['id']}",
+                    "dias": None, "valor": float(orcamento["valor"])}
+        else:
+            item = ToolModel.get_by_id(entrada["id"])
+            if not item:
+                continue
+            item["dias"] = entrada["dias"]
+            item["valor"] = round(item["preco"] * (entrada["dias"] or 1), 2)
+        item["entrada"] = entrada
         itens.append(item)
 
-    # Se alguma ferramenta deixou de existir, tira do carrinho guardado também
-    session['carrinho'] = [{"id": i["id"], "dias": i["dias"]} for i in itens]
+    # O que deixou de existir (ou já foi pago) sai do carrinho guardado também
+    session['carrinho'] = [i["entrada"] for i in itens]
     return itens
+
+
+def por_servico_no_carrinho(id_servico):
+    """Coloca o pagamento de uma manutenção no carrinho (sem repetir)."""
+    carrinho = session.get('carrinho', [])
+    if {"servico": id_servico} not in carrinho:
+        carrinho.append({"servico": id_servico})
+        session['carrinho'] = carrinho
 
 
 @app.route('/carrinho')
@@ -618,14 +645,16 @@ def carrinho_finalizar():
     # Cada item é registrado separado. O que falhar (ex.: esgotou) continua no carrinho.
     restantes = []
     for item in itens:
-        if item["dias"]:
+        if "servico" in item:
+            sucesso, mensagem = ServiceModel.pagar_manutencao(item["servico"], user_id)
+        elif item["dias"]:
             sucesso, mensagem = ServiceModel.create_rental(
                 user_id, item["id"], item["dias"], item["valor"])
         else:
             sucesso, mensagem = ServiceModel.create_purchase(
                 user_id, item["id"], item["valor"])
         if not sucesso:
-            restantes.append({"id": item["id"], "dias": item["dias"]})
+            restantes.append(item["entrada"])
             flash(f"{item['nome']}: {mensagem}", "danger")
     session['carrinho'] = restantes
 
@@ -764,13 +793,71 @@ def responder_orcamento(id_servico, resposta):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     user_id = session.get('user_code')
+    pagamento = None
+    if resposta == 'Aprovado':
+        # Antes de aprovar, o cliente escolhe como vai pagar (tela escolher_pagamento)
+        pagamento = {'agora': PAGAMENTO_PENDENTE, 'retirada': PAGAMENTO_RETIRADA}.get(request.form.get('pagamento'))
+        if not pagamento:
+            return redirect(url_for('escolher_pagamento', id_servico=id_servico))
+
     sucesso, mensagem = ServiceModel.responder_orcamento(
-        id_servico, user_id, resposta)
-    if sucesso:
-        flash(mensagem, "success")
-    else:
-        flash(mensagem, "danger")
+        id_servico, user_id, resposta, pagamento)
+    flash(mensagem, "success" if sucesso else "danger")
+    if sucesso and pagamento == PAGAMENTO_PENDENTE:
+        por_servico_no_carrinho(id_servico)
+        return redirect(url_for('carrinho_page'))
     return redirect(url_for('perfil_page'))
+
+
+@app.route('/cliente/orcamento/<int:id_servico>/pagamento')
+def escolher_pagamento(id_servico):
+    """
+    Escolher o Pagamento
+    Pergunta ao cliente se ele paga o orçamento agora (pelo carrinho) ou na retirada do equipamento.
+    ---
+    tags:
+      - Conta do Cliente
+    parameters:
+      - name: id_servico
+        in: path
+        type: integer
+    responses:
+      200:
+        description: HTML com as duas opções de pagamento.
+    """
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    orcamento = ServiceModel.get_orcamento(id_servico, session.get('user_code'))
+    if not orcamento or orcamento["status"] != 'Aguardando Aprovação':
+        flash("Esse orçamento não está aguardando a sua resposta.", "danger")
+        return redirect(url_for('perfil_page'))
+    return render_template('pagamento.html', orcamento=orcamento)
+
+
+@app.route('/carrinho/pagar-servico/<int:id_servico>', methods=['POST'])
+def carrinho_pagar_servico(id_servico):
+    """
+    Pagar Manutenção pelo Carrinho
+    Coloca no carrinho o pagamento de uma manutenção aprovada que ficou pendente.
+    ---
+    tags:
+      - Conta do Cliente
+    parameters:
+      - name: id_servico
+        in: path
+        type: integer
+    responses:
+      302:
+        description: Redireciona para o carrinho.
+    """
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    orcamento = ServiceModel.get_orcamento(id_servico, session.get('user_code'))
+    if not orcamento or orcamento["pagamento"] != PAGAMENTO_PENDENTE:
+        flash("Esse serviço não está aguardando pagamento.", "danger")
+        return redirect(url_for('perfil_page'))
+    por_servico_no_carrinho(id_servico)
+    return redirect(url_for('carrinho_page'))
 
 
 # === 15. GERENCIAR FERRAMENTAS ===

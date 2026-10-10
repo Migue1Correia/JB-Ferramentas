@@ -1,5 +1,11 @@
 from .db import db_execute, jb_solucoes_db
 
+# Como o cliente escolheu pagar uma manutenção aprovada (coluna servicos.pagamento)
+PAGAMENTO_RETIRADA = "Na retirada"
+PAGAMENTO_PENDENTE = "Online (pendente)"
+PAGAMENTO_PAGO = "Pago online"
+
+
 class ServiceModel:
 
     @staticmethod
@@ -12,7 +18,7 @@ class ServiceModel:
         # Os LEFT JOIN buscam o nome da ferramenta do pedido (manutenção não tem ferramenta vinculada).
         arg = """
             SELECT s.id, s.servico_solicitado, s.valor_servico, s.data_abertura,
-                   s.titulo_servico, f.marca, f.modelo, s.status_servico
+                   s.titulo_servico, f.marca, f.modelo, s.status_servico, s.pagamento
             FROM servicos s
             LEFT JOIN servico_ferramentas sf ON sf.id_servico = s.id
             LEFT JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
@@ -26,7 +32,7 @@ class ServiceModel:
             return []
 
         historico = []
-        for id_servico, tipo, valor, data, titulo, marca, modelo, status in res[1]:
+        for id_servico, tipo, valor, data, titulo, marca, modelo, status, pagamento in res[1]:
             historico.append({
                 "id": id_servico,
                 "tipo": tipo,
@@ -34,6 +40,7 @@ class ServiceModel:
                 "data": data,
                 "descricao": f"{marca} {modelo}" if marca else titulo,
                 "status": status,
+                "pagamento": pagamento,
             })
         return historico
 
@@ -161,9 +168,39 @@ class ServiceModel:
         return dict(res[1])
 
     @staticmethod
-    def responder_orcamento(id_servico, id_cliente, resposta):
+    def get_orcamento(id_servico, id_cliente):
+        """
+        Busca uma manutenção do cliente (para a tela de pagamento e para o carrinho).
+        :return: Dicionário com id, descricao, valor, status e pagamento. None se não for dele.
+        """
+        arg = """
+            SELECT id, descricao_servico, valor_servico, status_servico, pagamento FROM servicos
+            WHERE id=%s AND id_pessoa_solicitante=%s AND servico_solicitado='manutencao';
+        """
+        res = db_execute(arg, id_servico, id_cliente, fetch_type="one")
+        if not res[0] or not res[1]:
+            return None
+        return {"id": res[1][0], "descricao": res[1][1], "valor": res[1][2], "status": res[1][3], "pagamento": res[1][4]}
+
+    @staticmethod
+    def pagar_manutencao(id_servico, id_cliente):
+        """
+        Marca como paga uma manutenção aprovada que o cliente escolheu pagar pelo site.
+        """
+        arg = """
+            UPDATE servicos SET pagamento=%s
+            WHERE id=%s AND id_pessoa_solicitante=%s AND servico_solicitado='manutencao' AND pagamento=%s;
+        """
+        res = db_execute(arg, PAGAMENTO_PAGO, id_servico, id_cliente, PAGAMENTO_PENDENTE)
+        if not res[0] or not res[1]:
+            return False, "Esse serviço não está aguardando pagamento."
+        return True, "Pagamento da manutenção registrado."
+
+    @staticmethod
+    def responder_orcamento(id_servico, id_cliente, resposta, pagamento=None):
         """
         O cliente aprova ou reprova o orçamento feito pelo colaborador.
+        Na aprovação, "pagamento" guarda como ele escolheu pagar.
         """
         if resposta not in ['Aprovado', 'Reprovado']:
             return False, "Resposta inválida."
@@ -171,14 +208,18 @@ class ServiceModel:
         # Ajuste no nome da coluna: id_pessoa_solicitante
         arg = """
             UPDATE servicos 
-            SET status_servico=%s 
+            SET status_servico=%s, pagamento=%s 
             WHERE id=%s AND id_pessoa_solicitante=%s AND status_servico='Aguardando Aprovação';
         """
-        res = db_execute(arg, resposta, id_servico, id_cliente)
+        res = db_execute(arg, resposta, pagamento, id_servico, id_cliente)
 
         if not res[0]:
             return False, "Erro ao processar a resposta do orçamento."
         if not res[1]:  # nenhuma linha mudou: o pedido não é deste cliente ou já foi respondido
             return False, "Esse orçamento não está aguardando a sua resposta."
 
+        if pagamento == PAGAMENTO_RETIRADA:
+            return True, "Orçamento aprovado! O pagamento será feito na retirada do equipamento."
+        if pagamento == PAGAMENTO_PENDENTE:
+            return True, "Orçamento aprovado! Finalize o pagamento no carrinho."
         return True, f"Orçamento {resposta.lower()} com sucesso!"

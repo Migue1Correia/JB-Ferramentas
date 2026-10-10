@@ -145,6 +145,15 @@ class TesteAcesso(TesteBase):
         self.definir_perfil("Colaborador")
         self.assertEqual(self.cliente.get("/colaborador/financeiro").status_code, 200)
 
+    def test_card_manutencao_leva_o_colaborador_para_servicos_e_o_cliente_para_o_pedido(self):
+        card = '<a href="{}" style="text-decoration: none; color: inherit; display: block; flex: 1;">'
+        for rota in ("/ferramentas", "/loja", "/perfil", "/manutencao"):
+            self.assertIn(card.format("/colaborador/painel"), self.texto(self.cliente.get(rota)), rota)
+        self.definir_perfil("Cliente")
+        self.cliente.get("/colaborador/painel")  # o acesso negado atualiza o perfil guardado na sessão
+        for rota in ("/ferramentas", "/loja", "/perfil", "/manutencao"):
+            self.assertIn(card.format("/manutencao"), self.texto(self.cliente.get(rota)), rota)
+
     def test_quem_perde_o_perfil_perde_o_acesso_sem_precisar_sair(self):
         self.assertEqual(self.cliente.get("/colaborador/financeiro").status_code, 200)
         self.definir_perfil("Cliente")  # rebaixado no banco, com a sessão ainda aberta
@@ -344,7 +353,7 @@ class TesteOrcamentoECaixa(TesteBase):
         self.assertIn("1 aguardando a sua aprovação", self.texto(self.cliente.get("/manutencao")))
 
         # 3. O cliente aprova: entra no caixa e sai da lista de pendentes
-        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado")
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
         self.assertIn(main.formatar_moeda(120.50), self.texto(self.cliente.get("/colaborador/financeiro")))
         self.assertIn("Nenhum serviço pendente", self.texto(self.cliente.get("/colaborador/painel")))
         self.assertIn("1 aprovado(s), em reparo", self.texto(self.cliente.get("/manutencao")))
@@ -379,7 +388,7 @@ class TesteOrcamentoECaixa(TesteBase):
             servico = self.abrir_manutencao()
             self.cliente.post(f"/colaborador/orcamento/{servico}", data={
                 "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
-            self.cliente.post(f"/cliente/orcamento/{servico}/{resposta}")
+            self.cliente.post(f"/cliente/orcamento/{servico}/{resposta}", data={"pagamento": "retirada"})
 
             # aparece para o colaborador com a resposta do cliente
             pagina = self.texto(self.cliente.get("/colaborador/painel"))
@@ -412,7 +421,7 @@ class TesteOrcamentoECaixa(TesteBase):
             "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
         with self.cliente.session_transaction() as sessao:
             sessao["user_code"] = 999
-        resposta = self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", follow_redirects=True)
+        resposta = self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"}, follow_redirects=True)
         self.assertEqual(self.sql("SELECT status_servico FROM servicos;")[0][0], "Aguardando Aprovação")
         self.assertNotIn("aprovado com sucesso", self.texto(resposta))
 
@@ -420,6 +429,64 @@ class TesteOrcamentoECaixa(TesteBase):
         self.cliente.post(f"/carrinho/adicionar/{self.id_ferramenta(COMPRA)}", data={"agora": "1"})
         self.assertIn(main.formatar_moeda(PRECO_COMPRA), self.texto(self.cliente.get("/colaborador/financeiro")))
         self.assertIn("Nenhum serviço pendente", self.texto(self.cliente.get("/colaborador/painel")))
+
+
+class TestePagamentoDoOrcamento(TesteBase):
+
+    def setUp(self):
+        super().setUp()
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        self.servico = self.sql("SELECT id FROM servicos;")[0][0]
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "250", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+
+    def situacao(self):
+        return self.sql("SELECT status_servico, pagamento FROM servicos WHERE id=%s;", self.servico)[0]
+
+    def test_aprovar_primeiro_pergunta_como_pagar(self):
+        # sem escolher o pagamento nada é aprovado: o cliente é levado para a pergunta
+        resposta = self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado")
+        self.assertIn(f"/cliente/orcamento/{self.servico}/pagamento", resposta.headers["Location"])
+        self.assertEqual(self.situacao(), ("Aguardando Aprovação", None))
+        pagina = self.texto(self.cliente.get(resposta.headers["Location"]))
+        for trecho in (main.formatar_moeda(250), "Pagar agora", "Pagar na retirada"):
+            self.assertIn(trecho, pagina)
+
+    def test_pagar_na_retirada_aprova_e_nao_vai_para_o_carrinho(self):
+        resposta = self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "retirada"})
+        self.assertIn("/perfil", resposta.headers["Location"])
+        self.assertEqual(self.situacao(), ("Aprovado", "Na retirada"))
+        self.assertEqual(self.carrinho(), [])
+        self.assertIn("Na retirada", self.texto(self.cliente.get("/colaborador/painel")))
+
+    def test_pagar_agora_vai_para_o_carrinho_e_finalizar_marca_como_pago(self):
+        resposta = self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "agora"})
+        self.assertIn("/carrinho", resposta.headers["Location"])
+        self.assertEqual(self.situacao(), ("Aprovado", "Online (pendente)"))
+        self.assertEqual(self.carrinho(), [{"servico": self.servico}])
+        pagina = self.texto(self.cliente.get("/carrinho"))
+        self.assertIn(f"Manutenção #{self.servico}", pagina)
+        self.assertIn(main.formatar_moeda(250), pagina)
+
+        self.cliente.post("/carrinho/finalizar")
+        self.assertEqual(self.situacao(), ("Aprovado", "Pago online"))
+        self.assertEqual(self.carrinho(), [])
+
+    def test_quem_saiu_do_carrinho_sem_pagar_consegue_pagar_depois(self):
+        self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "agora"})
+        self.cliente.post("/carrinho/remover/0")
+        self.assertIn("Pagar agora", self.texto(self.cliente.get("/perfil")))
+        self.cliente.post(f"/carrinho/pagar-servico/{self.servico}")
+        self.assertEqual(self.carrinho(), [{"servico": self.servico}])
+
+    def test_ninguem_paga_nem_ve_o_orcamento_de_outra_pessoa(self):
+        self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "agora"})
+        with self.cliente.session_transaction() as sessao:
+            sessao["user_code"] = 999
+        self.assertEqual(self.texto(self.cliente.get("/carrinho")).count("btn-remover\""), 0)  # some do carrinho de quem não é o dono
+        self.cliente.post(f"/carrinho/pagar-servico/{self.servico}")
+        self.assertEqual(self.carrinho(), [])
+        self.assertIn("/perfil", self.cliente.get(f"/cliente/orcamento/{self.servico}/pagamento").headers["Location"])
 
 
 class TesteCatalogoDoColaborador(TesteBase):
