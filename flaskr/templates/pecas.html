@@ -98,6 +98,7 @@
                             <td>
                                 <form method="POST" action="{{ url_for('ajustar_estoque_peca', id_estoque=peca.id_estoque) }}" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="quantidade_vista" value="{{ peca.quantidade }}">
                                     <input type="number" name="quantidade" value="{{ peca.quantidade }}" min="0" step="1" required
                                            aria-label="Quantidade de {{ peca.nome }} em {{ peca.filial }}"
                                            style="width: 90px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">

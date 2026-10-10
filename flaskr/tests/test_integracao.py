@@ -849,7 +849,7 @@ class TesteFerramentasPecasEUsuarios(TesteBase):
 
         # ajustar o estoque para acima do mínimo tira o aviso de repor
         estoque = self.sql("SELECT id FROM estoque_pecas;")[0][0]
-        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{estoque}", data={"quantidade": "12"}, follow_redirects=True))
+        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{estoque}", data={"quantidade": "12", "minimo": "5", "quantidade_vista": "2"}, follow_redirects=True))
         self.assertEqual(self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0], 12)
         self.assertNotIn("Repor (mínimo", pagina)
 
@@ -955,9 +955,27 @@ class TestePecasNaManutencao(TesteBase):
 
     def test_estoque_minimo_pode_ser_alterado(self):
         pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{self.estoque}",
-                                              data={"quantidade": "5", "minimo": "9"}, follow_redirects=True))
+                                              data={"quantidade": "5", "minimo": "9", "quantidade_vista": "5"}, follow_redirects=True))
         self.assertIn("Repor (mínimo 9)", pagina)
         self.assertEqual(self.sql("SELECT quantidade_atual, quantidade_minima FROM estoque_pecas;")[0], (5, 9))
+
+    def test_tela_velha_nao_desfaz_a_baixa_do_estoque(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "2")  # o estoque foi de 5 para 3 depois que a tela de peças foi aberta
+        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{self.estoque}",
+                                              data={"quantidade": "5", "minimo": "4", "quantidade_vista": "5"}, follow_redirects=True))
+        self.assertIn("mudou enquanto a página estava aberta", pagina)
+        self.assertEqual(self.sql("SELECT quantidade_atual, quantidade_minima FROM estoque_pecas;")[0], (3, 1))
+
+    def test_cliente_ve_as_pecas_do_orcamento(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "2")
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.assertIn("Peça: 2 x Escova de carvão", self.texto(self.cliente.get("/perfil")))
+        pagina = self.texto(self.cliente.get(f"/cliente/orcamento/{servico}/pagamento"))
+        for trecho in ("Peças incluídas no valor", "Mão de obra: " + main.formatar_moeda(100), main.formatar_moeda(139.80)):
+            self.assertIn(trecho, pagina)
 
     def test_excluir_peca_sem_uso_apaga_o_estoque_junto(self):
         self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir")

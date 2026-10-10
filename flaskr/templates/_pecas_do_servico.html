@@ -1,13 +1,15 @@
 {# Peças lançadas em uma manutenção. Espera: servico, pecas_usadas e estoques. #}
 {% set uso = pecas_usadas.get(servico.id) %}
 {% set pode_mexer = servico.status != 'Aguardando Aprovação' %}
+{# Em serviço aprovado, mexer nas peças devolve o orçamento ao cliente: pede confirmação antes #}
+{% set confirmar %}{% if servico.status == 'Aprovado' %}onsubmit="return confirm('Este serviço já foi aprovado. Mexer nas peças muda o valor e devolve o orçamento para o cliente aprovar de novo. Continuar?')"{% endif %}{% endset %}
 {% if uso %}
 <ul style="list-style: none; padding: 0; margin: 10px 0 0;">
     {% for item in uso.itens %}
     <li style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px;">
         <small style="color: #aaaaaa;">Peça usada: {{ item.texto }} · {{ item.valor|moeda }}</small>
         {% if pode_mexer %}
-        <form method="POST" action="{{ url_for('remover_peca', id_uso=item.id) }}">
+        <form method="POST" action="{{ url_for('remover_peca', id_uso=item.id) }}" {{ confirmar }}>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} do serviço {{ servico.id }}">Remover</button>
         </form>
@@ -18,7 +20,7 @@
 <small style="color: #aaaaaa;">Total em peças: {{ uso.total|moeda }}</small>
 {% endif %}
 {% if pode_mexer and estoques %}
-<form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" style="display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap;">
+<form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" {{ confirmar }} style="display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <select name="id_estoque" required aria-label="Peça usada no serviço {{ servico.id }}" style="max-width: 220px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
         {% for estoque in estoques %}

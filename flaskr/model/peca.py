@@ -147,22 +147,30 @@ class PecaModel:
             c.close()
 
     @staticmethod
-    def ajustar_estoque(id_estoque, quantidade, minimo=None):
+    def ajustar_estoque(id_estoque, quantidade, minimo=None, quantidade_vista=None):
         """
         Define a quantidade em estoque de uma peça em uma filial (contagem ou entrada de mercadoria)
         e, se vier, o estoque mínimo que dispara o aviso de repor.
+        "quantidade_vista" é o número que a tela mostrava: se o estoque mudou depois (alguém usou
+        a peça em um serviço), nada é gravado, para a tela velha não desfazer a baixa.
         """
-        quantidade, minimo_novo, erro = PecaModel._validar_quantidades(quantidade, 0 if minimo in (None, '') else minimo)
+        quantidade, minimo, erro = PecaModel._validar_quantidades(quantidade, minimo)
         if erro:
             return False, "Informe quantidades válidas (números inteiros, zero ou mais)."
+        try:
+            quantidade_vista = int(quantidade_vista)
+        except (TypeError, ValueError):
+            return False, "Recarregue a página e tente de novo."
 
-        if minimo in (None, ''):
-            res = db_execute("UPDATE estoque_pecas SET quantidade_atual=%s WHERE id=%s;", quantidade, id_estoque)
-        else:
-            res = db_execute("UPDATE estoque_pecas SET quantidade_atual=%s, quantidade_minima=%s WHERE id=%s;",
-                             quantidade, minimo_novo, id_estoque)
+        arg = "UPDATE estoque_pecas SET quantidade_atual=%s, quantidade_minima=%s WHERE id=%s AND quantidade_atual=%s;"
+        res = db_execute(arg, quantidade, minimo, id_estoque, quantidade_vista)
         if not res[0]:
             return False, "Erro ao atualizar o estoque."
+        if not res[1]:
+            # Nenhuma linha mudou: ou nada foi alterado na tela, ou o estoque não é mais o que a tela mostrava
+            atual = db_execute("SELECT quantidade_atual FROM estoque_pecas WHERE id=%s;", id_estoque, fetch_type="one")
+            if not atual[0] or not atual[1] or atual[1][0] != quantidade_vista:
+                return False, "O estoque dessa peça mudou enquanto a página estava aberta. Confira o número e salve de novo."
         return True, "Estoque atualizado."
 
     # === PEÇAS USADAS NA MANUTENÇÃO ===

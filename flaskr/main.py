@@ -407,7 +407,8 @@ def perfil_page():
         return redirect(url_for('loja_page'))
 
     historico_servicos = ServiceModel.get_user_history(user_code)
-    return render_template('perfil.html', user_infos=user_infos, status=status, historico=historico_servicos)
+    return render_template('perfil.html', user_infos=user_infos, status=status, historico=historico_servicos,
+                           pecas_usadas=PecaModel.usadas_por_servico())
 
 
 @app.route('/perfil/senha', methods=['POST'])
@@ -976,7 +977,8 @@ def escolher_pagamento(id_servico):
     if not orcamento or orcamento["status"] != 'Aguardando Aprovação':
         flash("Esse orçamento não está aguardando a sua resposta.", "danger")
         return redirect(url_for('perfil_page'))
-    return render_template('pagamento.html', orcamento=orcamento)
+    return render_template('pagamento.html', orcamento=orcamento,
+                           pecas=PecaModel.usadas_por_servico().get(id_servico))
 
 
 @app.route('/carrinho/pagar-servico/<int:id_servico>', methods=['POST'])
@@ -1294,7 +1296,8 @@ def ajustar_estoque_peca(id_estoque):
       302:
         description: Volta para a tela de peças.
     """
-    sucesso, mensagem = PecaModel.ajustar_estoque(id_estoque, request.form.get('quantidade'), request.form.get('minimo'))
+    sucesso, mensagem = PecaModel.ajustar_estoque(id_estoque, request.form.get('quantidade'), request.form.get('minimo'),
+                                                  request.form.get('quantidade_vista'))
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('gerenciar_pecas'))
 
@@ -1467,9 +1470,12 @@ def cadastrar_unidade():
       302:
         description: OK.
     """
-    numero_serie = request.form.get('numero_serie')
+    numero_serie = (request.form.get('numero_serie') or '').strip()
     id_ferramenta = request.form.get('id_ferramenta')
     id_filial = request.form.get('id_filial')
+    if not numero_serie:
+        flash("Informe o número de série da unidade.", "danger")
+        return redirect(url_for('gerenciar_ferramentas'))
     sucesso, msg = AdminModel.create_unidade_ferramenta(
         numero_serie, id_ferramenta, id_filial)
     flash(msg, "success" if sucesso else "danger")

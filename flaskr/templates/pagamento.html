@@ -37,6 +37,15 @@
                 <img src="{{ url_for('static', filename=orcamento.foto) }}" alt="Foto do equipamento enviada pela oficina" style="max-width: 320px; width: 100%; border-radius: 8px;">
             </p>
             {% endif %}
+            {% if pecas %}
+            <p style="color: #cccccc; line-height: 1.6; margin-top: 12px;"><strong>Peças incluídas no valor:</strong></p>
+            <ul style="color: #cccccc; line-height: 1.6; margin-left: 20px;">
+                {% for item in pecas.itens %}
+                <li>{{ item.texto }} · {{ item.valor|moeda }}</li>
+                {% endfor %}
+            </ul>
+            <p style="color: #cccccc; line-height: 1.6;">Peças: {{ pecas.total|moeda }} · Mão de obra: {{ (orcamento.valor - pecas.total)|moeda }}</p>
+            {% endif %}
             <p class="price" style="font-size: 2rem; margin: 16px 0 24px;">{{ orcamento.valor|moeda }}</p>
 
             <form method="POST" action="{{ url_for('responder_orcamento', id_servico=orcamento.id, resposta='Aprovado') }}" class="form-actions" style="margin-top: 0;">
