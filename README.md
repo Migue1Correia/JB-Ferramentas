@@ -63,6 +63,14 @@ flask --app main run
 ```
 e logo em seguida clique na _URL_ gerada para acessar o site. A documentação da API (Swagger) fica em `/apidocs`.
 
+## Testes
+
+```
+cd flaskr
+python -m unittest -v
+```
+Os testes de integração criam sozinhos um banco separado (`jb_ferramentas_teste`) a partir de `database/jb_ferramentas.sql`. O banco de verdade não é tocado.
+
 ## Estrutura inicial de arquivos do projeto (Modelo do Flask)
 
 > [!TIP]
