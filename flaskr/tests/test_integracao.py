@@ -78,6 +78,7 @@ class TesteBase(unittest.TestCase):
             "DELETE FROM servicos;", "UPDATE unidade_ferramentas SET status='em_estoque';",
             "DELETE FROM usuarios;", "DELETE FROM pessoas WHERE id <> 1;", "DELETE FROM perfis WHERE id <> 1;",
             "UPDATE pessoas SET nome='Cliente Teste' WHERE id = 1;",
+            "DELETE FROM estoque_pecas;", "DELETE FROM pecas;", "UPDATE ferramentas SET ativo=1;",
         ):
             self.sql(comando)
 
@@ -132,7 +133,7 @@ class TesteAcesso(TesteBase):
     def test_paginas_abrem_para_quem_esta_logado(self):
         for rota in ("/loja", "/perfil", "/carrinho", "/manutencao", "/colaborador/graficos",
                      "/colaborador/ferramentas", "/colaborador/painel", "/colaborador/financeiro",
-                     "/admin/filiais", "/admin/perfis"):
+                     "/colaborador/pecas", "/admin/filiais", "/admin/perfis"):
             self.assertEqual(self.cliente.get(rota).status_code, 200, rota)
 
     def test_toda_tela_mostra_o_aviso_pendente(self):
@@ -140,7 +141,7 @@ class TesteAcesso(TesteBase):
         ferramenta = self.id_ferramenta(COMPRA)
         for rota in ("/", "/login", "/register", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho",
                      "/perfil", "/manutencao", "/colaborador/graficos", "/colaborador/ferramentas",
-                     "/colaborador/painel", "/colaborador/financeiro",
+                     "/colaborador/painel", "/colaborador/financeiro", "/colaborador/pecas",
                      "/admin/filiais", "/admin/perfis"):
             with self.cliente.session_transaction() as sessao:
                 sessao["_flashes"] = [("success", "AVISO DE TESTE")]
@@ -684,6 +685,25 @@ class TestePagamentoDoOrcamento(TesteBase):
         self.assertIn("/perfil", self.cliente.get(f"/cliente/orcamento/{self.servico}/pagamento").headers["Location"])
 
 
+class TesteMultaPorAtraso(TesteBase):
+
+    def test_devolucao_atrasada_cobra_uma_diaria_por_dia(self):
+        ferramenta = self.id_ferramenta(ALUGUEL)
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}", data={"agora": "1", "dias_aluguel": "2"})
+        servico = self.sql("SELECT id FROM servicos;")[0][0]
+        self.sql("UPDATE alugueis SET data_devolucao = NOW() - INTERVAL 3 DAY;")  # prazo venceu há 3 dias
+
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("3 dia(s) · multa de " + main.formatar_moeda(DIARIA * 3), pagina)
+
+        resposta = self.cliente.post(f"/colaborador/devolucao/{servico}", follow_redirects=True)
+        self.assertIn("Multa por atraso cobrada", self.texto(resposta))
+        taxa, valor = self.sql("SELECT a.taxa_atraso, s.valor_servico FROM alugueis a JOIN servicos s ON s.id = a.id_servico;")[0]
+        self.assertEqual(float(taxa), DIARIA * 3)
+        self.assertEqual(float(valor), DIARIA * 2 + DIARIA * 3)  # aluguel de 2 dias + multa de 3 dias
+        self.assertIn(main.formatar_moeda(DIARIA * 5), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+
 class TesteCatalogoDoColaborador(TesteBase):
 
     def tearDown(self):
@@ -723,9 +743,83 @@ class TesteDevolucao(TesteBase):
         self.assertIsNotNone(self.sql("SELECT devolvido_em FROM alugueis;")[0][0])
         self.assertIn("Nenhuma ferramenta alugada", self.texto(self.cliente.get("/colaborador/painel")))
 
+        self.assertEqual(float(self.sql("SELECT taxa_atraso FROM alugueis;")[0][0]), 0.0)  # no prazo, sem multa
+
         # devolver de novo não faz nada
         resposta = self.cliente.post(f"/colaborador/devolucao/{servico}", follow_redirects=True)
         self.assertIn("já devolvido", self.texto(resposta))
+
+
+class TesteFerramentasPecasEUsuarios(TesteBase):
+
+    def test_editar_ferramenta_muda_o_preco_na_loja(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        self.assertIn(COMPRA, self.texto(self.cliente.get(f"/colaborador/ferramentas/{ferramenta}/editar")))
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "JB Pro", "modelo": COMPRA, "descricao": "nova descrição", "preco": "777.70", "tipo_oferta": "Comprar"})
+        self.assertIn(main.formatar_moeda(777.70), self.texto(self.cliente.get("/loja")))
+        # preço inválido não grava
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "JB Pro", "modelo": COMPRA, "preco": "-1", "tipo_oferta": "Comprar"})
+        self.assertEqual(float(self.sql("SELECT preco FROM ferramentas WHERE id=%s;", ferramenta)[0][0]), 777.70)
+        self.sql("UPDATE ferramentas SET preco=%s WHERE id=%s;", PRECO_COMPRA, ferramenta)
+
+    def test_ferramenta_desativada_sai_da_loja_e_do_carrinho(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}")
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/ativo", data={"ativo": "0"})
+
+        # procura o link do produto, porque o nome ainda aparece no aviso "foi para o carrinho"
+        self.assertNotIn(f"/detalhe/{ferramenta}", self.texto(self.cliente.get("/loja")))
+        self.assertEqual(self.cliente.get(f"/detalhe/{ferramenta}").status_code, 404)
+        self.cliente.get("/carrinho")
+        self.assertEqual(self.carrinho(), [])  # o item some do carrinho
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}", data={"agora": "1"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)  # e não dá para comprar
+        # continua no Catálogo, para poder reativar
+        self.assertIn("Desativada", self.texto(self.cliente.get("/colaborador/ferramentas")))
+
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/ativo", data={"ativo": "1"})
+        self.assertIn(f"/detalhe/{ferramenta}", self.texto(self.cliente.get("/loja")))
+
+    def test_administrador_desativa_e_reativa_um_usuario(self):
+        app.test_client().post("/register", data=TesteCadastroELogin.DADOS)
+        maria = self.sql("SELECT id FROM usuarios WHERE nome_usuario='maria';")[0][0]
+        entrar = lambda: app.test_client().post("/login", data={"usuario": "maria", "senha": "segredo123"}).status_code
+
+        self.cliente.post(f"/admin/usuarios/{maria}/ativo", data={"ativo": "0"})
+        self.assertEqual(entrar(), 200)   # ficou na tela de login, com "usuário ou senha incorretos"
+        self.cliente.post(f"/admin/usuarios/{maria}/ativo", data={"ativo": "1"})
+        self.assertEqual(entrar(), 302)   # entrou
+
+        # ninguém desativa a própria conta
+        eu = self.sql("SELECT id FROM usuarios WHERE nome_usuario='teste';")[0][0]
+        self.cliente.post(f"/admin/usuarios/{eu}/ativo", data={"ativo": "0"})
+        self.assertEqual(self.sql("SELECT ativo FROM usuarios WHERE id=%s;", eu)[0][0], 1)
+
+    def test_cadastro_de_pecas_e_estoque(self):
+        filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        dados = {"codigo_barras": "789000111", "nome": "Escova de carvão", "fabricante": "Bosch", "custo": "8.50",
+                 "preco_venda": "19.90", "id_filial": filial, "quantidade": "2", "minimo": "5"}
+        resposta = self.cliente.post("/colaborador/pecas", data=dados, follow_redirects=True)
+        pagina = self.texto(resposta)
+        for trecho in ("Peça cadastrada com sucesso", "Escova de carvão", main.formatar_moeda(19.90), "Repor (mínimo 5)"):
+            self.assertIn(trecho, pagina)
+
+        # código de barras repetido não grava a peça pela metade
+        self.assertIn("código de barras já existe", self.texto(self.cliente.post("/colaborador/pecas", data=dados, follow_redirects=True)))
+        # texto maior que a coluna e filial que não existe recebem o aviso certo
+        longo = dict(dados, codigo_barras="1", nome="x" * 101)
+        self.assertIn("até 100", self.texto(self.cliente.post("/colaborador/pecas", data=longo, follow_redirects=True)))
+        sem_filial = dict(dados, codigo_barras="2", id_filial="999999")
+        self.assertIn("Confira a filial", self.texto(self.cliente.post("/colaborador/pecas", data=sem_filial, follow_redirects=True)))
+        self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (1, 1))
+
+        # ajustar o estoque para acima do mínimo tira o aviso de repor
+        estoque = self.sql("SELECT id FROM estoque_pecas;")[0][0]
+        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{estoque}", data={"quantidade": "12"}, follow_redirects=True))
+        self.assertEqual(self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0], 12)
+        self.assertNotIn("Repor (mínimo", pagina)
 
 
 class TesteCarrinho(TesteBase):

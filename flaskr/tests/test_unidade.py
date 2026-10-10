@@ -50,7 +50,7 @@ class TesteMoeda(unittest.TestCase):
 class TesteCatalogo(unittest.TestCase):
 
     def test_linha_do_banco_vira_item_da_loja(self):
-        item = ToolModel.montar_item((7, "JB Pro", "Furadeira X", "descrição", Decimal("35.00"), "Alugar", "img/x.png"))
+        item = ToolModel.montar_item((7, "JB Pro", "Furadeira X", "descrição", Decimal("35.00"), "Alugar", "img/x.png", 1))
         self.assertEqual(item["id"], 7)
         self.assertEqual(item["nome"], "JB Pro Furadeira X")
         self.assertEqual(item["preco"], 35.0)
@@ -58,7 +58,7 @@ class TesteCatalogo(unittest.TestCase):
         self.assertEqual(item["imagem"], "img/x.png")
 
     def test_ferramenta_sem_foto_usa_a_imagem_padrao(self):
-        item = ToolModel.montar_item((1, "Marca", "Modelo", None, Decimal("10"), "Comprar", None))
+        item = ToolModel.montar_item((1, "Marca", "Modelo", None, Decimal("10"), "Comprar", None, 1))
         self.assertEqual(item["imagem"], IMAGEM_PADRAO)
 
     def test_cadastro_recusa_preco_ou_oferta_invalidos(self):

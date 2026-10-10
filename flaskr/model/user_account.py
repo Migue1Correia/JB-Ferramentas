@@ -57,10 +57,10 @@ class UserAccountModel:
     def listar():
         """
         Função para listar todos os usuários com o perfil de cada um
-        :return: Lista de dicionários (id, usuario, nome, id_perfil). Lista vazia se ocorrer um erro.
+        :return: Lista de dicionários (id, usuario, nome, id_perfil, ativo). Lista vazia se ocorrer um erro.
         """
         arg = """
-            SELECT u.id, u.nome_usuario, p.nome, u.id_perfil
+            SELECT u.id, u.nome_usuario, p.nome, u.id_perfil, u.ativo
             FROM usuarios u JOIN pessoas p ON p.id = u.id_pessoa
             ORDER BY u.nome_usuario;
         """
@@ -68,7 +68,23 @@ class UserAccountModel:
         if not res[0]:
             print(res[1])
             return []
-        return [{"id": linha[0], "usuario": linha[1], "nome": linha[2], "id_perfil": linha[3]} for linha in res[1]]
+        return [{"id": linha[0], "usuario": linha[1], "nome": linha[2], "id_perfil": linha[3],
+                 "ativo": bool(linha[4])} for linha in res[1]]
+
+    @staticmethod
+    def definir_ativo(id_usuario, ativo):
+        """
+        Função para desativar ou reativar uma conta. Conta desativada não faz login
+        e é deslogada na página seguinte.
+        :param id_usuario: Id do usuário
+        :param ativo: True para ativar, False para desativar
+        :return: True, se a conta foi alterada. False, se ocorreu um erro no meio do processo.
+        """
+        res = db_execute("UPDATE usuarios SET ativo=%s WHERE id=%s;", 1 if ativo else 0, id_usuario)
+        if not res[0]:
+            print(res[1])
+            return False
+        return True
 
     @staticmethod
     def mudar_senha(username, password):

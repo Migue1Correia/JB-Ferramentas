@@ -15,6 +15,7 @@ from model.service import ServiceModel, PAGAMENTO_PENDENTE, PAGAMENTO_RETIRADA
 from model.colaborador import ColaboradorModel
 from model.admin import AdminModel
 from model.painel import PainelModel
+from model.peca import PecaModel
 from validacao import somente_numeros, cpf_valido, cnpj_valido
 
 from dotenv import load_dotenv
@@ -1041,9 +1042,122 @@ def gerenciar_ferramentas():
             flash(mensagem, "danger")
         return redirect(url_for('gerenciar_ferramentas'))
     tipos = ToolModel.get_tipos()
-    todas_ferramentas = ToolModel.get_all()
+    todas_ferramentas = ToolModel.get_all(apenas_ativas=False)  # o Catálogo mostra também as desativadas
     filiais = AdminModel.get_filiais()
     return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais)
+
+
+@app.route('/colaborador/ferramentas/<int:ferramenta_id>/editar', methods=['GET', 'POST'])
+def editar_ferramenta(ferramenta_id):
+    """
+    Editar Ferramenta
+    Altera marca, modelo, descrição, oferta, preço e foto de uma ferramenta.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: ferramenta_id
+        in: path
+        type: integer
+    responses:
+      200:
+        description: Formulário de edição.
+    """
+    ferramenta = ToolModel.get_by_id(ferramenta_id, apenas_ativa=False)
+    if not ferramenta:
+        abort(404)
+    if request.method == 'POST':
+        imagem = salvar_imagem(request.files.get('imagem'), "ferramenta")
+        if imagem is False:
+            flash("Envie a foto em PNG, JPG ou WEBP.", "danger")
+            return redirect(url_for('editar_ferramenta', ferramenta_id=ferramenta_id))
+        sucesso, mensagem = ToolModel.update(
+            ferramenta_id, request.form.get('marca'), request.form.get('modelo'), request.form.get('descricao'),
+            request.form.get('preco'), request.form.get('tipo_oferta'), imagem)
+        flash(mensagem, "success" if sucesso else "danger")
+        if not sucesso:
+            apagar_imagem(imagem)
+            return redirect(url_for('editar_ferramenta', ferramenta_id=ferramenta_id))
+        # A foto antiga, se foi enviada pelo site, não fica sobrando na pasta de uploads
+        antiga = ferramenta["imagem"]
+        if imagem and antiga.startswith("uploads/") and os.path.exists(os.path.join(app.static_folder, antiga)):
+            apagar_imagem(antiga)
+        return redirect(url_for('gerenciar_ferramentas'))
+    return render_template('editar_ferramenta.html', ferramenta=ferramenta)
+
+
+@app.route('/colaborador/ferramentas/<int:ferramenta_id>/ativo', methods=['POST'])
+def ativar_ferramenta(ferramenta_id):
+    """
+    Desativar ou Reativar Ferramenta
+    A ferramenta desativada some da loja, mas os pedidos antigos dela continuam no histórico.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: ferramenta_id
+        in: path
+        type: integer
+      - name: ativo
+        in: formData
+        type: integer
+    responses:
+      302:
+        description: Volta para o Catálogo.
+    """
+    ativo = request.form.get('ativo') == '1'
+    if ToolModel.definir_ativo(ferramenta_id, ativo):
+        flash("Ferramenta reativada: voltou para a loja." if ativo else "Ferramenta desativada: saiu da loja.", "success")
+    else:
+        flash("Não foi possível alterar a ferramenta.", "danger")
+    return redirect(url_for('gerenciar_ferramentas'))
+
+
+@app.route('/colaborador/pecas', methods=['GET', 'POST'])
+def gerenciar_pecas():
+    """
+    Peças
+    Lista e cadastra peças de reposição, com o estoque de cada filial.
+    ---
+    tags:
+      - Gestão / Colaborador
+    responses:
+      200:
+        description: HTML com as peças.
+    """
+    if request.method == 'POST':
+        campos = request.form
+        sucesso, mensagem = PecaModel.criar(
+            (campos.get('codigo_barras') or '').strip(), (campos.get('nome') or '').strip(),
+            (campos.get('fabricante') or '').strip(), campos.get('custo'), campos.get('preco_venda'),
+            campos.get('id_filial'), campos.get('quantidade'), campos.get('minimo'))
+        flash(mensagem, "success" if sucesso else "danger")
+        return redirect(url_for('gerenciar_pecas'))
+    return render_template('pecas.html', pecas=PecaModel.listar(), filiais=AdminModel.get_filiais())
+
+
+@app.route('/colaborador/pecas/estoque/<int:id_estoque>', methods=['POST'])
+def ajustar_estoque_peca(id_estoque):
+    """
+    Ajustar Estoque de Peça
+    Define a quantidade em estoque de uma peça em uma filial.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_estoque
+        in: path
+        type: integer
+      - name: quantidade
+        in: formData
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela de peças.
+    """
+    sucesso, mensagem = PecaModel.ajustar_estoque(id_estoque, request.form.get('quantidade'))
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('gerenciar_pecas'))
 
 
 # === 17. CAIXA ===
@@ -1118,6 +1232,38 @@ def admin_mudar_perfil(id_usuario):
 
 
 # === 19. FILIAIS ===
+@app.route('/admin/usuarios/<int:id_usuario>/ativo', methods=['POST'])
+def admin_ativar_usuario(id_usuario):
+    """
+    Desativar ou Reativar Usuário
+    Conta desativada não faz login e é deslogada na página seguinte. Ninguém desativa a própria conta.
+    ---
+    tags:
+      - Administração Base
+    parameters:
+      - name: id_usuario
+        in: path
+        type: integer
+      - name: ativo
+        in: formData
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela de perfis.
+    """
+    usuario = next((u for u in UserAccountModel.listar() if u["id"] == id_usuario), None)
+    ativo = request.form.get('ativo') == '1'
+    if not usuario:
+        flash("Usuário não encontrado.", "danger")
+    elif usuario["usuario"] == session.get('user_name'):
+        flash("Você não pode desativar a sua própria conta.", "danger")
+    elif UserAccountModel.definir_ativo(id_usuario, ativo):
+        flash(f"Conta de {usuario['usuario']} {'reativada' if ativo else 'desativada'}.", "success")
+    else:
+        flash("Não foi possível alterar a conta.", "danger")
+    return redirect(url_for('admin_perfis'))
+
+
 @app.route('/admin/filiais', methods=['GET', 'POST'])
 def admin_filiais():
     """

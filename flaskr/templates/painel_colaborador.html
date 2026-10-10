@@ -41,11 +41,11 @@
                             <td>#{{ aluguel.id }}</td>
                             <td>{{ aluguel.cliente }}</td>
                             <td><strong>{{ aluguel.ferramenta }}</strong></td>
-                            <td>{{ aluguel.prazo.strftime('%d/%m/%Y') }}{% if aluguel.atrasado %} <span class="type-tag tag-alugar">Atrasado</span>{% endif %}</td>
+                            <td>{{ aluguel.prazo.strftime('%d/%m/%Y') }}{% if aluguel.atrasado %} <span class="type-tag tag-alugar">Atrasado</span>{% endif %}{% if aluguel.multa %}<br><small style="color: #aaaaaa;">{{ aluguel.dias_atraso }} dia(s) · multa de {{ aluguel.multa|moeda }}</small>{% endif %}</td>
                             <td>
                                 <form method="POST" action="{{ url_for('registrar_devolucao', id_servico=aluguel.id) }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn-remover" aria-label="Registrar devolução de {{ aluguel.ferramenta }}">Registrar devolução</button>
+                                    <button type="submit" class="btn-remover" aria-label="Registrar devolução de {{ aluguel.ferramenta }}">Registrar devolução{% if aluguel.multa %} e cobrar {{ aluguel.multa|moeda }}{% endif %}</button>
                                 </form>
                             </td>
                         </tr>

@@ -51,6 +51,7 @@
                             <th scope="col">Usuário</th>
                             <th scope="col">Nome</th>
                             <th scope="col">Perfil</th>
+                            <th scope="col">Conta</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -67,6 +68,14 @@
                                         {% endfor %}
                                     </select>
                                     <button type="submit" class="btn-remover">Salvar</button>
+                                </form>
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin_ativar_usuario', id_usuario=usuario.id) }}" style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="ativo" value="{{ 0 if usuario.ativo else 1 }}">
+                                    {% if usuario.ativo %}Ativa{% else %}<span class="type-tag tag-alugar">Desativada</span>{% endif %}
+                                    <button type="submit" class="btn-remover" aria-label="{{ 'Desativar' if usuario.ativo else 'Reativar' }} a conta de {{ usuario.usuario }}">{{ 'Desativar' if usuario.ativo else 'Reativar' }}</button>
                                 </form>
                             </td>
                         </tr>

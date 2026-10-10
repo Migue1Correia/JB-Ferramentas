@@ -121,6 +121,8 @@
                             <th scope="col">Modelo</th>
                             <th scope="col">Oferta</th>
                             <th scope="col">Preço</th>
+                            <th scope="col">Situação</th>
+                            <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -131,6 +133,15 @@
                             <td><strong>{{ ferramenta.modelo }}</strong></td>
                             <td>{{ ferramenta.tipo }}</td>
                             <td>{{ ferramenta.preco|moeda }}{% if ferramenta.tipo == 'Alugar' %}/dia{% endif %}</td>
+                            <td>{% if ferramenta.ativo %}Na loja{% else %}<span class="type-tag tag-alugar">Desativada</span>{% endif %}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('ativar_ferramenta', ferramenta_id=ferramenta.id) }}" style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="ativo" value="{{ 0 if ferramenta.ativo else 1 }}">
+                                    <a href="{{ url_for('editar_ferramenta', ferramenta_id=ferramenta.id) }}" class="btn-remover" style="text-decoration: none; font-size: 0.83rem;" aria-label="Editar {{ ferramenta.nome }}">Editar</a>
+                                    <button type="submit" class="btn-remover" aria-label="{{ 'Desativar' if ferramenta.ativo else 'Reativar' }} {{ ferramenta.nome }}">{{ 'Desativar' if ferramenta.ativo else 'Reativar' }}</button>
+                                </form>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

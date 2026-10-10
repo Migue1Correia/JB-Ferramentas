@@ -114,6 +114,7 @@ CREATE TABLE `ferramentas` (
   `preco` decimal(10,2) NOT NULL DEFAULT '0.00',
   `tipo_oferta` enum('Comprar','Alugar') NOT NULL DEFAULT 'Comprar',
   `imagem` varchar(255) DEFAULT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
   `id_ferramenta_tipo` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -421,4 +422,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-10 12:31:25
+-- Dump completed on 2026-10-10 12:47:50

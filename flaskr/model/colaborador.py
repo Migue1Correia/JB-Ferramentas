@@ -1,6 +1,9 @@
 from .db import db_execute
 from .service import PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA
 
+# Dias inteiros de atraso de um aluguel (zero se ainda está no prazo). A coluna a.data_devolucao é o prazo.
+DIAS_DE_ATRASO_SQL = "GREATEST(DATEDIFF(CURDATE(), DATE(a.data_devolucao)), 0)"
+
 # Status que o colaborador pode dar a um orçamento
 STATUS_ORCAMENTO = ('Aguardando Aprovação', 'Concluído')
 
@@ -151,9 +154,11 @@ class ColaboradorModel:
     def get_alugueis_em_aberto():
         """
         Lista os aluguéis cuja ferramenta ainda não foi devolvida, do prazo mais antigo para o mais novo.
+        A multa por atraso é uma diária por dia inteiro de atraso.
         """
-        arg = """
-            SELECT a.id_servico, p.nome, f.marca, f.modelo, a.data_devolucao, a.data_devolucao < NOW()
+        arg = f"""
+            SELECT a.id_servico, p.nome, f.marca, f.modelo, a.data_devolucao, a.data_devolucao < NOW(),
+                   {DIAS_DE_ATRASO_SQL}, a.valor_diario
             FROM alugueis a
             JOIN servicos s ON s.id = a.id_servico
             JOIN pessoas p ON p.id = s.id_pessoa_solicitante
@@ -167,23 +172,34 @@ class ColaboradorModel:
         if not res[0] or res[1] is None:
             return []
         return [{"id": linha[0], "cliente": linha[1], "ferramenta": f"{linha[2]} {linha[3]}",
-                 "prazo": linha[4], "atrasado": bool(linha[5])} for linha in res[1]]
+                 "prazo": linha[4], "atrasado": bool(linha[5]), "dias_atraso": linha[6],
+                 "multa": linha[6] * linha[7]} for linha in res[1]]
 
     @staticmethod
     def registrar_devolucao(id_servico):
         """
         Marca o aluguel como devolvido e devolve a unidade ao estoque, em um comando só.
+        Se houver atraso, a multa (uma diária por dia de atraso) é gravada em alugueis.taxa_atraso
+        e somada ao valor do serviço, para entrar no caixa.
         """
-        arg = """
+        arg = f"""
             UPDATE alugueis a
+            JOIN servicos s ON s.id = a.id_servico
             JOIN servico_ferramentas sf ON sf.id_servico = a.id_servico
             JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
-            SET a.devolvido_em = NOW(), u.status = 'em_estoque'
+            SET a.taxa_atraso = {DIAS_DE_ATRASO_SQL} * a.valor_diario,
+                s.valor_servico = s.valor_servico + {DIAS_DE_ATRASO_SQL} * a.valor_diario,
+                a.devolvido_em = NOW(), u.status = 'em_estoque'
             WHERE a.id_servico = %s AND a.devolvido_em IS NULL;
         """
         res = db_execute(arg, id_servico)
         if not res[0] or not res[1]:
             return False, "Aluguel não encontrado ou já devolvido."
+
+        multa = db_execute("SELECT taxa_atraso FROM alugueis WHERE id_servico=%s;", id_servico, fetch_type="one")
+        if multa[0] and multa[1] and multa[1][0]:
+            valor = f"{float(multa[1][0]):.2f}".replace(".", ",")
+            return True, f"Devolução registrada. Multa por atraso cobrada: R$ {valor}."
         return True, "Devolução registrada. A ferramenta voltou para o estoque."
 
     # === MÓDULO 3: REGISTRO DE CAIXA / FINANCEIRO ===

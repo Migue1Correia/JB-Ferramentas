@@ -73,6 +73,19 @@
                 </div>
             </a>
 
+            <a href="{{ url_for('gerenciar_pecas') }}">
+                <div class="card-item card-home">
+                    <div class="card-info">
+                        <i class="fas fa-gears icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Peças</h3>
+                            <p>Peças de reposição e estoque por filial.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+
             {% if eh_administrador %}
             <a href="{{ url_for('admin_filiais') }}">
                 <div class="card-item card-glass">
