@@ -96,11 +96,15 @@
                             <td>{{ peca.custo|moeda }}</td>
                             <td>{{ peca.preco|moeda }}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('ajustar_estoque_peca', id_estoque=peca.id_estoque) }}" style="display: flex; gap: 10px; align-items: center;">
+                                <form method="POST" action="{{ url_for('ajustar_estoque_peca', id_estoque=peca.id_estoque) }}" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="number" name="quantidade" value="{{ peca.quantidade }}" min="0" step="1" required
                                            aria-label="Quantidade de {{ peca.nome }} em {{ peca.filial }}"
                                            style="width: 90px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
+                                    <label for="minimo_{{ peca.id_estoque }}" style="font-size: 0.8rem; color: #aaaaaa;">mín.</label>
+                                    <input type="number" id="minimo_{{ peca.id_estoque }}" name="minimo" value="{{ peca.minimo }}" min="0" step="1" required
+                                           aria-label="Estoque mínimo de {{ peca.nome }} em {{ peca.filial }}"
+                                           style="width: 70px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
                                     <button type="submit" class="btn-remover">Salvar</button>
                                     {% if peca.falta %}<span class="type-tag tag-alugar">Repor (mínimo {{ peca.minimo }})</span>{% endif %}
                                 </form>

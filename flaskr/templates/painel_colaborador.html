@@ -70,6 +70,7 @@
                     <p class="servico-problema">{{ servico.descricao }}</p>
                     <p class="servico-problema"><strong>Reprovado pelo cliente:</strong> {{ servico.valor|moeda }}</p>
                     <p class="servico-data">O cliente já vê o aviso para retirar o equipamento na loja.</p>
+                    {% include '_pecas_do_servico.html' %}
 
                     <details>
                         <summary>Enviar novo orçamento</summary>
@@ -77,7 +78,7 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="status_servico" value="Aguardando Aprovação">
                             <div class="input-group">
-                                <label for="novo_valor_{{ servico.id }}">Novo valor (R$)</label>
+                                <label for="novo_valor_{{ servico.id }}">Nova mão de obra (R$) - as peças lançadas são somadas</label>
                                 <input type="number" id="novo_valor_{{ servico.id }}" name="valor_servico" min="0" step="0.01" required>
                             </div>
                             <div class="input-group">
@@ -123,7 +124,7 @@
                             <td>#{{ servico.id }}</td>
                             <td>{{ servico.cliente }}<br><small style="color: #aaaaaa;">{{ servico.telefone }}</small></td>
                             <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}
-                                {% for usada in pecas_usadas.get(servico.id, []) %}<br><small style="color: #aaaaaa;">Peça usada: {{ usada }}</small>{% endfor %}</td>
+                                {% include '_pecas_do_servico.html' %}</td>
                             <td>{{ servico.valor|moeda }}</td>
                             <td><strong>{{ servico.status }}</strong></td>
                             <td>{{ servico.pagamento or '-' }}</td>
@@ -135,18 +136,6 @@
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-remover">Marcar como concluído</button>
                                 </form>
-                                {% if estoques %}
-                                <form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" style="display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap;">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <select name="id_estoque" required aria-label="Peça usada no serviço {{ servico.id }}" style="max-width: 220px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
-                                        {% for estoque in estoques %}
-                                        <option value="{{ estoque.id_estoque }}">{{ estoque.nome }} - {{ estoque.filial }} ({{ estoque.quantidade }})</option>
-                                        {% endfor %}
-                                    </select>
-                                    <input type="number" name="quantidade" value="1" min="1" step="1" required aria-label="Quantidade da peça no serviço {{ servico.id }}" style="width: 70px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
-                                    <button type="submit" class="btn-remover">Usar peça</button>
-                                </form>
-                                {% endif %}
                                 {% endif %}
                             </td>
                         </tr>
@@ -213,13 +202,14 @@
                     <p class="servico-data">Aberto em {{ servico.data.strftime('%d/%m/%Y') }}</p>
                     {% if servico.equipamento %}<p class="servico-problema"><strong>{{ servico.equipamento }}</strong></p>{% endif %}
                     <p class="servico-problema">{{ servico.descricao }}</p>
+                    {% include '_pecas_do_servico.html' %}
 
                     <details>
                         <summary>Fazer orçamento</summary>
                         <form method="POST" action="{{ url_for('atualizar_orcamento', id_servico=servico.id) }}" enctype="multipart/form-data">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="input-group">
-                                <label for="valor_{{ servico.id }}">Valor do serviço (R$)</label>
+                                <label for="valor_{{ servico.id }}">Mão de obra (R$) - as peças lançadas são somadas</label>
                                 <input type="number" id="valor_{{ servico.id }}" name="valor_servico" min="0" step="0.01" required>
                             </div>
                             <div class="input-group">

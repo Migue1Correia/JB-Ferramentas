@@ -881,28 +881,83 @@ class TestePecasNaManutencao(TesteBase):
         self.assertEqual(self.sql("SELECT COUNT(*) FROM estoque_pecas;")[0][0], 2)
         self.assertIn("Filial de teste", self.texto(self.cliente.get("/colaborador/pecas")))
 
-    def test_usar_peca_baixa_o_estoque_e_trava_a_exclusao(self):
+    def abrir_servico(self):
         self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
-        servico = self.sql("SELECT id FROM servicos;")[0][0]
-        usar = lambda quantidade: self.texto(self.cliente.post(
-            f"/colaborador/servico/{servico}/peca", data={"id_estoque": self.estoque, "quantidade": quantidade}, follow_redirects=True))
-        estoque = lambda: self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0]
+        return self.sql("SELECT id FROM servicos;")[0][0]
 
-        # antes de o cliente aprovar, não usa peça
-        self.assertIn("orçamento aprovado", usar("1"))
+    def usar(self, servico, quantidade):
+        return self.texto(self.cliente.post(f"/colaborador/servico/{servico}/peca",
+                                            data={"id_estoque": self.estoque, "quantidade": quantidade}, follow_redirects=True))
+
+    def em_estoque(self):
+        return self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0]
+
+    def test_peca_entra_no_orcamento_baixa_o_estoque_e_pode_ser_removida(self):
+        servico = self.abrir_servico()
+        self.assertIn("Peça usada: 2 x Escova de carvão", self.usar(servico, "2"))
+        self.assertEqual(self.em_estoque(), 3)
+        self.assertIn("Não há essa quantidade", self.usar(servico, "4"))  # só restam 3
+        self.assertEqual(self.em_estoque(), 3)
+
+        # o orçamento é a mão de obra digitada + as peças lançadas (2 x 19,90)
         self.cliente.post(f"/colaborador/orcamento/{servico}", data={
             "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
-        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        self.assertEqual(float(self.sql("SELECT valor_servico FROM servicos;")[0][0]), 139.80)
 
-        self.assertIn("Peça usada: 2 x Escova de carvão", usar("2"))
-        self.assertEqual(estoque(), 3)
-        self.assertIn("Não há essa quantidade", usar("4"))  # só restam 3
-        self.assertEqual(estoque(), 3)
-        self.assertEqual(self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0], 1)
+        # enquanto o cliente analisa, ninguém mexe nas peças
+        uso = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+        self.assertIn("enquanto o cliente analisa", self.usar(servico, "1"))
+        self.cliente.post(f"/colaborador/servico/peca/{uso}/remover")
+        self.assertEqual((self.em_estoque(), self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0]), (3, 1))
 
         # peça usada em manutenção não pode ser excluída (e o estoque dela continua lá)
         self.assertIn("já foi usada", self.texto(self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir", follow_redirects=True)))
         self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (1, 1))
+
+        # aprovado: dá para desfazer um lançamento errado, e a peça volta para o estoque.
+        # Como o valor muda, o orçamento volta para o cliente aprovar de novo.
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        self.cliente.post(f"/colaborador/servico/peca/{uso}/remover")
+        self.assertEqual((self.em_estoque(), self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0]), (5, 0))
+        situacao = lambda: [(s, float(v), p) for s, v, p in self.sql("SELECT status_servico, valor_servico, pagamento FROM servicos;")][0]
+        self.assertEqual(situacao(), ("Aguardando Aprovação", 100.0, None))
+
+        # peça a mais depois de aprovado: soma no valor e pede nova aprovação
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
+        self.assertIn("voltou para o cliente aprovar", self.usar(servico, "1"))
+        self.assertEqual(situacao(), ("Aguardando Aprovação", 119.90, None))
+        self.cliente.post("/carrinho/finalizar")  # o pagamento que estava no carrinho não vale mais
+        self.assertIsNone(self.sql("SELECT pago_em FROM servicos;")[0][0])
+
+        # o lançamento guarda o preço do dia: mudar o preço da peça não muda o orçamento
+        self.sql("UPDATE pecas SET preco_venda = 50;")
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.assertEqual(situacao()[1], 119.90)
+
+        # depois de pago pelo site, o valor não muda mais
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
+        self.cliente.post("/carrinho/finalizar")
+        self.assertIn("já foi pago", self.usar(servico, "1"))
+        self.assertEqual((self.em_estoque(), situacao()), (4, ("Aprovado", 119.90, "Pago online")))
+
+    def test_servico_encerrado_sem_conserto_devolve_as_pecas(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "1")
+        self.usar(servico, "2")  # a mesma peça lançada duas vezes
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
+        self.assertEqual(self.em_estoque(), 2)
+        resposta = self.cliente.post(f"/colaborador/servico/{servico}/fechar", follow_redirects=True)
+        self.assertIn("voltaram para o estoque", self.texto(resposta))
+        self.assertEqual((self.em_estoque(), self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0]), (5, 0))
+
+    def test_estoque_minimo_pode_ser_alterado(self):
+        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{self.estoque}",
+                                              data={"quantidade": "5", "minimo": "9"}, follow_redirects=True))
+        self.assertIn("Repor (mínimo 9)", pagina)
+        self.assertEqual(self.sql("SELECT quantidade_atual, quantidade_minima FROM estoque_pecas;")[0], (5, 9))
 
     def test_excluir_peca_sem_uso_apaga_o_estoque_junto(self):
         self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir")

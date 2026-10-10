@@ -1,4 +1,5 @@
 from .db import db_execute
+from .peca import PecaModel
 from .service import PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA
 
 # Dias inteiros de atraso de um aluguel (zero se ainda está no prazo). A coluna a.data_devolucao é o prazo.
@@ -64,8 +65,9 @@ class ColaboradorModel:
         if not atual[0] or not atual[1] or atual[1][0] != 'manutencao' or atual[1][1] not in ('Aberto', 'Aguardando Aprovação', 'Reprovado'):
             return False, "Só dá para fazer orçamento de manutenções pendentes."
 
+        # O valor digitado é a mão de obra; as peças lançadas no serviço são somadas aqui
         arg = "UPDATE servicos SET valor_servico=%s, status_servico=%s WHERE id=%s;"
-        res = db_execute(arg, valor, status, id_servico)
+        res = db_execute(arg, valor + PecaModel.total_do_servico(id_servico), status, id_servico)
 
         if not res[0]:
             return False, "Erro ao atualizar o orçamento."

@@ -1,4 +1,10 @@
 from .db import db_execute, jb_solucoes_db
+from .service import PAGAMENTO_PAGO
+
+# Enquanto o cliente analisa o orçamento, e depois que o serviço fecha, as peças não mudam
+STATUS_QUE_MEXEM_EM_PECAS = ('Aberto', 'Reprovado', 'Aprovado')
+MENSAGEM_ORCAMENTO_REABERTO = " O valor mudou: o orçamento voltou para o cliente aprovar de novo."
+MENSAGEM_PECAS_TRAVADAS = "Não dá para mexer nas peças enquanto o cliente analisa o orçamento, nem em serviço já fechado."
 
 
 class PecaModel:
@@ -141,26 +147,61 @@ class PecaModel:
             c.close()
 
     @staticmethod
-    def ajustar_estoque(id_estoque, quantidade):
-        """Define a quantidade em estoque de uma peça em uma filial (contagem ou entrada de mercadoria)."""
-        try:
-            quantidade = int(quantidade)
-        except (TypeError, ValueError):
-            quantidade = -1
-        if quantidade < 0:
-            return False, "Informe uma quantidade válida."
+    def ajustar_estoque(id_estoque, quantidade, minimo=None):
+        """
+        Define a quantidade em estoque de uma peça em uma filial (contagem ou entrada de mercadoria)
+        e, se vier, o estoque mínimo que dispara o aviso de repor.
+        """
+        quantidade, minimo_novo, erro = PecaModel._validar_quantidades(quantidade, 0 if minimo in (None, '') else minimo)
+        if erro:
+            return False, "Informe quantidades válidas (números inteiros, zero ou mais)."
 
-        res = db_execute("UPDATE estoque_pecas SET quantidade_atual=%s WHERE id=%s;", quantidade, id_estoque)
+        if minimo in (None, ''):
+            res = db_execute("UPDATE estoque_pecas SET quantidade_atual=%s WHERE id=%s;", quantidade, id_estoque)
+        else:
+            res = db_execute("UPDATE estoque_pecas SET quantidade_atual=%s, quantidade_minima=%s WHERE id=%s;",
+                             quantidade, minimo_novo, id_estoque)
         if not res[0]:
             return False, "Erro ao atualizar o estoque."
         return True, "Estoque atualizado."
 
     # === PEÇAS USADAS NA MANUTENÇÃO ===
     @staticmethod
+    def _servico_para_mexer(c, condicao, valor):
+        """
+        Trava e devolve (id da manutenção, id do serviço, status) do serviço cujas peças vão mudar,
+        ou uma mensagem de erro quando o serviço não aceita mudança nas peças.
+        """
+        c.execute(f"""
+            SELECT m.id, s.id, s.status_servico, s.pagamento
+            FROM servicos s JOIN manutencoes m ON m.id_servico = s.id
+            WHERE {condicao} AND s.servico_solicitado = 'manutencao' FOR UPDATE;
+        """, (valor,))
+        linha = c.fetchone()
+        if not linha or linha[2] not in STATUS_QUE_MEXEM_EM_PECAS:
+            return None, MENSAGEM_PECAS_TRAVADAS
+        if linha[2] == 'Aprovado' and linha[3] == PAGAMENTO_PAGO:
+            return None, "Esse serviço já foi pago pelo cliente: o valor não pode mais mudar."
+        return linha, None
+
+    @staticmethod
+    def _reabrir_orcamento(c, id_servico, diferenca):
+        """
+        Peça que entra ou sai depois da aprovação muda o valor: o orçamento volta para o cliente
+        aprovar de novo (e escolher o pagamento de novo).
+        """
+        c.execute("""
+            UPDATE servicos
+            SET valor_servico = GREATEST(valor_servico + %s, 0), status_servico = 'Aguardando Aprovação', pagamento = NULL
+            WHERE id = %s;
+        """, (diferenca, id_servico))
+
+    @staticmethod
     def usar_na_manutencao(id_servico, id_estoque, quantidade):
         """
-        Registra que uma manutenção aprovada usou uma peça e dá baixa no estoque,
-        em uma única transação: ou grava os dois, ou não grava nada.
+        Registra que uma manutenção usa uma peça e dá baixa no estoque,
+        em uma única transação: ou grava tudo, ou não grava nada.
+        O preço da peça no dia fica guardado no lançamento (preco_unitario).
         """
         try:
             quantidade = int(quantidade)
@@ -172,14 +213,11 @@ class PecaModel:
         conexao = jb_solucoes_db.connection
         c = conexao.cursor()
         try:
-            c.execute("""
-                SELECT m.id FROM manutencoes m JOIN servicos s ON s.id = m.id_servico
-                WHERE s.id=%s AND s.servico_solicitado='manutencao' AND s.status_servico='Aprovado';
-            """, (id_servico,))
-            manutencao = c.fetchone()
-            if not manutencao:
+            servico, erro = PecaModel._servico_para_mexer(c, "s.id = %s", id_servico)
+            if erro:
                 conexao.rollback()
-                return False, "Só dá para usar peça em manutenção com orçamento aprovado."
+                return False, erro
+            id_manutencao, _, status, _ = servico
 
             # A baixa só acontece se houver peças suficientes (confere e desconta no mesmo comando)
             c.execute("UPDATE estoque_pecas SET quantidade_atual = quantidade_atual - %s WHERE id=%s AND quantidade_atual >= %s;",
@@ -188,10 +226,16 @@ class PecaModel:
                 conexao.rollback()
                 return False, "Não há essa quantidade da peça em estoque."
 
-            c.execute("INSERT INTO manutencao_pecas (quantidade, id_manutencao, id_estoque_peca) VALUES (%s, %s, %s);",
-                      (quantidade, manutencao[0], id_estoque))
+            c.execute("SELECT p.preco_venda FROM estoque_pecas e JOIN pecas p ON p.id = e.id_peca WHERE e.id=%s;", (id_estoque,))
+            preco = c.fetchone()[0]
+            c.execute("INSERT INTO manutencao_pecas (quantidade, preco_unitario, id_manutencao, id_estoque_peca) VALUES (%s, %s, %s, %s);",
+                      (quantidade, preco, id_manutencao, id_estoque))
+            mensagem = "Peça registrada no serviço e baixada do estoque."
+            if status == 'Aprovado':
+                PecaModel._reabrir_orcamento(c, id_servico, quantidade * preco)
+                mensagem += MENSAGEM_ORCAMENTO_REABERTO
             conexao.commit()
-            return True, "Peça registrada no serviço e baixada do estoque."
+            return True, mensagem
         except Exception as e:
             conexao.rollback()
             print(e)  # Para depuração no terminal
@@ -200,25 +244,103 @@ class PecaModel:
             c.close()
 
     @staticmethod
+    def remover_da_manutencao(id_uso):
+        """Desfaz um "Usar peça" lançado errado: a peça volta para o estoque, em uma única transação."""
+        conexao = jb_solucoes_db.connection
+        c = conexao.cursor()
+        try:
+            servico, erro = PecaModel._servico_para_mexer(
+                c, "m.id = (SELECT id_manutencao FROM manutencao_pecas WHERE id = %s)", id_uso)
+            if erro:
+                conexao.rollback()
+                return False, erro
+            _, id_servico, status, _ = servico
+
+            c.execute("SELECT quantidade, preco_unitario, id_estoque_peca FROM manutencao_pecas WHERE id=%s;", (id_uso,))
+            quantidade, preco, id_estoque = c.fetchone()
+            c.execute("UPDATE estoque_pecas SET quantidade_atual = quantidade_atual + %s WHERE id=%s;", (quantidade, id_estoque))
+            c.execute("DELETE FROM manutencao_pecas WHERE id=%s;", (id_uso,))
+            mensagem = "Peça removida do serviço e devolvida ao estoque."
+            if status == 'Aprovado':
+                PecaModel._reabrir_orcamento(c, id_servico, -quantidade * preco)
+                mensagem += MENSAGEM_ORCAMENTO_REABERTO
+            conexao.commit()
+            return True, mensagem
+        except Exception as e:
+            conexao.rollback()
+            print(e)  # Para depuração no terminal
+            return False, "Erro ao remover a peça."
+        finally:
+            c.close()
+
+    @staticmethod
+    def devolver_do_encerrado(id_servico):
+        """
+        Serviço encerrado sem conserto (orçamento reprovado): as peças separadas voltam para o
+        estoque e os lançamentos são apagados, em uma única transação.
+        :return: quantos lançamentos foram desfeitos.
+        """
+        de_onde = """
+            FROM manutencao_pecas mp
+            JOIN manutencoes m ON m.id = mp.id_manutencao
+            JOIN servicos s ON s.id = m.id_servico
+            WHERE m.id_servico = %s AND s.status_servico = 'Encerrado'
+        """
+        conexao = jb_solucoes_db.connection
+        c = conexao.cursor()
+        try:
+            # Soma por estoque antes: a mesma peça pode ter sido lançada mais de uma vez no serviço
+            c.execute(f"""
+                UPDATE estoque_pecas e
+                JOIN (SELECT mp.id_estoque_peca, SUM(mp.quantidade) AS total {de_onde} GROUP BY mp.id_estoque_peca) d
+                  ON d.id_estoque_peca = e.id
+                SET e.quantidade_atual = e.quantidade_atual + d.total;
+            """, (id_servico,))
+            c.execute(f"DELETE mp {de_onde};", (id_servico,))
+            desfeitos = c.rowcount
+            conexao.commit()
+            return desfeitos
+        except Exception as e:
+            conexao.rollback()
+            print(e)  # Para depuração no terminal
+            return 0
+        finally:
+            c.close()
+
+    @staticmethod
+    def total_do_servico(id_servico):
+        """Soma as peças lançadas em um serviço, pelo preço guardado no lançamento (entra no valor do orçamento)."""
+        arg = """
+            SELECT COALESCE(SUM(mp.quantidade * mp.preco_unitario), 0)
+            FROM manutencao_pecas mp
+            JOIN manutencoes m ON m.id = mp.id_manutencao
+            WHERE m.id_servico = %s;
+        """
+        res = db_execute(arg, id_servico, fetch_type="one")
+        return float(res[1][0]) if res[0] and res[1] else 0.0
+
+    @staticmethod
     def usadas_por_servico():
         """
-        Peças já usadas nas manutenções aprovadas (em reparo).
-        :return: dicionário {id do serviço: ["2 x Escova de carvão (Matriz)", ...]}
+        Peças lançadas nas manutenções que ainda não foram fechadas.
+        :return: dicionário {id do serviço: {"itens": [{"id", "texto", "valor"}], "total": soma dos valores}}
         """
         arg = """
-            SELECT m.id_servico, mp.quantidade, p.nome, f.nome
+            SELECT m.id_servico, mp.id, mp.quantidade, p.nome, f.nome, mp.quantidade * mp.preco_unitario
             FROM manutencao_pecas mp
             JOIN manutencoes m ON m.id = mp.id_manutencao
             JOIN servicos s ON s.id = m.id_servico
             JOIN estoque_pecas e ON e.id = mp.id_estoque_peca
             JOIN pecas p ON p.id = e.id_peca
             JOIN filiais f ON f.id = e.id_filial
-            WHERE s.status_servico = 'Aprovado'
+            WHERE s.status_servico IN ('Aberto', 'Aguardando Aprovação', 'Reprovado', 'Aprovado')
             ORDER BY mp.id;
         """
         res = db_execute(arg, fetch_type="all")
         usadas = {}
         if res[0] and res[1]:
-            for id_servico, quantidade, peca, filial in res[1]:
-                usadas.setdefault(id_servico, []).append(f"{quantidade} x {peca} ({filial})")
+            for id_servico, id_uso, quantidade, peca, filial, valor in res[1]:
+                servico = usadas.setdefault(id_servico, {"itens": [], "total": 0})
+                servico["itens"].append({"id": id_uso, "texto": f"{quantidade} x {peca} ({filial})", "valor": valor})
+                servico["total"] += valor
         return usadas

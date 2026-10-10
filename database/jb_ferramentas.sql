@@ -153,6 +153,7 @@ DROP TABLE IF EXISTS `manutencao_pecas`;
 CREATE TABLE `manutencao_pecas` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `quantidade` int unsigned NOT NULL DEFAULT '1',
+  `preco_unitario` decimal(10,2) NOT NULL DEFAULT '0.00',
   `id_manutencao` int unsigned NOT NULL,
   `id_estoque_peca` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -422,4 +423,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-10 12:47:50
+-- Dump completed on 2026-10-10 13:23:30

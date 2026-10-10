@@ -1,0 +1,31 @@
+{# Peças lançadas em uma manutenção. Espera: servico, pecas_usadas e estoques. #}
+{% set uso = pecas_usadas.get(servico.id) %}
+{% set pode_mexer = servico.status != 'Aguardando Aprovação' %}
+{% if uso %}
+<ul style="list-style: none; padding: 0; margin: 10px 0 0;">
+    {% for item in uso.itens %}
+    <li style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px;">
+        <small style="color: #aaaaaa;">Peça usada: {{ item.texto }} · {{ item.valor|moeda }}</small>
+        {% if pode_mexer %}
+        <form method="POST" action="{{ url_for('remover_peca', id_uso=item.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} do serviço {{ servico.id }}">Remover</button>
+        </form>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+<small style="color: #aaaaaa;">Total em peças: {{ uso.total|moeda }}</small>
+{% endif %}
+{% if pode_mexer and estoques %}
+<form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" style="display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="id_estoque" required aria-label="Peça usada no serviço {{ servico.id }}" style="max-width: 220px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
+        {% for estoque in estoques %}
+        <option value="{{ estoque.id_estoque }}">{{ estoque.nome }} - {{ estoque.filial }} ({{ estoque.quantidade }})</option>
+        {% endfor %}
+    </select>
+    <input type="number" name="quantidade" value="1" min="1" step="1" required aria-label="Quantidade da peça no serviço {{ servico.id }}" style="width: 70px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
+    <button type="submit" class="btn-remover">Usar peça</button>
+</form>
+{% endif %}

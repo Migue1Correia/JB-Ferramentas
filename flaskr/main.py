@@ -796,7 +796,7 @@ def painel_colaborador():
     """
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
-                           estoques=[p for p in PecaModel.listar() if p["quantidade"]],
+                           estoques=[p for p in PecaModel.listar() if p["quantidade"]],  # só o que tem para usar
                            pecas_usadas=PecaModel.usadas_por_servico(),
                            alugueis=ColaboradorModel.get_alugueis_em_aberto(),
                            respondidos=ColaboradorModel.get_orcamentos_respondidos(),
@@ -887,6 +887,9 @@ def fechar_servico(id_servico):
         description: Redireciona.
     """
     sucesso, mensagem = ColaboradorModel.fechar_servico(id_servico)
+    # Encerrado sem conserto (orçamento reprovado): as peças separadas voltam para o estoque
+    if sucesso and PecaModel.devolver_do_encerrado(id_servico):
+        mensagem += " As peças lançadas voltaram para o estoque."
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 
@@ -1251,6 +1254,27 @@ def usar_peca(id_servico):
     return redirect(url_for('painel_colaborador'))
 
 
+@app.route('/colaborador/servico/peca/<int:id_uso>/remover', methods=['POST'])
+def remover_peca(id_uso):
+    """
+    Remover Peça da Manutenção
+    Desfaz um lançamento de peça: ela sai do serviço e volta para o estoque.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_uso
+        in: path
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela Serviços.
+    """
+    sucesso, mensagem = PecaModel.remover_da_manutencao(id_uso)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('painel_colaborador'))
+
+
 @app.route('/colaborador/pecas/estoque/<int:id_estoque>', methods=['POST'])
 def ajustar_estoque_peca(id_estoque):
     """
@@ -1270,7 +1294,7 @@ def ajustar_estoque_peca(id_estoque):
       302:
         description: Volta para a tela de peças.
     """
-    sucesso, mensagem = PecaModel.ajustar_estoque(id_estoque, request.form.get('quantidade'))
+    sucesso, mensagem = PecaModel.ajustar_estoque(id_estoque, request.form.get('quantidade'), request.form.get('minimo'))
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('gerenciar_pecas'))
 
