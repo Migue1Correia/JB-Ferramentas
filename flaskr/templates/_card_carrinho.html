@@ -1,0 +1,15 @@
+{# Card de menu do Carrinho, com a quantidade de itens. Aparece só para quem está logado. #}
+{% if session.logged_in %}
+    <a href="{{ url_for('carrinho_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+        <div class="card-item card-home">
+            <div class="card-info">
+                <i class="fas fa-cart-shopping icon-main" aria-hidden="true"></i>
+                <div>
+                    <h3>Carrinho{% if itens_no_carrinho %} ({{ itens_no_carrinho }}){% endif %}</h3>
+                    <p>Ver os itens escolhidos e finalizar o pedido.</p>
+                </div>
+            </div>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+        </div>
+    </a>
+{% endif %}

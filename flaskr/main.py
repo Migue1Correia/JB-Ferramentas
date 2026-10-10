@@ -1,7 +1,6 @@
 import os
 import secrets
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from flask_bcrypt import Bcrypt
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from werkzeug.utils import secure_filename
 from flasgger import Swagger
 from flask_wtf.csrf import CSRFProtect, CSRFError
@@ -48,7 +47,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 jb_solucoes_db.init_app(app)
-jb_bcrypt = Bcrypt(app)
+jb_bcrypt.init_app(app)
 
 
 @app.errorhandler(CSRFError)
@@ -76,8 +75,8 @@ def pode_ver_painel():
 
 @app.context_processor
 def variaveis_dos_menus():
-    """Deixa a variável pode_ver_painel disponível em todos os templates."""
-    return {"pode_ver_painel": pode_ver_painel()}
+    """Deixa disponível em todos os templates: pode_ver_painel e a quantidade de itens no carrinho."""
+    return {"pode_ver_painel": pode_ver_painel(), "itens_no_carrinho": len(session.get('carrinho', []))}
 
 
 @app.template_filter('moeda')
@@ -108,7 +107,7 @@ def main_page():
 def ferramentas_page():
     """
     Destaques de Ferramentas
-    Exibe uma vitrine com até 3 ferramentas em destaque.
+    Exibe uma vitrine com até 4 ferramentas em destaque.
     ---
     tags:
       - Público
@@ -117,7 +116,7 @@ def ferramentas_page():
         description: HTML da vitrine.
     """
     usuario_logado = session.get("user_name")
-    ferramentas_db = ToolModel.get_all(limit=3)
+    ferramentas_db = ToolModel.get_all(limit=4)
 
     lista_ferramentas = []
     if ferramentas_db:
@@ -176,11 +175,13 @@ def detalhe_produto(id):
         return redirect(url_for('login'))
 
     ferramenta_selecionada = ToolModel.get_by_id(id)
-    if ferramenta_selecionada:
-        ferramenta_selecionada = ToolModel.montar_item(
-            ferramenta_selecionada["id"], ferramenta_selecionada["marca"],
-            ferramenta_selecionada["modelo"], ferramenta_selecionada["descricao"])
-    return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
+    if not ferramenta_selecionada:
+        abort(404)
+    ferramenta_selecionada = ToolModel.montar_item(
+        ferramenta_selecionada["id"], ferramenta_selecionada["marca"],
+        ferramenta_selecionada["modelo"], ferramenta_selecionada["descricao"])
+    em_estoque = ServiceModel.get_unidade_disponivel(id) is not None
+    return render_template('detalhes.html', ferramenta=ferramenta_selecionada, em_estoque=em_estoque)
 
 
 # === 5. PROCESSAMENTO DE LOGIN ===
@@ -257,15 +258,12 @@ def perfil_page():
             flash("Não foi possível salvar os dados. Tente novamente.", "danger")
         return redirect(url_for('perfil_page'))
 
-    try:
-        cursor = jb_solucoes_db.connection.cursor()
-        cursor.execute("SELECT * FROM pessoas WHERE id = %s", (user_code,))
-        colunas = [col[0] for col in cursor.description]
-        row = cursor.fetchone()
-        cursor.close()
-        user_infos = dict(zip(colunas, row)) if row else None
-    except Exception:
-        user_infos = PersonModel.get(user_code)
+    cursor = jb_solucoes_db.connection.cursor()
+    cursor.execute("SELECT * FROM pessoas WHERE id = %s", (user_code,))
+    colunas = [col[0] for col in cursor.description]
+    row = cursor.fetchone()
+    cursor.close()
+    user_infos = dict(zip(colunas, row)) if row else None
 
     if user_infos is None:
         flash("Erro ao carregar os dados.", "danger")
@@ -403,12 +401,53 @@ def manutencao_page():
     return render_template('manutencao.html')
 
 
-# === 10. ALUGUEL ===
-@app.route('/alugar/<int:ferramenta_id>', methods=['POST'])
-def alugar_ferramenta(ferramenta_id):
+# === 10. CARRINHO ===
+def itens_do_carrinho():
     """
-    Alugar Ferramenta
-    Registra o aluguel de uma unidade.
+    Monta os itens do carrinho com nome, tipo e valor. O carrinho fica guardado na sessão
+    como uma lista de {"id": id da ferramenta, "dias": dias de aluguel ou None se for compra}.
+    O valor é sempre calculado aqui no servidor (no aluguel, diária x dias),
+    para ninguém conseguir alterar o preço pelo navegador.
+    """
+    itens = []
+    for entrada in session.get('carrinho', []):
+        ferramenta = ToolModel.get_by_id(entrada["id"])
+        if not ferramenta:
+            continue
+        item = ToolModel.montar_item(
+            ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])
+        item["dias"] = entrada["dias"]
+        item["valor"] = round(item["preco"] * (entrada["dias"] or 1), 2)
+        itens.append(item)
+
+    # Se alguma ferramenta deixou de existir, tira do carrinho guardado também
+    session['carrinho'] = [{"id": i["id"], "dias": i["dias"]} for i in itens]
+    return itens
+
+
+@app.route('/carrinho')
+def carrinho_page():
+    """
+    Carrinho
+    Lista os itens que o cliente escolheu e o valor total.
+    ---
+    tags:
+      - Serviços e Pedidos (Cliente)
+    responses:
+      200:
+        description: HTML do carrinho.
+    """
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    itens = itens_do_carrinho()
+    return render_template('carrinho.html', itens=itens, total=sum(i["valor"] for i in itens))
+
+
+@app.route('/carrinho/adicionar/<int:ferramenta_id>', methods=['POST'])
+def carrinho_adicionar(ferramenta_id):
+    """
+    Adicionar ao Carrinho
+    Coloca uma ferramenta no carrinho (compra ou aluguel, conforme o produto).
     ---
     tags:
       - Serviços e Pedidos (Cliente)
@@ -419,79 +458,108 @@ def alugar_ferramenta(ferramenta_id):
       - name: dias_aluguel
         in: formData
         type: integer
-      - name: valor_total
-        in: formData
-        type: number
     responses:
       302:
-        description: Retorno do pedido.
+        description: Redireciona para o carrinho.
     """
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    user_id = session.get('user_code')
     ferramenta = ToolModel.get_by_id(ferramenta_id)
     if not ferramenta:
         flash("Ferramenta não encontrada.", "danger")
         return redirect(url_for('loja_page'))
 
-    # Quantidade de dias: entre 1 e 30. Se vier algo inválido, considera 1 dia.
-    try:
-        dias = max(1, min(30, int(request.form.get('dias_aluguel', 1))))
-    except ValueError:
-        dias = 1
+    item = ToolModel.montar_item(
+        ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])
+    dias = None
+    if item["tipo"].lower() == 'alugar':
+        # Quantidade de dias: entre 1 e 30. Se vier algo inválido, considera 1 dia.
+        try:
+            dias = max(1, min(30, int(request.form.get('dias_aluguel', 1))))
+        except ValueError:
+            dias = 1
 
-    # O valor é calculado aqui no servidor (diária x dias), não vem do formulário,
-    # para ninguém conseguir alterar o preço pelo navegador.
-    diaria = ToolModel.montar_item(
-        ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])["preco"]
-    valor_total = round(diaria * dias, 2)
-    sucesso, mensagem = ServiceModel.create_rental(
-        user_id, ferramenta_id, dias, valor_total)
-    if sucesso:
-        flash(mensagem, "success")
+    # Botão "Comprar agora" / "Alugar agora": registra só este item, sem mexer no carrinho
+    if request.form.get('agora'):
+        user_id = session.get('user_code')
+        valor = round(item["preco"] * (dias or 1), 2)
+        if dias:
+            sucesso, mensagem = ServiceModel.create_rental(user_id, ferramenta_id, dias, valor)
+        else:
+            sucesso, mensagem = ServiceModel.create_purchase(user_id, ferramenta_id, valor)
+        flash(mensagem, "success" if sucesso else "danger")
+        return redirect(url_for('perfil_page'))
+
+    carrinho = session.get('carrinho', [])
+    if len(carrinho) >= 20:
+        flash("O carrinho aceita até 20 itens. Finalize o pedido para adicionar mais.", "danger")
     else:
-        flash(mensagem, "danger")
-    return redirect(url_for('perfil_page'))
+        carrinho.append({"id": ferramenta_id, "dias": dias})
+        session['carrinho'] = carrinho
+        flash(f"{item['nome']} foi para o carrinho.", "success")
+    return redirect(url_for('carrinho_page'))
 
 
-# === 11. COMPRA ===
-@app.route('/comprar/<int:ferramenta_id>', methods=['POST'])
-def comprar_ferramenta(ferramenta_id):
+@app.route('/carrinho/remover/<int:posicao>', methods=['POST'])
+def carrinho_remover(posicao):
     """
-    Comprar Ferramenta
-    Registra a venda e dá baixa no estoque.
+    Remover do Carrinho
+    Tira um item do carrinho pela posição dele na lista.
     ---
     tags:
       - Serviços e Pedidos (Cliente)
     parameters:
-      - name: ferramenta_id
+      - name: posicao
         in: path
         type: integer
-      - name: valor_total
-        in: formData
-        type: number
     responses:
       302:
-        description: Retorno do pedido.
+        description: Redireciona para o carrinho.
+    """
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    carrinho = session.get('carrinho', [])
+    if posicao < len(carrinho):
+        carrinho.pop(posicao)
+        session['carrinho'] = carrinho
+    return redirect(url_for('carrinho_page'))
+
+
+@app.route('/carrinho/finalizar', methods=['POST'])
+def carrinho_finalizar():
+    """
+    Finalizar Pedido
+    Registra a compra ou o aluguel de cada item do carrinho e dá baixa no estoque.
+    ---
+    tags:
+      - Serviços e Pedidos (Cliente)
+    responses:
+      302:
+        description: Vai para o perfil, ou volta ao carrinho se algum item falhar.
     """
     if not session.get('logged_in'):
         return redirect(url_for('login'))
     user_id = session.get('user_code')
-    ferramenta = ToolModel.get_by_id(ferramenta_id)
-    if not ferramenta:
-        flash("Ferramenta não encontrada.", "danger")
-        return redirect(url_for('loja_page'))
+    itens = itens_do_carrinho()
 
-    # O preço vem do catálogo no servidor, não do formulário.
-    valor_total = ToolModel.montar_item(
-        ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])["preco"]
-    sucesso, mensagem = ServiceModel.create_purchase(
-        user_id, ferramenta_id, valor_total)
-    if sucesso:
-        flash(mensagem, "success")
-    else:
-        flash(mensagem, "danger")
-    return redirect(url_for('perfil_page'))
+    # Cada item é registrado separado. O que falhar (ex.: esgotou) continua no carrinho.
+    restantes = []
+    for item in itens:
+        if item["dias"]:
+            sucesso, mensagem = ServiceModel.create_rental(
+                user_id, item["id"], item["dias"], item["valor"])
+        else:
+            sucesso, mensagem = ServiceModel.create_purchase(
+                user_id, item["id"], item["valor"])
+        if not sucesso:
+            restantes.append({"id": item["id"], "dias": item["dias"]})
+            flash(f"{item['nome']}: {mensagem}", "danger")
+    session['carrinho'] = restantes
+
+    registrados = len(itens) - len(restantes)
+    if registrados:
+        flash(f"Pedido finalizado: {registrados} item(ns) registrado(s).", "success")
+    return redirect(url_for('carrinho_page' if restantes else 'perfil_page'))
 
 
 # === 12. PAINEL COLABORADOR ===
@@ -552,6 +620,10 @@ def atualizar_orcamento(id_servico):
     caminho_relativo = None
     if imagem and imagem.filename != '':
         nome_arquivo = secure_filename(imagem.filename)
+        # Só imagem: a pasta de uploads é pública, um .html aqui viraria uma página do site
+        if os.path.splitext(nome_arquivo)[1].lower() not in ('.png', '.jpg', '.jpeg', '.webp'):
+            flash("Envie a foto em PNG, JPG ou WEBP.", "danger")
+            return redirect(url_for('painel_colaborador'))
         nome_final = f"manutencao_dano_{id_servico}_{nome_arquivo}"
         caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER'], nome_final)
         imagem.save(caminho_salvar)
@@ -796,4 +868,4 @@ def painel_graficos():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

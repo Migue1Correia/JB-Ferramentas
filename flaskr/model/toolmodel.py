@@ -8,7 +8,9 @@ from .db import db_execute
 CATALOGO_EXEMPLOS = {
     "Parafusadeira e Furadeira a Bateria 20V": {"preco": 459.90, "tipo": "Comprar", "imagem": "img/produto2.png"},
     "Parafusadeira e Furadeira 12V": {"preco": 329.90, "tipo": "Comprar", "imagem": "img/produto3.png"},
+    "Furadeira Parafusadeira 3/8 21V com Kit": {"preco": 361.00, "tipo": "Comprar", "imagem": "img/produto.png"},
     "Furadeira de Impacto 750W": {"preco": 35.00, "tipo": "Alugar", "imagem": "img/produto.png"},
+    "Esmerilhadeira Angular 115 mm 710W": {"preco": 30.00, "tipo": "Alugar", "imagem": "img/produto4.png"},
 }
 
 # Usado para as ferramentas que não estão no catálogo de exemplos

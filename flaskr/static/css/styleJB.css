@@ -582,6 +582,8 @@ body {
 .tag-comprar { background: rgba(52, 152, 219, 0.15); color: #3498db; }
 .tag-alugar { background: rgba(241, 194, 15, 0.15); color: #f1c40f; }
 .tag-manutencao { background: rgba(25, 158, 112, 0.15); color: #2ecc71; }
+.btn-remover { background: none; border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.btn-remover:hover { border-color: #ff0000; color: #ff6b6b; }
 .status-tag { padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
 
 

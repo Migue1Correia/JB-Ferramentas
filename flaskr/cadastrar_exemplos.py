@@ -19,8 +19,12 @@ FERRAMENTAS = [
      "Sem fio, com bateria de 20V e mandril de aperto rápido. Boa para montar móveis e furar madeira e metal."),
     ("Wap", "Parafusadeira e Furadeira 12V",
      "Compacta e leve, com bateria de lítio de 12V. Ideal para pequenos reparos em casa."),
+    ("JB Pro", "Furadeira Parafusadeira 3/8 21V com Kit",
+     "Sem fio, 21V, mandril de 10 mm e 2 velocidades (0-350/1300 rpm). Acompanha 2 baterias de lítio, carregador, brocas, bits e maleta."),
     ("JB Pro", "Furadeira de Impacto 750W",
      "Com fio, 750W e empunhadura lateral. Indicada para furar concreto e alvenaria."),
+    ("Bosch", "Esmerilhadeira Angular 115 mm 710W",
+     "Com fio, 710W e 12.000 rpm, para disco de 115 mm. Tem trava do disco e protetor embutido; acompanha a chave. Pesa 1,8 kg."),
 ]
 
 UNIDADES_POR_FERRAMENTA = 3
