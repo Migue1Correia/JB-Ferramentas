@@ -796,6 +796,8 @@ def painel_colaborador():
     """
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
+                           estoques=[p for p in PecaModel.listar() if p["quantidade"]],
+                           pecas_usadas=PecaModel.usadas_por_servico(),
                            alugueis=ColaboradorModel.get_alugueis_em_aberto(),
                            respondidos=ColaboradorModel.get_orcamentos_respondidos(),
                            reprovados=ColaboradorModel.get_orcamentos_reprovados(),
@@ -1138,6 +1140,115 @@ def gerenciar_pecas():
         flash(mensagem, "success" if sucesso else "danger")
         return redirect(url_for('gerenciar_pecas'))
     return render_template('pecas.html', pecas=PecaModel.listar(), filiais=AdminModel.get_filiais())
+
+
+@app.route('/colaborador/pecas/<int:id_peca>/editar', methods=['GET', 'POST'])
+def editar_peca(id_peca):
+    """
+    Editar Peça
+    Altera nome, fabricante, código de barras, custo e preço de uma peça.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_peca
+        in: path
+        type: integer
+    responses:
+      200:
+        description: Formulário de edição.
+    """
+    peca = PecaModel.get(id_peca)
+    if not peca:
+        abort(404)
+    if request.method == 'POST':
+        campos = request.form
+        sucesso, mensagem = PecaModel.atualizar(
+            id_peca, (campos.get('codigo_barras') or '').strip(), (campos.get('nome') or '').strip(),
+            (campos.get('fabricante') or '').strip(), campos.get('custo'), campos.get('preco_venda'))
+        flash(mensagem, "success" if sucesso else "danger")
+        return redirect(url_for('gerenciar_pecas') if sucesso else url_for('editar_peca', id_peca=id_peca))
+    return render_template('editar_peca.html', peca=peca, filiais=AdminModel.get_filiais())
+
+
+@app.route('/colaborador/pecas/<int:id_peca>/filial', methods=['POST'])
+def peca_em_filial(id_peca):
+    """
+    Colocar Peça em Outra Filial
+    Abre o estoque de uma peça já cadastrada em mais uma filial.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_peca
+        in: path
+        type: integer
+      - name: id_filial
+        in: formData
+        type: integer
+      - name: quantidade
+        in: formData
+        type: integer
+      - name: minimo
+        in: formData
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela de peças.
+    """
+    sucesso, mensagem = PecaModel.por_em_filial(
+        id_peca, request.form.get('id_filial'), request.form.get('quantidade'), request.form.get('minimo'))
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('gerenciar_pecas') if sucesso else url_for('editar_peca', id_peca=id_peca))
+
+
+@app.route('/colaborador/pecas/<int:id_peca>/excluir', methods=['POST'])
+def excluir_peca(id_peca):
+    """
+    Excluir Peça
+    Apaga a peça e o estoque dela. Peça já usada em manutenção não é apagada.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_peca
+        in: path
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela de peças.
+    """
+    sucesso, mensagem = PecaModel.excluir(id_peca)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('gerenciar_pecas'))
+
+
+@app.route('/colaborador/servico/<int:id_servico>/peca', methods=['POST'])
+def usar_peca(id_servico):
+    """
+    Usar Peça na Manutenção
+    Registra a peça usada em uma manutenção aprovada e dá baixa no estoque.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_servico
+        in: path
+        type: integer
+      - name: id_estoque
+        in: formData
+        type: integer
+      - name: quantidade
+        in: formData
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela Serviços.
+    """
+    sucesso, mensagem = PecaModel.usar_na_manutencao(
+        id_servico, request.form.get('id_estoque'), request.form.get('quantidade'))
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('painel_colaborador'))
 
 
 @app.route('/colaborador/pecas/estoque/<int:id_estoque>', methods=['POST'])

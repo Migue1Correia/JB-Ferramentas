@@ -89,7 +89,8 @@
                     <tbody>
                         {% for peca in pecas %}
                         <tr>
-                            <td><strong>{{ peca.nome }}</strong><br><small style="color: #aaaaaa;">{{ peca.fabricante }}</small></td>
+                            <td><strong>{{ peca.nome }}</strong><br><small style="color: #aaaaaa;">{{ peca.fabricante }}</small><br>
+                                <a href="{{ url_for('editar_peca', id_peca=peca.id) }}" class="btn-remover" style="text-decoration: none; font-size: 0.83rem; display: inline-block; margin-top: 6px;" aria-label="Editar {{ peca.nome }}">Editar</a></td>
                             <td>{{ peca.codigo }}</td>
                             <td>{{ peca.filial }}</td>
                             <td>{{ peca.custo|moeda }}</td>

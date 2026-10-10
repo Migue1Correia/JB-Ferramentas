@@ -74,6 +74,7 @@ class TesteBase(unittest.TestCase):
 
     def tearDown(self):
         for comando in (
+            "DELETE FROM manutencao_pecas;",
             "DELETE FROM alugueis;", "DELETE FROM servico_ferramentas;", "DELETE FROM manutencoes;",
             "DELETE FROM servicos;", "UPDATE unidade_ferramentas SET status='em_estoque';",
             "DELETE FROM usuarios;", "DELETE FROM pessoas WHERE id <> 1;", "DELETE FROM perfis WHERE id <> 1;",
@@ -851,6 +852,61 @@ class TesteFerramentasPecasEUsuarios(TesteBase):
         pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{estoque}", data={"quantidade": "12"}, follow_redirects=True))
         self.assertEqual(self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0], 12)
         self.assertNotIn("Repor (mínimo", pagina)
+
+
+class TestePecasNaManutencao(TesteBase):
+
+    def setUp(self):
+        super().setUp()
+        self.filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        self.cliente.post("/colaborador/pecas", data={
+            "codigo_barras": "789", "nome": "Escova de carvão", "fabricante": "Bosch", "custo": "8.50",
+            "preco_venda": "19.90", "id_filial": self.filial, "quantidade": "5", "minimo": "1"})
+        self.peca, self.estoque = self.sql("SELECT id_peca, id FROM estoque_pecas;")[0]
+
+    def test_editar_peca_e_colocar_em_outra_filial(self):
+        self.assertIn("Escova de carvão", self.texto(self.cliente.get(f"/colaborador/pecas/{self.peca}/editar")))
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/editar", data={
+            "codigo_barras": "789", "nome": "Escova nova", "fabricante": "Bosch", "custo": "9", "preco_venda": "25"})
+        self.assertEqual(self.sql("SELECT nome, preco_venda FROM pecas;")[0][0], "Escova nova")
+
+        # a mesma filial não recebe a peça duas vezes; outra filial recebe
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/filial", data={"id_filial": self.filial, "quantidade": "1", "minimo": "0"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM estoque_pecas;")[0][0], 1)
+        self.sql("INSERT INTO filiais (codigo_filial, nome, endereco) VALUES ('T99', 'Filial de teste', 'Rua X');")
+        self.addCleanup(self.sql, "DELETE FROM filiais WHERE codigo_filial='T99';")
+        self.addCleanup(self.sql, "DELETE FROM estoque_pecas;")
+        outra = self.sql("SELECT id FROM filiais WHERE codigo_filial='T99';")[0][0]
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/filial", data={"id_filial": outra, "quantidade": "3", "minimo": "0"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM estoque_pecas;")[0][0], 2)
+        self.assertIn("Filial de teste", self.texto(self.cliente.get("/colaborador/pecas")))
+
+    def test_usar_peca_baixa_o_estoque_e_trava_a_exclusao(self):
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        servico = self.sql("SELECT id FROM servicos;")[0][0]
+        usar = lambda quantidade: self.texto(self.cliente.post(
+            f"/colaborador/servico/{servico}/peca", data={"id_estoque": self.estoque, "quantidade": quantidade}, follow_redirects=True))
+        estoque = lambda: self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0]
+
+        # antes de o cliente aprovar, não usa peça
+        self.assertIn("orçamento aprovado", usar("1"))
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+
+        self.assertIn("Peça usada: 2 x Escova de carvão", usar("2"))
+        self.assertEqual(estoque(), 3)
+        self.assertIn("Não há essa quantidade", usar("4"))  # só restam 3
+        self.assertEqual(estoque(), 3)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0], 1)
+
+        # peça usada em manutenção não pode ser excluída (e o estoque dela continua lá)
+        self.assertIn("já foi usada", self.texto(self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir", follow_redirects=True)))
+        self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (1, 1))
+
+    def test_excluir_peca_sem_uso_apaga_o_estoque_junto(self):
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir")
+        self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (0, 0))
 
 
 class TesteCarrinho(TesteBase):

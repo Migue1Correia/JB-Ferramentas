@@ -122,7 +122,8 @@
                         <tr>
                             <td>#{{ servico.id }}</td>
                             <td>{{ servico.cliente }}<br><small style="color: #aaaaaa;">{{ servico.telefone }}</small></td>
-                            <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}</td>
+                            <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}
+                                {% for usada in pecas_usadas.get(servico.id, []) %}<br><small style="color: #aaaaaa;">Peça usada: {{ usada }}</small>{% endfor %}</td>
                             <td>{{ servico.valor|moeda }}</td>
                             <td><strong>{{ servico.status }}</strong></td>
                             <td>{{ servico.pagamento or '-' }}</td>
@@ -134,6 +135,18 @@
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-remover">Marcar como concluído</button>
                                 </form>
+                                {% if estoques %}
+                                <form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" style="display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <select name="id_estoque" required aria-label="Peça usada no serviço {{ servico.id }}" style="max-width: 220px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
+                                        {% for estoque in estoques %}
+                                        <option value="{{ estoque.id_estoque }}">{{ estoque.nome }} - {{ estoque.filial }} ({{ estoque.quantidade }})</option>
+                                        {% endfor %}
+                                    </select>
+                                    <input type="number" name="quantidade" value="1" min="1" step="1" required aria-label="Quantidade da peça no serviço {{ servico.id }}" style="width: 70px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
+                                    <button type="submit" class="btn-remover">Usar peça</button>
+                                </form>
+                                {% endif %}
                                 {% endif %}
                             </td>
                         </tr>
