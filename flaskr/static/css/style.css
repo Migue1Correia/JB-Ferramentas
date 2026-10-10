@@ -26,37 +26,7 @@
 }
 
 /* --- LOGO JB COM SOMBRA ESCURA --- */
-.logo-area {
-    text-align: center;
-    flex: 1;
-    min-width: 300px;
-    /* Filtro de sombra pesada para destacar o logo vermelho */
-    filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.9));
-}
 
-.logo-red-box {
-    background-color: #ff0000; /* Vermelho puro */
-    padding: 25px 50px;
-    border-radius: 18px;
-    display: inline-block;
-}
-
-.logo-red-box h1 {
-    color: #fff;
-    font-size: clamp(60px, 10vw, 110px);
-    font-weight: bold;
-    font-style: italic; /* JB em itálico */
-    line-height: 0.8;
-}
-
-.logo-subtext {
-    color: #fff;
-    font-size: 24px;
-    font-weight: bold;
-    letter-spacing: 5px;
-    margin-top: 15px;
-    text-transform: uppercase;
-}
 
 /* --- CARD DO FORMULÁRIO (DIREITA) --- */
 .form-card {
@@ -140,11 +110,7 @@
 }
 
 /* Estilo para a frase "Primeiro acesso?" */
-.form-footer p {
-    color: #ffffff;
-    font-size: 14px;
-    margin-top: 20px;
-}
+
 
 /* Estilo específico para o link amarelo */
 .link-amarelo {
@@ -166,38 +132,12 @@
         flex-direction: column;
         justify-content: center;
     }
-    .logo-area { margin-bottom: 30px; }
+    
     .form-card h2 { text-align: center; }
 }
 
 /* Estilo específico para a Card de Cadastro tela inicial */
-.form-card-mobile {
-    width: 100%;
-    max-width: 450px;
-    padding: 30px;
-    background: rgba(0, 0, 0, 0.6); /* Fundo semi-transparente para dar contraste */
-    border-radius: 20px;
-    backdrop-filter: blur(10px); /* Efeito de vidro desfocado */
-}
 
-.form-title {
-    text-align: center;
-    font-size: 28px;
-    margin-bottom: 25px;
-    color: #fff;
-}
-
-.input-field {
-    margin-bottom: 15px;
-}
-
-.input-field label {
-    display: block;
-    font-size: 13px;
-    color: #bbb;
-    margin-bottom: 5px;
-    padding-left: 5px;
-}
 
 /* Garante que o ícone fique DENTRO do input */
 .input-wrapper {
@@ -230,47 +170,10 @@
 }
 
 /* Botão de Cadastro */
-.btn-register {
-    width: 100%;
-    padding: 15px;
-    background-color: #ff0000;
-    color: #fff;
-    border: none;
-    border-radius: 30px;
-    font-weight: bold;
-    text-transform: uppercase;
-    cursor: pointer;
-    margin-top: 15px;
-    transition: 0.3s;
-}
 
-.btn-register:hover {
-    background-color: #cc0000;
-    transform: scale(1.02);
-}
-
-.form-footer-mobile {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.form-footer-mobile a {
-    color: #ff0000;
-    font-weight: bold;
-    text-decoration: none;
-}
 
 /* Alerta de Status */
-.status-alert {
-    background: rgba(255, 0, 0, 0.2);
-    border: 1px solid #ff0000;
-    color: #fff;
-    padding: 10px;
-    border-radius: 10px;
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 14px;
-}
+
 
 /* --- CONFIGURAÇÕES TÉCNICAS TELAS --- */
 * {
@@ -290,27 +193,10 @@ body {
 }
 
 /* --- FUNDO IMERSIVO --- */
-.bg-container-cadastro {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.85)), 
-                url('../img/fundo_tela_cadastro.jpg') no-repeat center center;
-    background-size: cover;
-    z-index: -1;
-}
+
 
 /* --- CONTAINER PRINCIPAL --- */
-.page-container {
-    width: 100%;
-    max-width: 450px; /* Largura de um celular grande no PC */
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+
 
 /* --- LOGO ESTILO IMAGEM --- */
 .logo-section {
@@ -346,25 +232,9 @@ body {
     width: 100%;
 }
 
-.form-title {
-    text-align: center;
-    font-size: 22px;
-    margin-bottom: 25px;
-    font-weight: 500;
-}
 
 /* --- INPUTS ESTILO DARK/GLASS --- */
-.input-field {
-    margin-bottom: 15px;
-}
 
-.input-field label {
-    display: block;
-    font-size: 13px;
-    color: #bbb;
-    margin-bottom: 6px;
-    padding-left: 15px;
-}
 
 .input-wrapper {
     position: relative;
@@ -373,21 +243,10 @@ body {
 }
 
 /* Ícone da esquerda */
-.main-icon {
-    position: absolute;
-    left: 20px;
-    color: #fff;
-    font-size: 16px;
-    opacity: 0.8;
-}
+
 
 /* Ícone de lápis/olho da direita */
-.side-icon {
-    position: absolute;
-    right: 20px;
-    color: #666;
-    font-size: 14px;
-}
+
 
 .input-wrapper input {
     width: 100%;
@@ -407,25 +266,7 @@ body {
 }
 
 /* --- BOTÃO VERMELHO --- */
-.btn-primary {
-    width: 100%;
-    padding: 16px;
-    background-color: #ff0000;
-    color: #fff;
-    border: none;
-    border-radius: 30px;
-    font-weight: bold;
-    font-size: 16px;
-    cursor: pointer;
-    text-transform: uppercase;
-    margin-top: 10px;
-    transition: 0.3s;
-}
 
-.btn-primary:hover {
-    background-color: #cc0000;
-    transform: scale(1.01);
-}
 
 /* --- LINKS --- */
 .footer-links {
@@ -438,24 +279,6 @@ body {
     color: #ccc;
 }
 
-.link-highlight {
-    color: #FFD700 !important; /* Amarelo Ouro idêntico à imagem */
-    text-decoration: none;
-    font-weight: bold;
-    margin-left: 5px;
-    border-bottom: 1.5px solid #FFD700; /* Sublinhado fino amarelo */
-}
-
-/* --- RESPONSIVIDADE PARA DESKTOP --- */
-@media (min-width: 800px) {
-    .page-container {
-        max-width: 500px;
-        background: rgba(0, 0, 0, 0.4); 
-        padding: 40px;
-        border-radius: 20px;
-        backdrop-filter: blur(10px);
-    }
-}
 
 /* =========================================
    ESTILOS ESPECÍFICOS DA LANDING PAGE 
@@ -487,30 +310,12 @@ body {
 }
 
 /* --- COLUNA DA LOGO (ESQUERDA) --- */
-.logo-collumn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
+
 
 .logo-wrapper {
     text-align: center;
 }
 
-.logo-box-main {
-    background-color: #ff0000;
-    padding: 25px 50px;
-    border-radius: 15px;
-    display: inline-block;
-}
-
-.logo-box-main h1 {
-    font-size: 80px;
-    font-weight: bold;
-    font-style: italic;
-    color: #fff;
-    line-height: 1;
-}
 
 .company-subname {
     font-size: 20px;
@@ -669,75 +474,7 @@ body {
 
 
 /* Estilos Específicos do Dashboard */
-.dashboard-body {
-    background-color: #121212;
-    color: #ffffff;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-}
 
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 30px;
-    background-color: #000;
-}
-
-.welcome-box { padding: 30px 40px; }
-.welcome-box h1 { font-size: 2.2rem; margin-bottom: 5px; }
-.welcome-box p { color: #aaa; }
-
-.service-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    padding: 0 40px;
-}
-
-.card-item {
-    background: #1e1e1e;
-    padding: 20px;
-    border-radius: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 1px solid #333;
-    cursor: pointer;
-}
-
-.card-info { display: flex; align-items: center; gap: 15px; }
-.card-orange .icon-main { color: #ff6600; font-size: 24px; }
-.card-glass .icon-main { color: #ccff00; font-size: 24px; }
-
-.showcase-section { padding: 40px; }
-.products-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
-
-.product-card {
-    background: #1e1e1e;
-    border-radius: 15px;
-    border: 1px solid #333;
-    overflow: hidden;
-}
-
-.product-card img { width: 100%; height: 150px; object-fit: cover; }
-.prod-details { padding: 15px; text-align: center; }
-.price { color: #ccff00; font-weight: bold; font-size: 1.2rem; }
-
-.btn-buy {
-    background: #ccff00;
-    color: #000;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-}
 
 .btn-dark {
     background: #ff0000;

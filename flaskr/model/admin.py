@@ -31,21 +31,6 @@ class AdminModel:
         return res[1] if res[0] else []
 
     # ==========================
-    # GESTÃO DE PEÇAS E ESTOQUE
-    # ==========================
-    @staticmethod
-    def create_peca(codigo_barras, nome, fabricante, custo, preco_venda):
-        arg = "INSERT INTO pecas (codigo_barras, nome, fabricante, custo, preco_venda) VALUES (%s, %s, %s, %s, %s);"
-        res = db_execute(arg, codigo_barras, nome, fabricante, custo, preco_venda)
-        return (True, "Peça cadastrada no catálogo!") if res[0] else (False, "Erro ao cadastrar peça.")
-
-    @staticmethod
-    def add_estoque_peca(id_peca, id_filial, qtd_atual, qtd_minima):
-        arg = "INSERT INTO estoque_pecas (id_peca, id_filial, quantidade_atual, quantidade_minima) VALUES (%s, %s, %s, %s);"
-        res = db_execute(arg, id_peca, id_filial, qtd_atual, qtd_minima)
-        return (True, "Estoque de peça atualizado!") if res[0] else (False, "Erro ao lançar estoque.")
-
-    # ==========================
     # GESTÃO DE UNIDADES FÍSICAS (FERRAMENTAS)
     # ==========================
     @staticmethod

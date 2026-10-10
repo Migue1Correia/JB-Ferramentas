@@ -54,38 +54,6 @@ class UserAccountModel:
         return True
 
     @staticmethod
-    def update(current_username, username="", password="", id_perfil="", active=True):
-        """
-        Função para atualização dos dados de usuário
-        :param current_username: nome do usuário em que os dados serão atualizados
-        :param username: nome de usuário. Padrão como "".
-        :param password: Senha em formato de Hash. Padrão como "".
-        :param id_perfil: Id do perfil. Padrão como "".
-        :param active: Se conta está ativo. Padrão como True.
-        :return: True, se dados foram atualizados. False se ocorreu um erro no meio do processo.
-        """
-        if (current_username is None) or (current_username == ""):
-            return False
-
-        user_infos = UserAccountModel.get(current_username)
-        if user_infos is None:
-            return False
-
-        if username == "":
-            username    = user_infos["username"]
-        if password == "":
-            password    = user_infos["password"]
-        if id_perfil == "":
-            id_perfil   = user_infos["id_perfil"]
-
-        arg = "UPDATE usuarios SET nome_usuario=%s, senha=%s, id_perfil=%s, ativo=%s WHERE nome_usuario=%s;"
-        res = db_execute(arg, username, password, id_perfil, active, current_username, fetch_type="all")
-        if not res[0]:
-            print(res[1])
-            return False
-        return True
-
-    @staticmethod
     def get(username):
         """
         Função para extrair dados do usuário
