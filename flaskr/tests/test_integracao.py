@@ -764,6 +764,37 @@ class TesteFerramentasPecasEUsuarios(TesteBase):
         self.assertEqual(float(self.sql("SELECT preco FROM ferramentas WHERE id=%s;", ferramenta)[0][0]), 777.70)
         self.sql("UPDATE ferramentas SET preco=%s WHERE id=%s;", PRECO_COMPRA, ferramenta)
 
+    def test_item_do_carrinho_some_se_a_oferta_da_ferramenta_mudar(self):
+        ferramenta = self.id_ferramenta(ALUGUEL)
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}", data={"dias_aluguel": "3"})
+        # o colaborador troca de aluguel para venda: o aluguel de 3 dias não pode virar 3 x o preço de venda
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "JB Pro", "modelo": ALUGUEL, "preco": "400", "tipo_oferta": "Comprar"})
+        self.cliente.post("/carrinho/finalizar")
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+        self.assertEqual(self.carrinho(), [])
+        # nome só com espaços não é aceito
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "   ", "modelo": ALUGUEL, "preco": "400", "tipo_oferta": "Comprar"})
+        self.assertEqual(self.sql("SELECT marca FROM ferramentas WHERE id=%s;", ferramenta)[0][0], "JB Pro")
+        self.sql("UPDATE ferramentas SET preco=%s, tipo_oferta='Alugar' WHERE id=%s;", DIARIA, ferramenta)
+
+    def test_administrador_exclui_so_perfil_criado_e_sem_uso(self):
+        self.cliente.post("/admin/perfis", data={"perfil": "Estagiário"})
+        novo = self.sql("SELECT id FROM perfis WHERE perfil='Estagiário';")[0][0]
+        self.assertIn("Excluir o perfil Estagiário", self.texto(self.cliente.get("/admin/perfis")))
+
+        # em uso: não apaga
+        self.sql("INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo) VALUES ('joao', 'x', 1, %s, 1);", novo)
+        self.assertIn("está em uso", self.texto(self.cliente.post(f"/admin/perfis/{novo}/excluir", follow_redirects=True)))
+        self.sql("DELETE FROM usuarios WHERE nome_usuario='joao';")
+        self.cliente.post(f"/admin/perfis/{novo}/excluir")
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM perfis WHERE id=%s;", novo)[0][0], 0)
+
+        # perfil do sistema: não apaga
+        self.assertIn("faz parte do sistema", self.texto(self.cliente.post("/admin/perfis/1/excluir", follow_redirects=True)))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM perfis WHERE id=1;")[0][0], 1)
+
     def test_ferramenta_desativada_sai_da_loja_e_do_carrinho(self):
         ferramenta = self.id_ferramenta(COMPRA)
         self.cliente.post(f"/carrinho/adicionar/{ferramenta}")

@@ -12,6 +12,14 @@ class AdminModel:
         return (True, "Perfil cadastrado com sucesso!") if res[0] else (False, "Erro ao cadastrar perfil.")
 
     @staticmethod
+    def delete_perfil(id_perfil):
+        # O banco recusa apagar um perfil que algum usuário ainda usa (chave estrangeira)
+        res = db_execute("DELETE FROM perfis WHERE id=%s;", id_perfil)
+        if not res[0]:
+            return False, "Esse perfil está em uso. Troque o perfil dos usuários antes de excluir."
+        return True, "Perfil excluído."
+
+    @staticmethod
     def get_perfis():
         res = db_execute("SELECT id, perfil, descricao, ativo FROM perfis;", fetch_type="all")
         return res[1] if res[0] else []

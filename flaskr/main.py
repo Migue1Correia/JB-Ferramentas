@@ -164,6 +164,8 @@ PERFIL_CLIENTE = "Cliente"
 PERFIL_ADMINISTRADOR = "Administrador"
 # Perfis que entram nas telas de colaborador. Qualquer outro perfil é tratado como cliente.
 PERFIS_COLABORADOR = (PERFIL_ADMINISTRADOR, "Colaborador")
+# Perfis que o sistema usa nas regras de acesso: não podem ser excluídos pela tela
+PERFIS_DO_SISTEMA = PERFIS_COLABORADOR + (PERFIL_CLIENTE,)
 
 
 def pode_ver_painel():
@@ -620,7 +622,9 @@ def itens_do_carrinho():
                     "dias": None, "valor": float(orcamento["valor"])}
         else:
             item = ToolModel.get_by_id(entrada["id"])
-            if not item:
+            # Sai do carrinho o que foi desativado e o que mudou de oferta depois de escolhido
+            # (era aluguel e virou venda, ou o contrário): o valor não seria o que o cliente viu
+            if not item or (item["tipo"] == "Alugar") != bool(entrada["dias"]):
                 continue
             item["dias"] = entrada["dias"]
             item["valor"] = round(item["preco"] * (entrada["dias"] or 1), 2)
@@ -1197,7 +1201,35 @@ def admin_perfis():
         flash(msg, "success" if sucesso else "danger")
         return redirect(url_for('admin_perfis'))
     perfis = AdminModel.get_perfis()
-    return render_template('admin_perfis.html', perfis=perfis, usuarios=UserAccountModel.listar())
+    return render_template('admin_perfis.html', perfis=perfis, usuarios=UserAccountModel.listar(),
+                           perfis_do_sistema=PERFIS_DO_SISTEMA)
+
+
+@app.route('/admin/perfis/<int:id_perfil>/excluir', methods=['POST'])
+def admin_excluir_perfil(id_perfil):
+    """
+    Excluir Perfil
+    Apaga um perfil criado pelo administrador. Os três perfis do sistema e os perfis em uso não são apagados.
+    ---
+    tags:
+      - Administração Base
+    parameters:
+      - name: id_perfil
+        in: path
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela de perfis.
+    """
+    nome = next((p[1] for p in AdminModel.get_perfis() if p[0] == id_perfil), None)
+    if nome is None:
+        flash("Perfil não encontrado.", "danger")
+    elif nome in PERFIS_DO_SISTEMA:
+        flash(f"O perfil {nome} faz parte do sistema e não pode ser excluído.", "danger")
+    else:
+        sucesso, msg = AdminModel.delete_perfil(id_perfil)
+        flash(msg, "success" if sucesso else "danger")
+    return redirect(url_for('admin_perfis'))
 
 
 @app.route('/admin/usuarios/<int:id_usuario>/perfil', methods=['POST'])

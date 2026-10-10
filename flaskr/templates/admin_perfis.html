@@ -71,7 +71,7 @@
                                 </form>
                             </td>
                             <td>
-                                <form method="POST" action="{{ url_for('admin_ativar_usuario', id_usuario=usuario.id) }}" style="display: flex; gap: 10px; align-items: center;">
+                                <form method="POST" action="{{ url_for('admin_ativar_usuario', id_usuario=usuario.id) }}" {% if usuario.ativo %}onsubmit="return confirm('Desativar a conta de ' + {{ usuario.usuario|tojson|forceescape }} + '? Essa pessoa não vai mais conseguir entrar.')" {% endif %}style="display: flex; gap: 10px; align-items: center;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="ativo" value="{{ 0 if usuario.ativo else 1 }}">
                                     {% if usuario.ativo %}Ativa{% else %}<span class="type-tag tag-alugar">Desativada</span>{% endif %}
@@ -99,6 +99,7 @@
                             <th scope="col">Perfil</th>
                             <th scope="col">Descrição</th>
                             <th scope="col">Situação</th>
+                            <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -108,6 +109,16 @@
                             <td><strong>{{ perfil[1] }}</strong></td>
                             <td>{{ perfil[2] or '-' }}</td>
                             <td>{{ 'Ativo' if perfil[3] else 'Inativo' }}</td>
+                            <td>
+                                {% if perfil[1] in perfis_do_sistema %}
+                                <small style="color: #aaaaaa;">Perfil do sistema</small>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('admin_excluir_perfil', id_perfil=perfil[0]) }}" onsubmit="return confirm('Excluir o perfil ' + {{ perfil[1]|tojson|forceescape }} + '?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-remover" aria-label="Excluir o perfil {{ perfil[1] }}">Excluir</button>
+                                </form>
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

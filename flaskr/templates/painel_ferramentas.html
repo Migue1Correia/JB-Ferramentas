@@ -135,7 +135,7 @@
                             <td>{{ ferramenta.preco|moeda }}{% if ferramenta.tipo == 'Alugar' %}/dia{% endif %}</td>
                             <td>{% if ferramenta.ativo %}Na loja{% else %}<span class="type-tag tag-alugar">Desativada</span>{% endif %}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('ativar_ferramenta', ferramenta_id=ferramenta.id) }}" style="display: flex; gap: 10px; align-items: center;">
+                                <form method="POST" action="{{ url_for('ativar_ferramenta', ferramenta_id=ferramenta.id) }}" {% if ferramenta.ativo %}onsubmit="return confirm('Desativar ' + {{ ferramenta.nome|tojson|forceescape }} + '? Ela sai da loja.')" {% endif %}style="display: flex; gap: 10px; align-items: center;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="ativo" value="{{ 0 if ferramenta.ativo else 1 }}">
                                     <a href="{{ url_for('editar_ferramenta', ferramenta_id=ferramenta.id) }}" class="btn-remover" style="text-decoration: none; font-size: 0.83rem;" aria-label="Editar {{ ferramenta.nome }}">Editar</a>

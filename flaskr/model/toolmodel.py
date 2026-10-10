@@ -72,7 +72,7 @@ class ToolModel:
     @staticmethod
     def _validar(marca, modelo, preco, tipo_oferta):
         """Confere os campos da ferramenta. Devolve (preço como número, mensagem de erro ou None)."""
-        if not marca or not modelo:
+        if not (marca or "").strip() or not (modelo or "").strip():
             return None, "Preencha os campos obrigatórios (Marca e Modelo)."
 
         try:
