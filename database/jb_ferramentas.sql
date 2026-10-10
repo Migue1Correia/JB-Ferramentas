@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS `alugueis`;
 CREATE TABLE `alugueis` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `data_devolucao` datetime DEFAULT NULL,
+  `devolvido_em` datetime DEFAULT NULL,
   `valor_diario` decimal(10,2) NOT NULL DEFAULT '0.00',
   `taxa_atraso` decimal(10,2) NOT NULL DEFAULT '0.00',
   `id_servico` int unsigned NOT NULL,
@@ -33,7 +34,7 @@ CREATE TABLE `alugueis` (
   PRIMARY KEY (`id`),
   KEY `id_servico` (`id_servico`),
   CONSTRAINT `alugueis_ibfk_1` FOREIGN KEY (`id_servico`) REFERENCES `servicos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -110,13 +111,16 @@ CREATE TABLE `ferramentas` (
   `marca` varchar(50) NOT NULL,
   `modelo` varchar(50) NOT NULL,
   `descricao` tinytext,
+  `preco` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `tipo_oferta` enum('Comprar','Alugar') NOT NULL DEFAULT 'Comprar',
+  `imagem` varchar(255) DEFAULT NULL,
   `id_ferramenta_tipo` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `id_ferramenta_tipo` (`id_ferramenta_tipo`),
   CONSTRAINT `ferramentas_ibfk_1` FOREIGN KEY (`id_ferramenta_tipo`) REFERENCES `ferramenta_tipos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -171,6 +175,7 @@ CREATE TABLE `manutencoes` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `diagnostico` text NOT NULL,
   `garantia` int NOT NULL,
+  `foto_equipamento` varchar(255) DEFAULT NULL,
   `id_servico` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -215,8 +220,9 @@ CREATE TABLE `perfis` (
   `ativo` tinyint(1) NOT NULL DEFAULT '1',
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_perfis_perfil` (`perfil`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -236,8 +242,9 @@ CREATE TABLE `pessoas` (
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `codigo` varchar(20) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_pessoas_codigo` (`codigo`)
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -275,7 +282,7 @@ CREATE TABLE `servico_ferramentas` (
   KEY `id_unidade_ferramenta` (`id_unidade_ferramenta`),
   CONSTRAINT `servico_ferramentas_ibfk_1` FOREIGN KEY (`id_servico`) REFERENCES `servicos` (`id`),
   CONSTRAINT `servico_ferramentas_ibfk_2` FOREIGN KEY (`id_unidade_ferramenta`) REFERENCES `unidade_ferramentas` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -340,6 +347,7 @@ CREATE TABLE `servicos` (
   `descricao_servico` text NOT NULL,
   `data_abertura` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `valor_servico` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `status_servico` varchar(50) NOT NULL DEFAULT 'Aberto',
   `id_pessoa_solicitante` int unsigned NOT NULL,
   `id_pessoa_abertura` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -349,7 +357,7 @@ CREATE TABLE `servicos` (
   KEY `id_pessoa_abertura` (`id_pessoa_abertura`),
   CONSTRAINT `servicos_ibfk_1` FOREIGN KEY (`id_pessoa_solicitante`) REFERENCES `pessoas` (`id`),
   CONSTRAINT `servicos_ibfk_2` FOREIGN KEY (`id_pessoa_abertura`) REFERENCES `pessoas` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -373,7 +381,7 @@ CREATE TABLE `unidade_ferramentas` (
   KEY `id_filial` (`id_filial`),
   CONSTRAINT `unidade_ferramentas_ibfk_1` FOREIGN KEY (`id_ferramenta`) REFERENCES `ferramentas` (`id`),
   CONSTRAINT `unidade_ferramentas_ibfk_2` FOREIGN KEY (`id_filial`) REFERENCES `filiais` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -398,7 +406,7 @@ CREATE TABLE `usuarios` (
   KEY `id_perfil` (`id_perfil`),
   CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_pessoa`) REFERENCES `pessoas` (`id`),
   CONSTRAINT `usuarios_ibfk_2` FOREIGN KEY (`id_perfil`) REFERENCES `perfis` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -410,4 +418,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-08 11:25:20
+-- Dump completed on 2026-10-10 11:03:21

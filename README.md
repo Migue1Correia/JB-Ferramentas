@@ -37,7 +37,7 @@ Monique Jesus               Ronaldo Alves de Souza
 > [!IMPORTANT]
 > Antes de começar a desenvolver, faça as seguintes checagens:
 > - Verifique se o MySQL está ativo e rodando em sua máquina
-> - Verifique se o banco `jb_ferramentas` já está criado
+> - Crie o banco `jb_ferramentas` (passo 3 abaixo)
 > - Configure o arquivo `.env` com os dados do seu banco (passo 2 abaixo)
 
 ## Executar projeto
@@ -56,12 +56,29 @@ copy .env.example .env         # Windows
 # cp .env.example .env         # Linux/Mac
 ```
 
-**3. Rodar:**
+**3. Criar o banco** (só na primeira vez). O arquivo `database/jb_ferramentas.sql` tem a estrutura das tabelas, sem dados:
+```
+mysql -u root -p -e "CREATE DATABASE jb_ferramentas"
+mysql -u root -p jb_ferramentas < database/jb_ferramentas.sql
+cd flaskr
+python criar_admin.py          # cria o primeiro administrador (pede usuário e senha)
+python cadastrar_exemplos.py   # opcional: ferramentas de exemplo na loja
+```
+
+**4. Rodar:**
 ```
 cd flaskr
 flask --app main run
 ```
 e logo em seguida clique na _URL_ gerada para acessar o site. A documentação da API (Swagger) fica em `/apidocs`.
+
+## Rodar em produção (nuvem)
+
+O comando `flask run` é só para desenvolver. No servidor, use o Waitress (já está no `requirements.txt`):
+```
+cd flaskr
+waitress-serve --port=8000 main:app
+```
 
 ## Testes
 
