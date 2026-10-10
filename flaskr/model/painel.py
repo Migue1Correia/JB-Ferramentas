@@ -1,6 +1,10 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
-from .db import db_execute
+from .db import db_execute, STATUS_FATURADOS_SQL
+
+# shortcut: horário de Brasília fixo em UTC-3 (o Brasil não tem horário de verão desde 2019);
+# trocar por zoneinfo se o horário de verão voltar.
+FUSO_BRASILIA = timezone(timedelta(hours=-3))
 
 # Tipos de serviço (coluna servico_solicitado da tabela servicos) e o nome exibido no painel
 TIPOS_SERVICO = [
@@ -24,7 +28,7 @@ class PainelModel:
         :return: Dicionário pronto para o template (rótulos dos meses, séries e totais).
         """
         # 1. Lista dos meses do período, do mais antigo para o mais recente: [(ano, mes), ...]
-        hoje = date.today()
+        hoje = datetime.now(FUSO_BRASILIA).date()
         periodo = []
         for i in range(meses - 1, -1, -1):
             ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - i, 12)
@@ -33,11 +37,12 @@ class PainelModel:
         data_inicial = date(periodo[0][0], periodo[0][1], 1)
 
         # 2. Uma única consulta: soma dos valores e contagem dos serviços por mês e por tipo
-        arg = """
+        # Só entram serviços aprovados ou concluídos, a mesma regra do Caixa
+        arg = f"""
             SELECT YEAR(data_abertura), MONTH(data_abertura), servico_solicitado,
                    SUM(valor_servico), COUNT(*)
             FROM servicos
-            WHERE data_abertura >= %s
+            WHERE data_abertura >= %s AND status_servico IN {STATUS_FATURADOS_SQL}
             GROUP BY YEAR(data_abertura), MONTH(data_abertura), servico_solicitado;
         """
         res = db_execute(arg, data_inicial, fetch_type="all")

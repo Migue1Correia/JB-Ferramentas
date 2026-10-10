@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Perfis de acesso</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -33,6 +34,46 @@
                     <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Cadastrar perfil</button>
                 </div>
             </form>
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-users" aria-hidden="true"></i>
+                <h2>Usuários e seus perfis</h2>
+            </div>
+            <p style="color: #aaaaaa; margin-bottom: 20px;">
+                Só o Administrador pode trocar. A mudança vale a partir do próximo login do usuário.
+            </p>
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Usuário</th>
+                            <th scope="col">Nome</th>
+                            <th scope="col">Perfil</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td><strong>{{ usuario.usuario }}</strong></td>
+                            <td>{{ usuario.nome }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin_mudar_perfil', id_usuario=usuario.id) }}" style="display: flex; gap: 10px; align-items: center;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <select name="id_perfil" aria-label="Perfil de {{ usuario.usuario }}" style="background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 12px; color: #ffffff;">
+                                        {% for perfil in perfis %}
+                                        <option value="{{ perfil[0] }}" {% if perfil[0] == usuario.id_perfil %}selected{% endif %}>{{ perfil[1] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn-remover">Salvar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <section class="profile-card">

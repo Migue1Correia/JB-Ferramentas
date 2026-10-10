@@ -6,6 +6,7 @@
     <title>Concluir Cadastro - JB Ferramentas</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}?v=1.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 </head>
@@ -31,6 +32,8 @@
         <div class="login-area" id="conteudo">
 
             <h2>Concluir Cadastro</h2>
+
+            {% include '_mensagens.html' %}
 
             {% if status %}
                 <div class="alert-overlay">
@@ -201,7 +204,9 @@
                         type="password"
                         name="senha"
                         id="id_senha"
-                        placeholder="************"
+                        placeholder="Pelo menos 8 caracteres"
+                        minlength="8"
+                        autocomplete="new-password"
                         required
                     >
                 </div>

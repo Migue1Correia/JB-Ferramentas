@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Caixa</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+{% include '_topo_colaborador.html' %}
+
+    <main id="conteudo" class="dashboard-content">
+        <section class="welcome-box">
+            <h1>Caixa</h1>
+            <p>Soma dos serviços aprovados e concluídos (vendas, aluguéis e manutenções).</p>
+        </section>
+
+        <section class="painel-indicadores" aria-label="Total do caixa">
+            <div class="painel-indicador">
+                <span>Total</span>
+                <strong>{{ caixa.lucro_total|moeda }}</strong>
+                <small>{{ caixa.historico|length }} serviço(s)</small>
+            </div>
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-cash-register" aria-hidden="true"></i>
+                <h2>Serviços que entraram no caixa</h2>
+            </div>
+            {% if caixa.historico %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cód.</th>
+                            <th scope="col">Descrição</th>
+                            <th scope="col">Data</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for servico in caixa.historico %}
+                        <tr>
+                            <td>#{{ servico.id }}</td>
+                            <td>{{ servico.descricao }}</td>
+                            <td>{{ servico.data.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ servico.status }}</td>
+                            <td>{{ servico.valor|moeda }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhum serviço aprovado ou concluído ainda.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

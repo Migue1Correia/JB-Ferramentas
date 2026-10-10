@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JB Ferramentas - Serviços e devoluções</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+{% include '_topo_colaborador.html' %}
+
+    <main id="conteudo" class="dashboard-content">
+        <section class="welcome-box">
+            <h1>Serviços e devoluções</h1>
+            <p>Devolução de ferramentas alugadas, respostas dos clientes e orçamento das manutenções pendentes.</p>
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                <h2>Aluguéis para devolver</h2>
+            </div>
+            {% if alugueis %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cód.</th>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Ferramenta</th>
+                            <th scope="col">Devolver até</th>
+                            <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for aluguel in alugueis %}
+                        <tr>
+                            <td>#{{ aluguel.id }}</td>
+                            <td>{{ aluguel.cliente }}</td>
+                            <td><strong>{{ aluguel.ferramenta }}</strong></td>
+                            <td>{{ aluguel.prazo.strftime('%d/%m/%Y') }}{% if aluguel.atrasado %} <span class="type-tag tag-alugar">Atrasado</span>{% endif %}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('registrar_devolucao', id_servico=aluguel.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-remover" aria-label="Registrar devolução de {{ aluguel.ferramenta }}">Registrar devolução</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhuma ferramenta alugada no momento.</p>
+            {% endif %}
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-reply" aria-hidden="true"></i>
+                <h2>Orçamentos respondidos pelo cliente</h2>
+            </div>
+            {% if respondidos %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cód.</th>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Problema</th>
+                            <th scope="col">Valor</th>
+                            <th scope="col">Resposta</th>
+                            <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for servico in respondidos %}
+                        <tr>
+                            <td>#{{ servico.id }}</td>
+                            <td>{{ servico.cliente }}<br><small style="color: #aaaaaa;">{{ servico.telefone }}</small></td>
+                            <td>{{ servico.descricao }}</td>
+                            <td>{{ servico.valor|moeda }}</td>
+                            <td><strong>{{ servico.status }}</strong></td>
+                            <td>
+                                <form method="POST" action="{{ url_for('fechar_servico', id_servico=servico.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-remover">
+                                        {% if servico.status == 'Aprovado' %}Marcar como concluído{% else %}Encerrar (equipamento devolvido){% endif %}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhum orçamento respondido aguardando ação.</p>
+            {% endif %}
+        </section>
+
+        {% for servico in servicos %}
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-screwdriver-wrench" aria-hidden="true"></i>
+                <h2>#{{ servico.id }} · {{ servico.cliente }} · {{ servico.status }}</h2>
+            </div>
+            <p style="color: #cccccc; margin-bottom: 20px;">
+                Aberto em {{ servico.data.strftime('%d/%m/%Y') }}. Problema informado: {{ servico.descricao }}
+            </p>
+
+            <form method="POST" action="{{ url_for('atualizar_orcamento', id_servico=servico.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="valor_{{ servico.id }}">Valor do serviço (R$)</label>
+                        <input type="number" id="valor_{{ servico.id }}" name="valor_servico" min="0" step="0.01" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="status_{{ servico.id }}">Novo status</label>
+                        <select id="status_{{ servico.id }}" name="status_servico" required>
+                            <option value="Aguardando Aprovação">Aguardando Aprovação (cliente decide)</option>
+                            <option value="Concluído">Concluído</option>
+                        </select>
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="dano_{{ servico.id }}">Diagnóstico</label>
+                        <input type="text" id="dano_{{ servico.id }}" name="detalhes_dano" required>
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="foto_{{ servico.id }}">Foto do equipamento (PNG, JPG ou WEBP, opcional)</label>
+                        <input type="file" id="foto_{{ servico.id }}" name="imagem_dano" accept=".png,.jpg,.jpeg,.webp">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Salvar orçamento</button>
+                </div>
+            </form>
+        </section>
+        {% else %}
+        <div class="painel-aviso">
+            <i class="fas fa-circle-info" aria-hidden="true"></i>
+            Nenhum serviço pendente no momento.
+        </div>
+        {% endfor %}
+    </main>
+</body>
+</html>

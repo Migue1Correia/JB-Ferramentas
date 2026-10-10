@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Soluções Completas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
@@ -27,6 +28,7 @@
         </section>
 
         <section class="content-collumn">
+            {% include '_mensagens.html' %}
             <div class="text-content">
                 <h1 class="main-headline">Soluções completas<br>em ferramentas</h1>
                 <p class="description-text">

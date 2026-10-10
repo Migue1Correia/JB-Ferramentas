@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manutenção - JB Ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -12,33 +13,11 @@
     <div class="bg-container-manutencao"></div>
 
     <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
-            </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" aria-label="Meu perfil" class="back-link"> <i class="fas fa-user-circle" aria-hidden="true"></i> </a>
-            </div>
-        </div>
-
-        <section class="logo-section">
-    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-        <div class="logo-wrapper">
-            <div class="logo-box">
-                <h1>JB</h1>
-            </div>
-            <h2 class="company-subname">FERRAMENTAS</h2>
-            <div class="tool-icons-row">
-                <i class="fas fa-screwdriver" aria-hidden="true"></i>
-                <i class="fas fa-wrench" aria-hidden="true"></i>
-                <i class="fas fa-hammer" aria-hidden="true"></i>
-            </div>
-        </div>
-    </a>
-</section>
+        {% include '_topo.html' %}
     </header>
 
     <main id="conteudo" class="oficina-main-content">
+        {% include '_mensagens.html' %}
        <section class="service-cards" style="margin-bottom: 30px;">
     <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-home">
@@ -90,7 +69,8 @@
                 </div>
                 <div class="status-info">
                     <span>Pronto para Retirada</span>
-                    <p>Nenhum equipamento pronto</p>
+                    {% set prontos = resumo.get('Concluído', 0) %}
+                    <p>{% if prontos %}{{ prontos }} equipamento(s) pronto(s){% else %}Nenhum equipamento pronto{% endif %}</p>
                 </div>
             </div>
 
@@ -99,8 +79,17 @@
                     <i class="fa-solid fa-gears" aria-hidden="true"></i>
                 </div>
                 <div class="status-info">
-                    <span>Em manutenção</span>
-                    <p>01 Equipamento - teste</p>
+                    <span>Em andamento</span>
+                    {% set abertos = resumo.get('Aberto', 0) %}
+                    {% set aguardando = resumo.get('Aguardando Aprovação', 0) %}
+                    {% set em_reparo = resumo.get('Aprovado', 0) %}
+                    {% if abertos or aguardando or em_reparo %}
+                    {% if abertos %}<p>{{ abertos }} aguardando orçamento da oficina</p>{% endif %}
+                    {% if aguardando %}<p>{{ aguardando }} aguardando a sua aprovação · <a href="{{ url_for('perfil_page') }}" style="color: #ff6600;">responder no perfil</a></p>{% endif %}
+                    {% if em_reparo %}<p>{{ em_reparo }} aprovado(s), em reparo</p>{% endif %}
+                    {% else %}
+                    <p>Nenhum pedido em andamento</p>
+                    {% endif %}
                 </div>
             </div>
         </div>

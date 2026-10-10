@@ -10,7 +10,7 @@ class UserAccountModel:
         :param password: Senha
         :return: True, se autenticação estiver certo. False se autenticação estiver errado.
         """
-        if user == "" or password == "":
+        if not user or not password:
             return False
 
         arg = f"SELECT senha FROM usuarios where nome_usuario=%s and ativo='1';"
@@ -52,6 +52,67 @@ class UserAccountModel:
             print(res[1])
             return False
         return True
+
+    @staticmethod
+    def listar():
+        """
+        Função para listar todos os usuários com o perfil de cada um
+        :return: Lista de dicionários (id, usuario, nome, id_perfil). Lista vazia se ocorrer um erro.
+        """
+        arg = """
+            SELECT u.id, u.nome_usuario, p.nome, u.id_perfil
+            FROM usuarios u JOIN pessoas p ON p.id = u.id_pessoa
+            ORDER BY u.nome_usuario;
+        """
+        res = db_execute(arg, fetch_type="all")
+        if not res[0]:
+            print(res[1])
+            return []
+        return [{"id": linha[0], "usuario": linha[1], "nome": linha[2], "id_perfil": linha[3]} for linha in res[1]]
+
+    @staticmethod
+    def mudar_perfil(id_usuario, id_perfil):
+        """
+        Função para trocar o perfil de um usuário
+        :param id_usuario: Id do usuário
+        :param id_perfil: Id do novo perfil
+        :return: True, se o perfil foi trocado. False, se ocorreu um erro (ex.: perfil que não existe).
+        """
+        res = db_execute("UPDATE usuarios SET id_perfil=%s WHERE id=%s;", id_perfil, id_usuario)
+        if not res[0]:
+            print(res[1])
+            return False
+        return True
+
+    @staticmethod
+    def get_perfil(username):
+        """
+        Função para saber o perfil de um usuário
+        :param username: Nome do usuário
+        :return: O nome do perfil (ex.: "Cliente", "Administrador"). None se não encontrar.
+        """
+        arg = "SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id = u.id_perfil WHERE u.nome_usuario=%s"
+        res = db_execute(arg, username, fetch_type="one")
+        if not res[0] or res[1] is None:
+            return None
+        return res[1][0]
+
+    @staticmethod
+    def id_do_perfil(perfil):
+        """
+        Função para achar o id de um perfil pelo nome. Se o perfil ainda não existir, ele é criado.
+        :param perfil: Nome do perfil (ex.: "Cliente")
+        :return: O id do perfil. None se ocorrer um erro no meio do processo.
+        """
+        res = db_execute("SELECT id FROM perfis WHERE perfil=%s", perfil, fetch_type="one")
+        if not res[0]:
+            print(res[1])
+            return None
+        if res[1]:
+            return res[1][0]
+
+        res = db_execute("INSERT INTO perfis (perfil) VALUES (%s)", perfil)
+        return res[1] if res[0] else None
 
     @staticmethod
     def get(username):

@@ -9,6 +9,11 @@ jb_solucoes_db = MySQL()
 jb_bcrypt = Bcrypt()
 
 
+# Status em que o valor do serviço conta como faturamento.
+# Usado pelo Caixa e pelo Painel de gráficos, para os dois sempre baterem.
+STATUS_FATURADOS_SQL = "('Aprovado', 'Concluído')"
+
+
 def db_execute(arg, *parsing, fetch_type="all"):
     """
     Função para a execução de comandos MySQL
@@ -41,6 +46,12 @@ def db_execute(arg, *parsing, fetch_type="all"):
             inserted_id = c.lastrowid
             c.close()
             return True, inserted_id
+
+        # UPDATE e DELETE devolvem quantas linhas foram alteradas
+        if arg.strip().upper().startswith(("UPDATE", "DELETE")):
+            alteradas = c.rowcount
+            c.close()
+            return True, alteradas
 
         if fetch_type == "one":
             result = c.fetchone()

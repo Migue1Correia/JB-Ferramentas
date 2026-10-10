@@ -1,5 +1,7 @@
 import os
 import secrets
+from datetime import datetime, timedelta
+from uuid import uuid4
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from werkzeug.utils import secure_filename
 from flasgger import Swagger
@@ -46,31 +48,105 @@ UPLOAD_FOLDER = os.path.join(
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Fotos enviadas: no máximo 5 MB, para ninguém encher o disco do servidor
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
+# O banco trabalha sempre no horário de Brasília, mesmo se o servidor estiver em outro fuso
+app.config['MYSQL_CUSTOM_OPTIONS'] = {'init_command': "SET time_zone = '-03:00'"}
+
 jb_solucoes_db.init_app(app)
 jb_bcrypt.init_app(app)
 
 
 @app.errorhandler(CSRFError)
 def formulario_expirado(erro):
-    """Quando o csrf_token falta ou venceu, volta para a tela anterior com um aviso."""
+    """Quando o csrf_token falta ou venceu, volta para a tela inicial com um aviso."""
     flash("O formulário expirou. Tente enviar de novo.", "danger")
-    return redirect(request.referrer or url_for('login'))
+    return redirect(url_for('ferramentas_page'))
+
+
+@app.errorhandler(413)
+def arquivo_grande_demais(erro):
+    return "A foto pode ter no máximo 5 MB. Volte e envie um arquivo menor.", 413
 
 
 @app.before_request
-def proteger_documentacao():
-    """A documentação da API (Swagger) só abre para quem está logado."""
-    if request.path.startswith(('/apidocs', '/apispec', '/flasgger_static')) and not session.get('logged_in'):
-        return redirect(url_for('login'))
+def proteger_areas_restritas():
+    """
+    Telas de colaborador/administrador e documentação da API (Swagger):
+    só para quem está logado com perfil de colaborador. Vale para todas as rotas
+    que começam com /colaborador ou /admin, então rota nova já nasce protegida.
+    """
+    if request.path.startswith(('/colaborador', '/admin', '/apidocs', '/apispec', '/flasgger_static')):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        # Relê o perfil no banco: quem foi rebaixado perde o acesso na hora, sem precisar sair
+        session['perfil'] = UserAccountModel.get_perfil(session.get('user_name'))
+        if not pode_ver_painel():
+            flash("Você não tem permissão para acessar essa área.", "danger")
+            return redirect(url_for('ferramentas_page'))
+
+
+def salvar_imagem(arquivo, prefixo):
+    """
+    Salva uma imagem enviada por formulário na pasta de uploads.
+    :return: o caminho para usar com url_for('static'), None se não veio arquivo,
+             ou False se o arquivo não for uma imagem.
+    """
+    if not arquivo or arquivo.filename == '':
+        return None
+    nome_arquivo = secure_filename(arquivo.filename)
+    # Só imagem: a pasta de uploads é pública, um .html aqui viraria uma página do site
+    if os.path.splitext(nome_arquivo)[1].lower() not in ('.png', '.jpg', '.jpeg', '.webp'):
+        return False
+    # O trecho aleatório evita que duas fotos com o mesmo nome se sobrescrevam
+    nome_final = f"{prefixo}_{uuid4().hex[:8]}_{nome_arquivo}"
+    arquivo.save(os.path.join(app.config['UPLOAD_FOLDER'], nome_final))
+    return f"uploads/equipamentos/{nome_final}"
+
+
+def apagar_imagem(caminho):
+    """Apaga uma imagem salva pelo salvar_imagem (usado quando o resto do formulário é recusado)."""
+    if caminho:
+        os.remove(os.path.join(app.static_folder, caminho))
+
+
+PERFIL_CLIENTE = "Cliente"
+PERFIL_ADMINISTRADOR = "Administrador"
+# Perfis que entram nas telas de colaborador. Qualquer outro perfil é tratado como cliente.
+PERFIS_COLABORADOR = (PERFIL_ADMINISTRADOR, "Colaborador")
 
 
 def pode_ver_painel():
     """
-    Diz se o usuário atual pode ver o painel de gráficos (e o card dele nos menus).
-    Por enquanto basta estar logado. Quando o sistema separar clientes de
-    colaboradores/administradores, é só mudar a regra aqui.
+    Diz se o usuário atual pode ver as telas de colaborador (e o card do painel nos menus).
+    Pode quem está logado com um dos perfis de PERFIS_COLABORADOR.
+    O perfil fica na sessão: é lido no login e relido a cada acesso às áreas restritas.
     """
-    return bool(session.get('logged_in'))
+    return bool(session.get('logged_in')) and session.get('perfil') in PERFIS_COLABORADOR
+
+
+# shortcut: as tentativas de login ficam na memória deste processo (zeram ao reiniciar e não são
+# compartilhadas entre processos); passar para uma tabela se o site rodar em mais de um processo.
+TENTATIVAS_DE_LOGIN = {}
+MAX_TENTATIVAS = 5
+TEMPO_DE_BLOQUEIO = timedelta(minutes=5)
+
+
+def login_bloqueado(usuario):
+    """Diz se o usuário errou a senha MAX_TENTATIVAS vezes nos últimos minutos."""
+    erros, primeiro_erro = TENTATIVAS_DE_LOGIN.get(usuario, (0, None))
+    if primeiro_erro and datetime.now() - primeiro_erro > TEMPO_DE_BLOQUEIO:
+        TENTATIVAS_DE_LOGIN.pop(usuario, None)
+        return False
+    return erros >= MAX_TENTATIVAS
+
+
+def registrar_erro_de_login(usuario):
+    if len(TENTATIVAS_DE_LOGIN) > 10000:  # não deixa a lista crescer sem fim
+        TENTATIVAS_DE_LOGIN.clear()
+    erros, primeiro_erro = TENTATIVAS_DE_LOGIN.get(usuario, (0, None))
+    TENTATIVAS_DE_LOGIN[usuario] = (erros + 1, primeiro_erro or datetime.now())
 
 
 @app.context_processor
@@ -116,13 +192,7 @@ def ferramentas_page():
         description: HTML da vitrine.
     """
     usuario_logado = session.get("user_name")
-    ferramentas_db = ToolModel.get_all(limit=4)
-
-    lista_ferramentas = []
-    if ferramentas_db:
-        for f in ferramentas_db:
-            lista_ferramentas.append(
-                ToolModel.montar_item(f[0], f[1], f[2], f[3]))
+    lista_ferramentas = ToolModel.get_all(limit=4)
 
     return render_template('ferramentas.html', ferramentas=lista_ferramentas, usuario_logado=usuario_logado)
 
@@ -143,13 +213,7 @@ def loja_page():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
-    ferramentas_db = ToolModel.get_all()
-    lista_ferramentas = []
-    if ferramentas_db:
-        for f in ferramentas_db:
-            lista_ferramentas.append(
-                ToolModel.montar_item(f[0], f[1], f[2], f[3]))
-
+    lista_ferramentas = ToolModel.get_all()
     return render_template('loja.html', ferramentas=lista_ferramentas)
 
 
@@ -177,9 +241,6 @@ def detalhe_produto(id):
     ferramenta_selecionada = ToolModel.get_by_id(id)
     if not ferramenta_selecionada:
         abort(404)
-    ferramenta_selecionada = ToolModel.montar_item(
-        ferramenta_selecionada["id"], ferramenta_selecionada["marca"],
-        ferramenta_selecionada["modelo"], ferramenta_selecionada["descricao"])
     em_estoque = ServiceModel.get_unidade_disponivel(id) is not None
     return render_template('detalhes.html', ferramenta=ferramenta_selecionada, em_estoque=em_estoque)
 
@@ -207,19 +268,27 @@ def login():
         description: Página de login.
     """
     if request.method == "POST":
-        usuario = request.form.get("usuario")
-        senha = request.form.get("senha")
+        usuario = request.form.get("usuario") or ""
+        senha = request.form.get("senha") or ""
+        chave = usuario.strip().lower()
+
+        if login_bloqueado(chave):
+            return render_template('index.html', status="Muitas tentativas. Aguarde 5 minutos e tente de novo.")
 
         if UserAccountModel.auth(usuario, senha):
             dados_conta = UserAccountModel.get(usuario)
 
             if dados_conta and "id_person" in dados_conta:
+                session.clear()  # não herda carrinho nem dados de quem usou o navegador antes
                 session['user_code'] = dados_conta["id_person"]
                 session['logged_in'] = True
-                session['user_name'] = usuario
+                session['user_name'] = dados_conta["username"]  # como está no banco, não como foi digitado
+                TENTATIVAS_DE_LOGIN.pop(chave, None)
+                session['perfil'] = UserAccountModel.get_perfil(usuario)
                 flash("Login realizado com sucesso!", "success")
                 return redirect(url_for('ferramentas_page'))
 
+        registrar_erro_de_login(chave)
         return render_template('index.html', status="Usuário ou senha incorretos.")
 
     return render_template('index.html')
@@ -250,8 +319,8 @@ def perfil_page():
         endereco = (request.form.get('endereco') or '').strip()
 
         # O CPF/CNPJ não é alterado por aqui (o campo é só leitura).
-        if not nome or not email:
-            flash("Nome e e-mail são obrigatórios.", "danger")
+        if not all([nome, email, telefone, endereco]):
+            flash("Preencha nome, e-mail, telefone e endereço.", "danger")
         elif PersonModel.update(user_code, name=nome, address=endereco, email=email, phone_number=telefone):
             flash("Dados atualizados com sucesso!", "success")
         else:
@@ -315,6 +384,9 @@ def register():
         if not all([name, code, address, email, phone_number, user, password]):
             return render_template('register.html', status="Preencha todos os campos.")
 
+        if len(password) < 8:
+            return render_template('register.html', status="A senha precisa ter pelo menos 8 caracteres.")
+
         documento_ok = cnpj_valido(code) if user_type == 'pj' else cpf_valido(code)
         if not documento_ok:
             status = "CNPJ inválido." if user_type == 'pj' else "CPF inválido."
@@ -336,7 +408,9 @@ def register():
         hashed_password = jb_bcrypt.generate_password_hash(
             password).decode("utf-8")
 
-        if not UserAccountModel.create(user, hashed_password, person_infos["id"], 1, True):
+        # Todo cadastro feito pelo site entra com o perfil "Cliente"
+        id_perfil = UserAccountModel.id_do_perfil(PERFIL_CLIENTE)
+        if not id_perfil or not UserAccountModel.create(user, hashed_password, person_infos["id"], id_perfil, True):
             # Se a conta falhar, apaga a pessoa para não sobrar cadastro sem login
             PersonModel.delete(person_infos["id"])
             status = "Erro ao criar a conta. Tente novamente."
@@ -347,7 +421,7 @@ def register():
 
 
 # === 8. LOGOUT ===
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 def logout():
     """
     Sair
@@ -387,8 +461,11 @@ def manutencao_page():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        description = request.form.get('descricao')
-        tool_details = request.form.get('detalhes_equipamento')
+        description = (request.form.get('descricao') or '').strip()
+        tool_details = (request.form.get('detalhes_equipamento') or '').strip()
+        if not description or not tool_details:
+            flash("Informe a ferramenta e a descrição do problema.", "danger")
+            return redirect(url_for('manutencao_page'))
         user_id = session.get('user_code')
         sucesso, mensagem = ServiceModel.create_maintenance(
             user_id, description, tool_details)
@@ -398,7 +475,7 @@ def manutencao_page():
             flash(mensagem, "danger")
         return redirect(url_for('perfil_page'))
 
-    return render_template('manutencao.html')
+    return render_template('manutencao.html', resumo=ServiceModel.get_resumo_manutencoes(session.get('user_code')))
 
 
 # === 10. CARRINHO ===
@@ -411,11 +488,9 @@ def itens_do_carrinho():
     """
     itens = []
     for entrada in session.get('carrinho', []):
-        ferramenta = ToolModel.get_by_id(entrada["id"])
-        if not ferramenta:
+        item = ToolModel.get_by_id(entrada["id"])
+        if not item:
             continue
-        item = ToolModel.montar_item(
-            ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])
         item["dias"] = entrada["dias"]
         item["valor"] = round(item["preco"] * (entrada["dias"] or 1), 2)
         itens.append(item)
@@ -464,13 +539,11 @@ def carrinho_adicionar(ferramenta_id):
     """
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    ferramenta = ToolModel.get_by_id(ferramenta_id)
-    if not ferramenta:
+    item = ToolModel.get_by_id(ferramenta_id)
+    if not item:
         flash("Ferramenta não encontrada.", "danger")
         return redirect(url_for('loja_page'))
 
-    item = ToolModel.montar_item(
-        ferramenta["id"], ferramenta["marca"], ferramenta["modelo"])
     dias = None
     if item["tipo"].lower() == 'alugar':
         # Quantidade de dias: entre 1 e 30. Se vier algo inválido, considera 1 dia.
@@ -575,10 +648,31 @@ def painel_colaborador():
       200:
         description: Traz lista de serviços pendentes.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
-    return render_template('painel_colaborador.html', servicos=servicos_pendentes)
+    return render_template('painel_colaborador.html', servicos=servicos_pendentes,
+                           alugueis=ColaboradorModel.get_alugueis_em_aberto(),
+                           respondidos=ColaboradorModel.get_orcamentos_respondidos())
+
+
+@app.route('/colaborador/devolucao/<int:id_servico>', methods=['POST'])
+def registrar_devolucao(id_servico):
+    """
+    Registrar Devolução
+    Marca o aluguel como devolvido e devolve a unidade ao estoque.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_servico
+        in: path
+        type: integer
+    responses:
+      302:
+        description: Redireciona.
+    """
+    sucesso, mensagem = ColaboradorModel.registrar_devolucao(id_servico)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('painel_colaborador'))
 
 
 # === 13. ATUALIZAR ORÇAMENTO ===
@@ -610,31 +704,40 @@ def atualizar_orcamento(id_servico):
       302:
         description: Redireciona.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    id_colaborador = session.get('user_code')
     valor = request.form.get('valor_servico')
     status = request.form.get('status_servico')
     detalhes_dano = request.form.get('detalhes_dano')
-    imagem = request.files.get('imagem_dano')
-    caminho_relativo = None
-    if imagem and imagem.filename != '':
-        nome_arquivo = secure_filename(imagem.filename)
-        # Só imagem: a pasta de uploads é pública, um .html aqui viraria uma página do site
-        if os.path.splitext(nome_arquivo)[1].lower() not in ('.png', '.jpg', '.jpeg', '.webp'):
-            flash("Envie a foto em PNG, JPG ou WEBP.", "danger")
-            return redirect(url_for('painel_colaborador'))
-        nome_final = f"manutencao_dano_{id_servico}_{nome_arquivo}"
-        caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER'], nome_final)
-        imagem.save(caminho_salvar)
-        caminho_relativo = f"uploads/equipamentos/{nome_final}"
+    caminho_relativo = salvar_imagem(request.files.get('imagem_dano'), f"manutencao_dano_{id_servico}")
+    if caminho_relativo is False:
+        flash("Envie a foto em PNG, JPG ou WEBP.", "danger")
+        return redirect(url_for('painel_colaborador'))
     sucesso, mensagem = ColaboradorModel.atualizar_orcamento(
-        id_servico, id_colaborador, valor, status, caminho_relativo, detalhes_dano
+        id_servico, valor, status, caminho_relativo, detalhes_dano
     )
-    if sucesso:
-        flash(mensagem, "success")
-    else:
-        flash(mensagem, "danger")
+    if not sucesso:
+        apagar_imagem(caminho_relativo)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('painel_colaborador'))
+
+
+@app.route('/colaborador/servico/<int:id_servico>/fechar', methods=['POST'])
+def fechar_servico(id_servico):
+    """
+    Fechar Manutenção
+    Depois da resposta do cliente: orçamento aprovado vira "Concluído", reprovado vira "Encerrado".
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_servico
+        in: path
+        type: integer
+    responses:
+      302:
+        description: Redireciona.
+    """
+    sucesso, mensagem = ColaboradorModel.fechar_servico(id_servico)
+    flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 
 
@@ -696,14 +799,20 @@ def gerenciar_ferramentas():
       200:
         description: Retorna painel.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     if request.method == 'POST':
         marca = request.form.get('marca')
         modelo = request.form.get('modelo')
         descricao = request.form.get('descricao')
         id_tipo = request.form.get('tipo_ferramenta')
-        sucesso, mensagem = ToolModel.create(marca, modelo, descricao, id_tipo)
+        imagem = salvar_imagem(request.files.get('imagem'), "ferramenta")
+        if imagem is False:
+            flash("Envie a foto em PNG, JPG ou WEBP.", "danger")
+            return redirect(url_for('gerenciar_ferramentas'))
+        sucesso, mensagem = ToolModel.create(
+            marca, modelo, descricao, id_tipo,
+            request.form.get('preco'), request.form.get('tipo_oferta'), imagem)
+        if not sucesso:
+            apagar_imagem(imagem)
         if sucesso:
             flash(mensagem, "success")
         else:
@@ -713,42 +822,6 @@ def gerenciar_ferramentas():
     todas_ferramentas = ToolModel.get_all()
     filiais = AdminModel.get_filiais()
     return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais)
-
-
-# === 16. ADICIONAR PEÇAS ===
-@app.route('/colaborador/orcamento/<int:id_servico>/peca', methods=['POST'])
-def adicionar_peca_orcamento(id_servico):
-    """
-    Adicionar Peças na Manutenção
-    Vincula peças gastas ao conserto, dando baixa no estoque de peças.
-    ---
-    tags:
-      - Gestão / Colaborador
-    parameters:
-      - name: id_servico
-        in: path
-        type: integer
-      - name: id_estoque_peca
-        in: formData
-        type: integer
-      - name: quantidade
-        in: formData
-        type: integer
-    responses:
-      302:
-        description: Redireciona.
-    """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    id_estoque_peca = request.form.get('id_estoque_peca')
-    quantidade = request.form.get('quantidade', 1)
-    sucesso, mensagem = ColaboradorModel.adicionar_peca_manutencao(
-        id_servico, id_estoque_peca, quantidade)
-    if sucesso:
-        flash(mensagem, "success")
-    else:
-        flash(mensagem, "danger")
-    return redirect(url_for('painel_colaborador'))
 
 
 # === 17. CAIXA ===
@@ -764,8 +837,6 @@ def relatorio_caixa():
       200:
         description: Relatório de caixa gerado.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     dados_caixa = ColaboradorModel.get_relatorio_caixa()
     return render_template('caixa.html', caixa=dados_caixa)
 
@@ -783,8 +854,6 @@ def admin_perfis():
       200:
         description: OK.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     if request.method == 'POST':
         perfil = request.form.get('perfil')
         descricao = request.form.get('descricao')
@@ -792,7 +861,40 @@ def admin_perfis():
         flash(msg, "success" if sucesso else "danger")
         return redirect(url_for('admin_perfis'))
     perfis = AdminModel.get_perfis()
-    return render_template('admin_perfis.html', perfis=perfis)
+    return render_template('admin_perfis.html', perfis=perfis, usuarios=UserAccountModel.listar())
+
+
+@app.route('/admin/usuarios/<int:id_usuario>/perfil', methods=['POST'])
+def admin_mudar_perfil(id_usuario):
+    """
+    Trocar o Perfil de um Usuário
+    Só o Administrador pode, e nunca no próprio usuário (para não ficar sem administrador).
+    ---
+    tags:
+      - Administração Base
+    parameters:
+      - name: id_usuario
+        in: path
+        type: integer
+      - name: id_perfil
+        in: formData
+        type: integer
+    responses:
+      302:
+        description: Volta para a tela de perfis.
+    """
+    usuario = next((u for u in UserAccountModel.listar() if u["id"] == id_usuario), None)
+    if session.get('perfil') != PERFIL_ADMINISTRADOR:
+        flash("Só o Administrador pode trocar o perfil de um usuário.", "danger")
+    elif not usuario:
+        flash("Usuário não encontrado.", "danger")
+    elif usuario["usuario"] == session.get('user_name'):
+        flash("Você não pode trocar o seu próprio perfil.", "danger")
+    elif UserAccountModel.mudar_perfil(id_usuario, request.form.get('id_perfil')):
+        flash(f"Perfil de {usuario['usuario']} atualizado. Vale a partir do próximo login dele.", "success")
+    else:
+        flash("Não foi possível trocar o perfil.", "danger")
+    return redirect(url_for('admin_perfis'))
 
 
 # === 19. FILIAIS ===
@@ -808,8 +910,6 @@ def admin_filiais():
       200:
         description: OK.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     if request.method == 'POST':
         codigo = request.form.get('codigo_filial')
         nome = request.form.get('nome')
@@ -834,8 +934,6 @@ def admin_unidades():
       302:
         description: OK.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
     numero_serie = request.form.get('numero_serie')
     id_ferramenta = request.form.get('id_ferramenta')
     id_filial = request.form.get('id_filial')
@@ -858,11 +956,6 @@ def painel_graficos():
       200:
         description: HTML do painel com gráficos.
     """
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    if not pode_ver_painel():
-        flash("Você não tem permissão para ver o painel.", "danger")
-        return redirect(url_for('ferramentas_page'))
     dados = PainelModel.get_resumo_mensal()
     return render_template('painel_graficos.html', dados=dados)
 

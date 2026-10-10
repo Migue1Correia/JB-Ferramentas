@@ -1,84 +1,80 @@
 from .db import db_execute
 
+# Colunas na mesma ordem em que o montar_item lê a linha
+COLUNAS = "id, marca, modelo, descricao, preco, tipo_oferta, imagem"
 
-# Preço, tipo de oferta e foto dos produtos de exemplo (cadastrados pelo cadastrar_exemplos.py).
-# A tabela "ferramentas" ainda não tem colunas para isso, então por enquanto esses dados
-# ficam aqui, ligados pelo modelo da ferramenta. Quando o banco ganhar essas colunas,
-# este dicionário pode ser apagado.
-CATALOGO_EXEMPLOS = {
-    "Parafusadeira e Furadeira a Bateria 20V": {"preco": 459.90, "tipo": "Comprar", "imagem": "img/produto2.png"},
-    "Parafusadeira e Furadeira 12V": {"preco": 329.90, "tipo": "Comprar", "imagem": "img/produto3.png"},
-    "Furadeira Parafusadeira 3/8 21V com Kit": {"preco": 361.00, "tipo": "Comprar", "imagem": "img/produto.png"},
-    "Furadeira de Impacto 750W": {"preco": 35.00, "tipo": "Alugar", "imagem": "img/produto.png"},
-    "Esmerilhadeira Angular 115 mm 710W": {"preco": 30.00, "tipo": "Alugar", "imagem": "img/produto4.png"},
-}
+# Foto usada quando a ferramenta não tem imagem cadastrada
+IMAGEM_PADRAO = "img/produto.png"
 
-# Usado para as ferramentas que não estão no catálogo de exemplos
-OFERTA_PADRAO = {"preco": 150.00, "tipo": "Comprar/Alugar", "imagem": "img/produto.png"}
+TIPOS_OFERTA = ("Comprar", "Alugar")
 
 
 class ToolModel:
 
     @staticmethod
-    def montar_item(tool_id, marca, modelo, descricao=None):
+    def montar_item(linha):
         """
-        Junta os dados da ferramenta (vindos do banco) com preço, tipo de oferta e foto,
-        no formato que as telas da loja usam.
+        Transforma uma linha da tabela ferramentas no formato que as telas usam.
+        No aluguel, "preco" é o valor da diária.
         """
-        oferta = CATALOGO_EXEMPLOS.get(modelo, OFERTA_PADRAO)
+        tool_id, marca, modelo, descricao, preco, tipo, imagem = linha
         return {
             "id": tool_id,
+            "marca": marca,
+            "modelo": modelo,
             "nome": f"{marca} {modelo}",
             "descricao": descricao,
-            "preco": oferta["preco"],
-            "tipo": oferta["tipo"],
-            "imagem": oferta["imagem"],
+            "preco": float(preco),
+            "tipo": tipo,
+            "imagem": imagem or IMAGEM_PADRAO,
         }
 
     @staticmethod
     def get_all(limit=None):
-        arg = "SELECT * FROM ferramentas"
+        arg = f"SELECT {COLUNAS} FROM ferramentas ORDER BY id"
         if limit:
-            arg += f" LIMIT {limit}"
+            arg += f" LIMIT {int(limit)}"
 
         res = db_execute(arg, fetch_type="all")
         if not res[0]:
             print(res[1])
-            return None
-        return res[1]
+            return []
+        return [ToolModel.montar_item(linha) for linha in res[1]]
 
     @staticmethod
     def get_by_id(tool_id):
         if not tool_id:
             return None
 
-        arg = "SELECT * FROM ferramentas WHERE id=%s"
+        arg = f"SELECT {COLUNAS} FROM ferramentas WHERE id=%s"
         res = db_execute(arg, tool_id, fetch_type="one")
 
         if not res[0] or res[1] is None:
             print(res[1])
             return None
 
-        return {
-            "id": res[1][0],
-            "marca": res[1][1],
-            "modelo": res[1][2],
-            "descricao": res[1][3],
-            "fk_ferramenta_tipo_id": res[1][4],
-            "criando_em": res[1][5],
-            "atualizado_em": res[1][6]
-        }
+        return ToolModel.montar_item(res[1])
 
     @staticmethod
-    def create(marca, modelo, descricao, id_tipo):
+    def create(marca, modelo, descricao, id_tipo, preco, tipo_oferta, imagem=None):
         if not marca or not modelo or not id_tipo:
             return False, "Preencha os campos obrigatórios (Marca, Modelo e Tipo)."
 
+        try:
+            preco = float(preco)
+        except (TypeError, ValueError):
+            preco = -1
+        if preco < 0:
+            return False, "Informe um preço válido."
+
+        if tipo_oferta not in TIPOS_OFERTA:
+            return False, "Escolha se a ferramenta é para comprar ou alugar."
+
         arg = """
-            INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo) 
-            VALUES (%s, %s, %s, %s);
+            INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo, preco, tipo_oferta, imagem)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
         """
-        res = db_execute(arg, marca, modelo, descricao, id_tipo)
+        res = db_execute(arg, marca, modelo, descricao, id_tipo, preco, tipo_oferta, imagem)
 
         if not res[0]:
             print(res[1])

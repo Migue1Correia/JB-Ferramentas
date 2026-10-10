@@ -1,11 +1,12 @@
 """Testes unitários: cada função é testada sozinha, sem banco de dados."""
 import unittest
 from datetime import date
+from decimal import Decimal
 from unittest.mock import patch
 
 import main
 from model.painel import PainelModel
-from model.toolmodel import ToolModel, CATALOGO_EXEMPLOS, OFERTA_PADRAO
+from model.toolmodel import ToolModel, IMAGEM_PADRAO
 from validacao import somente_numeros, cpf_valido, cnpj_valido
 
 
@@ -48,18 +49,34 @@ class TesteMoeda(unittest.TestCase):
 
 class TesteCatalogo(unittest.TestCase):
 
-    def test_ferramenta_do_catalogo_usa_o_preco_dela(self):
-        modelo = "Furadeira de Impacto 750W"
-        item = ToolModel.montar_item(7, "JB Pro", modelo, "descrição")
+    def test_linha_do_banco_vira_item_da_loja(self):
+        item = ToolModel.montar_item((7, "JB Pro", "Furadeira X", "descrição", Decimal("35.00"), "Alugar", "img/x.png"))
         self.assertEqual(item["id"], 7)
-        self.assertEqual(item["nome"], "JB Pro " + modelo)
-        self.assertEqual(item["preco"], CATALOGO_EXEMPLOS[modelo]["preco"])
+        self.assertEqual(item["nome"], "JB Pro Furadeira X")
+        self.assertEqual(item["preco"], 35.0)
         self.assertEqual(item["tipo"], "Alugar")
+        self.assertEqual(item["imagem"], "img/x.png")
 
-    def test_ferramenta_fora_do_catalogo_usa_o_padrao(self):
-        item = ToolModel.montar_item(1, "Marca", "Modelo que não existe")
-        self.assertEqual(item["preco"], OFERTA_PADRAO["preco"])
-        self.assertEqual(item["tipo"], OFERTA_PADRAO["tipo"])
+    def test_ferramenta_sem_foto_usa_a_imagem_padrao(self):
+        item = ToolModel.montar_item((1, "Marca", "Modelo", None, Decimal("10"), "Comprar", None))
+        self.assertEqual(item["imagem"], IMAGEM_PADRAO)
+
+    def test_cadastro_recusa_preco_ou_oferta_invalidos(self):
+        # Nenhum destes chega ao banco: a validação barra antes
+        self.assertEqual(ToolModel.create("M", "X", "", 1, "abc", "Comprar")[0], False)
+        self.assertEqual(ToolModel.create("M", "X", "", 1, "-5", "Comprar")[0], False)
+        self.assertEqual(ToolModel.create("M", "X", "", 1, "10", "Trocar")[0], False)
+
+
+class TesteCriarAdmin(unittest.TestCase):
+
+    def test_recusa_usuario_vazio_e_senha_curta(self):
+        # A validação barra antes de chegar ao banco
+        from criar_admin import criar_admin
+        with self.assertRaises(ValueError):
+            criar_admin("", "senha-grande-o-bastante")
+        with self.assertRaises(ValueError):
+            criar_admin("chefe", "1234567")
 
 
 class TestePainel(unittest.TestCase):

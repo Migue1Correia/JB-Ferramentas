@@ -360,6 +360,12 @@ body {
     color: #ff6600;
 }
 
+/* Link "Sair" ao lado do ícone do perfil */
+.header-top-bar .user-icon-top { display: flex; align-items: center; }
+.header-top-bar .user-icon-top form { display: flex; margin: 0; }
+.header-top-bar .link-sair { background: none; border: none; color: #ffffff; cursor: pointer; font-family: inherit; font-size: 1rem; font-weight: 700; margin-left: 16px; }
+.header-top-bar .link-sair:hover { color: #ff6b6b; }
+
 /* --- CONTEÚDOS PRINCIPAIS --- */
 .dashboard-content, .catalog-main-content, .oficina-main-content, .profile-container {
     max-width: 1200px;
@@ -582,6 +588,9 @@ body {
 .tag-comprar { background: rgba(52, 152, 219, 0.15); color: #3498db; }
 .tag-alugar { background: rgba(241, 194, 15, 0.15); color: #f1c40f; }
 .tag-manutencao { background: rgba(25, 158, 112, 0.15); color: #2ecc71; }
+/* Botão secundário dos cards de produto: só contorno, para não disputar com o Comprar */
+.product-card .btn-carrinho { background: transparent; border: 1px solid rgba(255, 255, 255, 0.45); color: #ffffff; }
+.product-card .btn-carrinho:hover { background: rgba(255, 255, 255, 0.08); }
 .btn-remover { background: none; border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
 .btn-remover:hover { border-color: #ff0000; color: #ff6b6b; }
 .status-tag { padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
@@ -631,22 +640,4 @@ body {
     .logo-box h1 { font-size: 2.8rem; }
     .company-subname { font-size: 1.3rem; }
     .form-actions { flex-direction: column; }
-}
-
-/* ==========================================================================
-   ACESSIBILIDADE
-   ========================================================================== */
-/* Contorno visível em quem está com o foco do teclado (Tab) */
-a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-    outline: 2px solid #ffffff !important;
-    outline-offset: 2px;
-}
-
-/* Link "Pular para o conteúdo": fica escondido até receber o foco do teclado */
-.pular-conteudo { position: absolute; left: -9999px; top: 10px; z-index: 1000; background: #ffffff; color: #000000; padding: 10px 16px; border-radius: 6px; font-weight: 700; }
-.pular-conteudo:focus { left: 10px; }
-
-/* Quem pediu menos animação no sistema não vê animações nem transições */
-@media (prefers-reduced-motion: reduce) {
-    * { animation: none !important; transition: none !important; }
 }

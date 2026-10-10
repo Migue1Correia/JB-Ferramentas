@@ -3,30 +3,7 @@
     <div class="bg-container-perfil"></div>
 
     <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
-            </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" style="color: inherit;" aria-label="Meu perfil"><i class="fas fa-user-circle" aria-hidden="true"></i></a>
-            </div>
-        </div>
-
-        <section class="logo-section">
-            <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-                <div class="logo-wrapper">
-                    <div class="logo-box">
-                        <h1>JB</h1>
-                    </div>
-                    <h2 class="company-subname">FERRAMENTAS</h2>
-                    <div class="tool-icons-row">
-                        <i class="fas fa-screwdriver" aria-hidden="true"></i>
-                        <i class="fas fa-wrench" aria-hidden="true"></i>
-                        <i class="fas fa-hammer" aria-hidden="true"></i>
-                    </div>
-                </div>
-            </a>
-        </section>
+        {% include '_topo.html' %}
     </header>
 
     <nav class="dashboard-content" style="padding-bottom: 0;" aria-label="Menu do colaborador">
@@ -51,6 +28,32 @@
                         <div>
                             <h3>Painel</h3>
                             <p>Gráficos de vendas, aluguéis e manutenções.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('painel_colaborador') }}">
+                <div class="card-item card-orange">
+                    <div class="card-info">
+                        <i class="fas fa-screwdriver-wrench icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Serviços</h3>
+                            <p>Manutenções pendentes e orçamentos.</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('relatorio_caixa') }}">
+                <div class="card-item card-glass">
+                    <div class="card-info">
+                        <i class="fas fa-cash-register icon-main" aria-hidden="true"></i>
+                        <div>
+                            <h3>Caixa</h3>
+                            <p>Valores de serviços aprovados e concluídos.</p>
                         </div>
                     </div>
                     <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>

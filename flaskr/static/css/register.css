@@ -333,21 +333,3 @@ body{
     border-color: #ff6b6b;
     outline-color: #ff6b6b;
 }
-
-/* ==========================================================================
-   ACESSIBILIDADE
-   ========================================================================== */
-/* Contorno visível em quem está com o foco do teclado (Tab) */
-a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-    outline: 2px solid #ffffff !important;
-    outline-offset: 2px;
-}
-
-/* Link "Pular para o conteúdo": fica escondido até receber o foco do teclado */
-.pular-conteudo { position: absolute; left: -9999px; top: 10px; z-index: 1000; background: #ffffff; color: #000000; padding: 10px 16px; border-radius: 6px; font-weight: 700; }
-.pular-conteudo:focus { left: 10px; }
-
-/* Quem pediu menos animação no sistema não vê animações nem transições */
-@media (prefers-reduced-motion: reduce) {
-    * { animation: none !important; transition: none !important; }
-}

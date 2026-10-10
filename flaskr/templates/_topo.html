@@ -1,0 +1,31 @@
+{# Barra do topo (Voltar, perfil, Sair) e logo. Fica dentro do <header class="dashboard-header"> de cada tela. #}
+        <div class="header-top-bar">
+            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
+            </a>
+            <div class="user-icon-top">
+                <a href="{{ url_for('perfil_page') }}" aria-label="Meu perfil" style="color: inherit;"><i class="fas fa-user-circle" aria-hidden="true"></i></a>
+                {% if session.logged_in %}
+                <form method="POST" action="{{ url_for('logout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="link-sair"><i class="fas fa-right-from-bracket" aria-hidden="true"></i> Sair</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <section class="logo-section">
+            <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
+                <div class="logo-wrapper">
+                    <div class="logo-box">
+                        <h1>JB</h1>
+                    </div>
+                    <h2 class="company-subname">FERRAMENTAS</h2>
+                    <div class="tool-icons-row">
+                        <i class="fas fa-screwdriver" aria-hidden="true"></i>
+                        <i class="fas fa-wrench" aria-hidden="true"></i>
+                        <i class="fas fa-hammer" aria-hidden="true"></i>
+                    </div>
+                </div>
+            </a>
+        </section>

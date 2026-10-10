@@ -12,7 +12,7 @@ class ServiceModel:
         # Os LEFT JOIN buscam o nome da ferramenta do pedido (manutenção não tem ferramenta vinculada).
         arg = """
             SELECT s.id, s.servico_solicitado, s.valor_servico, s.data_abertura,
-                   s.titulo_servico, f.marca, f.modelo
+                   s.titulo_servico, f.marca, f.modelo, s.status_servico
             FROM servicos s
             LEFT JOIN servico_ferramentas sf ON sf.id_servico = s.id
             LEFT JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
@@ -26,13 +26,14 @@ class ServiceModel:
             return []
 
         historico = []
-        for id_servico, tipo, valor, data, titulo, marca, modelo in res[1]:
+        for id_servico, tipo, valor, data, titulo, marca, modelo, status in res[1]:
             historico.append({
                 "id": id_servico,
                 "tipo": tipo,
                 "valor": valor,
                 "data": data,
                 "descricao": f"{marca} {modelo}" if marca else titulo,
+                "status": status,
             })
         return historico
 
@@ -65,13 +66,16 @@ class ServiceModel:
                 return None
 
             c.execute("""
-                INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, valor_servico, id_pessoa_solicitante, id_pessoa_abertura)
-                VALUES (%s, %s, %s, %s, %s, %s);
+                INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, valor_servico, status_servico, id_pessoa_solicitante, id_pessoa_abertura)
+                VALUES (%s, %s, %s, %s, 'Concluído', %s, %s);
             """, (tipo, titulo, descricao, valor_total, user_id, user_id))
             id_servico = c.lastrowid
 
             if dias:
-                c.execute("INSERT INTO alugueis (id_servico, data_devolucao) VALUES (%s, DATE_ADD(NOW(), INTERVAL %s DAY));", (id_servico, dias))
+                # valor_diario guarda a diária cobrada, mesmo que o preço da ferramenta mude depois
+                diaria = round(float(valor_total) / int(dias), 2)
+                c.execute("INSERT INTO alugueis (id_servico, data_devolucao, valor_diario) VALUES (%s, DATE_ADD(NOW(), INTERVAL %s DAY), %s);",
+                          (id_servico, dias, diaria))
 
             c.execute("INSERT INTO servico_ferramentas (id_servico, id_unidade_ferramenta) VALUES (%s, %s);", (id_servico, unidade[0]))
             c.execute("UPDATE unidade_ferramentas SET status=%s WHERE id=%s;", (novo_status, unidade[0]))
@@ -141,6 +145,22 @@ class ServiceModel:
         return True, "Manutenção solicitada com sucesso!"
 
     @staticmethod
+    def get_resumo_manutencoes(user_id):
+        """
+        Conta as manutenções do cliente por status, para os avisos da tela de manutenção.
+        :return: Dicionário {status: quantidade}. Ex.: {"Aberto": 1, "Concluído": 2}
+        """
+        arg = """
+            SELECT status_servico, COUNT(*) FROM servicos
+            WHERE id_pessoa_solicitante = %s AND servico_solicitado = 'manutencao'
+            GROUP BY status_servico;
+        """
+        res = db_execute(arg, user_id, fetch_type="all")
+        if not res[0] or res[1] is None:
+            return {}
+        return dict(res[1])
+
+    @staticmethod
     def responder_orcamento(id_servico, id_cliente, resposta):
         """
         O cliente aprova ou reprova o orçamento feito pelo colaborador.
@@ -158,5 +178,7 @@ class ServiceModel:
 
         if not res[0]:
             return False, "Erro ao processar a resposta do orçamento."
+        if not res[1]:  # nenhuma linha mudou: o pedido não é deste cliente ou já foi respondido
+            return False, "Esse orçamento não está aguardando a sua resposta."
 
         return True, f"Orçamento {resposta.lower()} com sucesso!"

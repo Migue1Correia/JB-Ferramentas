@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Perfil do Usuário</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -12,30 +13,7 @@
     <div class="bg-container-perfil"></div>
 
     <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left" aria-hidden="true"></i>Voltar
-            </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" aria-label="Meu perfil" style="color: inherit;"><i class="fas fa-user-circle" aria-hidden="true"></i></a>
-            </div>
-        </div>
-
-       <section class="logo-section">
-    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-        <div class="logo-wrapper">
-            <div class="logo-box">
-                <h1>JB</h1>
-            </div>
-            <h2 class="company-subname">FERRAMENTAS</h2>
-            <div class="tool-icons-row">
-                <i class="fas fa-screwdriver" aria-hidden="true"></i>
-                <i class="fas fa-wrench" aria-hidden="true"></i>
-                <i class="fas fa-hammer" aria-hidden="true"></i>
-            </div>
-        </div>
-    </a>
-</section>
+        {% include '_topo.html' %}
     </header>
 
     <main id="conteudo" class="profile-container">
@@ -134,7 +112,7 @@
                         <label for="telefone">Telefone / Celular</label>
                         <div class="input-wrapper">
                             <i class="fas fa-phone" aria-hidden="true"></i>
-                            <input type="text" id="telefone" name="telefone" value="{{ user_infos.telefone if user_infos.telefone else '' }}">
+                            <input type="text" id="telefone" name="telefone" value="{{ user_infos.telefone if user_infos.telefone else '' }}" required>
                         </div>
                     </div>
 
@@ -142,7 +120,7 @@
                         <label for="endereco">Endereço Residencial</label>
                         <div class="input-wrapper">
                             <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
-                            <input type="text" id="endereco" name="endereco" value="{{ user_infos.endereco if user_infos.endereco else '' }}">
+                            <input type="text" id="endereco" name="endereco" value="{{ user_infos.endereco if user_infos.endereco else '' }}" required>
                         </div>
                     </div>
                 </div>
@@ -151,9 +129,9 @@
                     <button type="submit" class="btn-save">
                         <i class="fas fa-save" aria-hidden="true"></i> Salvar Alterações
                     </button>
-                    <a href="{{ url_for('logout') }}" class="btn-logout" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background-color: #dc3545; color: #fff; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-left: 10px;">
+                    <button type="submit" formaction="{{ url_for('logout') }}" formnovalidate class="btn-logout" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background-color: #dc3545; color: #fff; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-left: 10px; border: none; cursor: pointer; font-size: inherit;">
                         <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sair da Conta
-                    </a>
+                    </button>
                 </div>
             </form>
         </section>
@@ -174,6 +152,7 @@
                                 <th scope="col">Data</th>
                                 <th scope="col">Operação</th>
                                 <th scope="col">Valor</th>
+                                <th scope="col">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -192,6 +171,19 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ pedido.valor|moeda }}</td>
+                                <td>
+                                    {{ pedido.status }}
+                                    {% if pedido.status == 'Aguardando Aprovação' %}
+                                    <form method="POST" action="{{ url_for('responder_orcamento', id_servico=pedido.id, resposta='Aprovado') }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn-remover">Aprovar</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('responder_orcamento', id_servico=pedido.id, resposta='Reprovado') }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn-remover">Reprovar</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
