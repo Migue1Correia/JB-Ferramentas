@@ -4,6 +4,10 @@ from .db import db_execute, jb_solucoes_db
 PAGAMENTO_RETIRADA = "Na retirada"
 PAGAMENTO_PENDENTE = "Online (pendente)"
 PAGAMENTO_PAGO = "Pago online"
+PAGAMENTO_PAGO_RETIRADA = "Pago na retirada"
+# A coluna servicos.pago_em guarda quando o dinheiro entrou. É por ela que o Caixa e o
+# Painel de gráficos sabem o que já foi recebido: venda e aluguel na hora do pedido,
+# manutenção quando o cliente paga pelo site ou na retirada.
 
 
 class ServiceModel:
@@ -41,6 +45,7 @@ class ServiceModel:
                 "descricao": f"{marca} {modelo}" if marca else titulo,
                 "status": status,
                 "pagamento": pagamento,
+                "pagamento_pendente": pagamento == PAGAMENTO_PENDENTE,
             })
         return historico
 
@@ -73,8 +78,8 @@ class ServiceModel:
                 return None
 
             c.execute("""
-                INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, valor_servico, status_servico, id_pessoa_solicitante, id_pessoa_abertura)
-                VALUES (%s, %s, %s, %s, 'Concluído', %s, %s);
+                INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, valor_servico, status_servico, pago_em, id_pessoa_solicitante, id_pessoa_abertura)
+                VALUES (%s, %s, %s, %s, 'Concluído', NOW(), %s, %s);
             """, (tipo, titulo, descricao, valor_total, user_id, user_id))
             id_servico = c.lastrowid
 
@@ -188,7 +193,7 @@ class ServiceModel:
         Marca como paga uma manutenção aprovada que o cliente escolheu pagar pelo site.
         """
         arg = """
-            UPDATE servicos SET pagamento=%s
+            UPDATE servicos SET pagamento=%s, pago_em=NOW()
             WHERE id=%s AND id_pessoa_solicitante=%s AND servico_solicitado='manutencao' AND pagamento=%s;
         """
         res = db_execute(arg, PAGAMENTO_PAGO, id_servico, id_cliente, PAGAMENTO_PENDENTE)

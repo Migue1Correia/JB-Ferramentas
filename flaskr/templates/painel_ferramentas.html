@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Catálogo de ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.5">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -67,6 +67,7 @@
             {% endif %}
         </section>
 
+        {% if eh_administrador %}
         <section class="profile-card">
             <div class="card-header">
                 <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
@@ -105,6 +106,7 @@
             <p style="color: #aaaaaa;">Cadastre pelo menos uma ferramenta e uma filial para lançar unidades em estoque.</p>
             {% endif %}
         </section>
+        {% endif %}
 
         <section class="profile-card">
             <div class="card-header">

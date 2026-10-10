@@ -149,8 +149,7 @@ class TesteAcesso(TesteBase):
         card = '<a href="{}" style="text-decoration: none; color: inherit; display: block; flex: 1;">'
         for rota in ("/ferramentas", "/loja", "/perfil", "/manutencao"):
             self.assertIn(card.format("/colaborador/painel"), self.texto(self.cliente.get(rota)), rota)
-        self.definir_perfil("Cliente")
-        self.cliente.get("/colaborador/painel")  # o acesso negado atualiza o perfil guardado na sessão
+        self.definir_perfil("Cliente")  # o menu muda na página seguinte, sem precisar sair
         for rota in ("/ferramentas", "/loja", "/perfil", "/manutencao"):
             self.assertIn(card.format("/manutencao"), self.texto(self.cliente.get(rota)), rota)
 
@@ -171,11 +170,60 @@ class TesteAcesso(TesteBase):
         for caminho in caminhos:
             os.remove(os.path.join(app.static_folder, caminho))
 
-    def test_foto_maior_que_5_mb_e_recusada(self):
-        resposta = self.cliente.post("/colaborador/ferramentas", content_type="multipart/form-data",
-                                     data={"imagem": (io.BytesIO(b"x" * (5 * 1024 * 1024 + 1)), "grande.png")})
+    def test_foto_maior_que_o_limite_e_recusada(self):
+        limite = app.config["MAX_CONTENT_LENGTH"]
+        self.assertEqual(limite, 5 * 1024 * 1024)
+        # limite baixado só neste teste, para não precisar enviar 5 MB de verdade
+        app.config["MAX_CONTENT_LENGTH"] = 1024
+        try:
+            resposta = self.cliente.post("/colaborador/ferramentas", content_type="multipart/form-data",
+                                         data={"imagem": (io.BytesIO(b"x" * 2048), "grande.png")})
+        finally:
+            app.config["MAX_CONTENT_LENGTH"] = limite
         self.assertEqual(resposta.status_code, 413)
-        resposta.close()
+
+    def test_colaborador_nao_entra_nas_telas_do_administrador(self):
+        self.definir_perfil("Colaborador")
+        for rota in ("/admin/perfis", "/admin/filiais"):
+            self.assertEqual(self.cliente.get(rota).status_code, 302, rota)
+        self.cliente.post("/admin/filiais", data={"codigo_filial": "XX", "nome": "Invasão", "endereco": "x"})
+        self.cliente.post("/admin/perfis", data={"perfil": "Gerente Geral"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM filiais WHERE codigo_filial='XX';")[0][0], 0)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM perfis WHERE perfil='Gerente Geral';")[0][0], 0)
+        # nem vê os cards Filiais e Perfis, nem o cadastro de unidades em estoque
+        catalogo = self.texto(self.cliente.get("/colaborador/ferramentas"))
+        for trecho in ("/admin/filiais", "/admin/perfis", "Cadastrar unidade em estoque"):
+            self.assertNotIn(trecho, catalogo)
+
+    def test_conta_desativada_e_deslogada_na_pagina_seguinte(self):
+        self.assertEqual(self.cliente.get("/loja").status_code, 200)
+        self.sql("UPDATE usuarios SET ativo=0 WHERE nome_usuario='teste';")
+        resposta = self.cliente.get("/loja")
+        self.assertIn("/login", resposta.headers["Location"])
+        self.assertIn("/login", self.cliente.get("/colaborador/financeiro").headers["Location"])
+
+    def test_criar_admin_em_banco_sem_perfis(self):
+        from criar_admin import criar_admin
+        # volta o banco ao normal depois (o resto dos testes conta com o perfil 1 = Administrador)
+        self.addCleanup(self.sql, "INSERT INTO perfis (id, perfil) VALUES (1, 'Administrador');")
+        self.addCleanup(self.sql, "DELETE FROM perfis;")
+        self.sql("DELETE FROM usuarios;")
+        self.sql("DELETE FROM perfis;")
+
+        with app.app_context():
+            criar_admin("chefe", "senha-forte-1")
+        self.assertEqual({p for (p,) in self.sql("SELECT perfil FROM perfis;")}, {"Administrador", "Colaborador", "Cliente"})
+        visitante = app.test_client()
+        visitante.post("/login", data={"usuario": "chefe", "senha": "senha-forte-1"})
+        self.assertEqual(visitante.get("/admin/perfis").status_code, 200)
+
+        # usuário que já existe é promovido, com a senha nova
+        self.sql("INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo) VALUES ('joao', 'x', 1, (SELECT id FROM perfis WHERE perfil='Cliente'), 1);")
+        with app.app_context():
+            criar_admin("joao", "outra-senha-9")
+        outro = app.test_client()
+        outro.post("/login", data={"usuario": "joao", "senha": "outra-senha-9"})
+        self.assertEqual(outro.get("/admin/perfis").status_code, 200)
 
     def test_formulario_sem_token_csrf_e_recusado(self):
         app.config["WTF_CSRF_ENABLED"] = True
@@ -236,7 +284,7 @@ class TesteCadastroELogin(TesteBase):
         maria = self.sql("SELECT id FROM usuarios WHERE nome_usuario='maria';")[0][0]
         perfil_de = lambda usuario: self.sql("SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id=u.id_perfil WHERE u.nome_usuario=%s;", usuario)[0][0]
 
-        # Colaborador que não é Administrador não consegue
+        # Colaborador que não é Administrador não consegue (a rota /admin nem abre para ele)
         self.definir_perfil("Colaborador")
         self.cliente.post(f"/admin/usuarios/{maria}/perfil", data={"id_perfil": 1})
         self.assertEqual(perfil_de("maria"), "Cliente")
@@ -262,6 +310,16 @@ class TesteCadastroELogin(TesteBase):
     def test_login_sem_senha_nao_quebra(self):
         resposta = app.test_client().post("/login", data={"usuario": "teste"})
         self.assertIn("Usuário ou senha incorretos", self.texto(resposta))
+
+    def test_erros_de_outro_computador_nao_bloqueiam_o_usuario(self):
+        self.sql("UPDATE usuarios SET senha=%s WHERE nome_usuario='teste';",
+                 main.jb_bcrypt.generate_password_hash("senha-de-teste").decode("utf-8"))
+        invasor = app.test_client()
+        for _ in range(5):
+            invasor.post("/login", data={"usuario": "teste", "senha": "errada"}, environ_base={"REMOTE_ADDR": "10.0.0.99"})
+        resposta = app.test_client().post("/login", data={"usuario": "teste", "senha": "senha-de-teste"},
+                                          environ_base={"REMOTE_ADDR": "10.0.0.1"})
+        self.assertEqual(resposta.status_code, 302)  # entrou
 
     def test_login_bloqueia_depois_de_cinco_erros(self):
         self.sql("UPDATE usuarios SET senha=%s WHERE nome_usuario='teste';",
@@ -348,21 +406,34 @@ class TesteOrcamentoECaixa(TesteBase):
         self.assertEqual(self.sql("SELECT diagnostico FROM manutencoes;")[0][0], "Escova gasta")
 
         # 2. Ainda não aprovado: não conta no caixa, e o cliente vê o botão de aprovar
-        self.assertIn("Nenhum serviço aprovado", self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
         self.assertIn("Aprovar", self.texto(self.cliente.get("/perfil")))
         self.assertIn("1 aguardando a sua aprovação", self.texto(self.cliente.get("/manutencao")))
+        # para o colaborador, sai dos cards de "fazer orçamento" e aparece na lista como esperando o cliente
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Nenhum serviço pendente", pagina)
+        self.assertIn("Esperando o cliente responder", pagina)
 
-        # 3. O cliente aprova: entra no caixa e sai da lista de pendentes
+        # 3. O cliente aprova para pagar na retirada: sai dos pendentes, mas ainda não é dinheiro no caixa
         self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
-        self.assertIn(main.formatar_moeda(120.50), self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
         self.assertIn("Nenhum serviço pendente", self.texto(self.cliente.get("/colaborador/painel")))
         self.assertIn("1 aprovado(s), em reparo", self.texto(self.cliente.get("/manutencao")))
 
-        # 4. O colaborador conclui: aparece como pronto para retirada
+        # 4. O colaborador conclui: pronto para retirada (para o cliente e para o colaborador), ainda sem pagamento
         self.cliente.post(f"/colaborador/servico/{servico}/fechar")
         pagina = self.texto(self.cliente.get("/manutencao"))
         self.assertIn("1 equipamento(s) pronto(s)", pagina)
         self.assertIn("Nenhum pedido em andamento", pagina)
+        self.assertIn("A receber na retirada", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
+
+        # 5. O cliente retira e paga: entra no caixa e sai das listas
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")
+        self.assertEqual(self.sql("SELECT status_servico, pagamento FROM servicos;")[0], ("Entregue", "Pago na retirada"))
+        self.assertIn(main.formatar_moeda(120.50), self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Nenhum equipamento esperando", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("Nenhum equipamento pronto", self.texto(self.cliente.get("/manutencao")))
 
     def abrir_manutencao(self):
         self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
@@ -384,20 +455,45 @@ class TesteOrcamentoECaixa(TesteBase):
         self.assertEqual((status, float(valor)), ("Aberto", 0.0))
 
     def test_colaborador_ve_a_resposta_do_cliente_e_fecha_o_servico(self):
-        for resposta, final, no_caixa in (("Reprovado", "Encerrado", False), ("Aprovado", "Concluído", True)):
+        for resposta, final in (("Reprovado", "Encerrado"), ("Aprovado", "Concluído")):
             servico = self.abrir_manutencao()
             self.cliente.post(f"/colaborador/orcamento/{servico}", data={
                 "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
             self.cliente.post(f"/cliente/orcamento/{servico}/{resposta}", data={"pagamento": "retirada"})
 
-            # aparece para o colaborador com a resposta do cliente
+            # aparece para o colaborador com a resposta do cliente (o reprovado, em um card vermelho)
             pagina = self.texto(self.cliente.get("/colaborador/painel"))
-            self.assertIn(f"<strong>{resposta}</strong>", pagina)
+            self.assertIn("servico-reprovado" if resposta == "Reprovado" else "<strong>Aprovado</strong>", pagina)
 
             self.cliente.post(f"/colaborador/servico/{servico}/fechar")
             self.assertEqual(self.sql("SELECT status_servico FROM servicos WHERE id=%s;", servico)[0][0], final)
-            self.assertIn("Nenhum orçamento respondido", self.texto(self.cliente.get("/colaborador/painel")))
-            self.assertEqual(main.formatar_moeda(120) in self.texto(self.cliente.get("/colaborador/financeiro")), no_caixa)
+            self.assertIn("Nenhum orçamento aguardando", self.texto(self.cliente.get("/colaborador/painel")))
+            # fechar o serviço não é receber: nada entra no caixa aqui
+            self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
+        # o reprovado é avisado ao cliente
+        self.assertNotIn("reprovado(s): retire", self.texto(self.cliente.get("/manutencao")))  # já foi encerrado
+
+    def test_colaborador_envia_novo_orcamento_depois_de_reprovado(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "500", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
+        self.assertIn("Enviar novo orçamento", self.texto(self.cliente.get("/colaborador/painel")))
+
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "350", "status_servico": "Aguardando Aprovação", "detalhes_dano": "só a peça"})
+        status, valor = self.sql("SELECT status_servico, valor_servico FROM servicos;")[0]
+        self.assertEqual((status, float(valor)), ("Aguardando Aprovação", 350.0))
+        # some do card vermelho e o cliente pode responder de novo
+        self.assertNotIn("servico-reprovado", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("1 aguardando a sua aprovação", self.texto(self.cliente.get("/manutencao")))
+
+    def test_cliente_e_avisado_para_buscar_o_equipamento_do_orcamento_reprovado(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
+        self.assertIn("1 orçamento(s) reprovado(s): retire o equipamento na loja", self.texto(self.cliente.get("/manutencao")))
 
     def test_orcamento_recusa_status_inventado(self):
         servico = self.abrir_manutencao()
@@ -411,7 +507,7 @@ class TesteOrcamentoECaixa(TesteBase):
             "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
         self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
         self.assertEqual(self.sql("SELECT status_servico FROM servicos;")[0][0], "Reprovado")
-        self.assertIn("Nenhum serviço aprovado", self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
         with app.app_context():
             self.assertEqual(PainelModel.get_resumo_mensal()["faturamento_total"], 0)
 
@@ -424,6 +520,18 @@ class TesteOrcamentoECaixa(TesteBase):
         resposta = self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"}, follow_redirects=True)
         self.assertEqual(self.sql("SELECT status_servico FROM servicos;")[0][0], "Aguardando Aprovação")
         self.assertNotIn("aprovado com sucesso", self.texto(resposta))
+
+    def test_grafico_mostra_a_manutencao_no_mes_em_que_foi_paga(self):
+        servico = self.abrir_manutencao()
+        self.sql("UPDATE servicos SET data_abertura = NOW() - INTERVAL 40 DAY WHERE id=%s;", servico)  # aberta no mês passado ou antes
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Concluído", "detalhes_dano": "x"})
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")  # paga hoje, na retirada
+        with app.app_context():
+            dados = PainelModel.get_resumo_mensal()
+        manutencoes = [s for s in dados["series"] if s["chave"] == "manutencao"][0]
+        self.assertEqual(manutencoes["valores"][-1], 100.0)        # mês atual
+        self.assertEqual(sum(manutencoes["valores"][:-1]), 0.0)    # nada nos meses anteriores
 
     def test_venda_ja_entra_no_caixa_e_nao_fica_pendente(self):
         self.cliente.post(f"/carrinho/adicionar/{self.id_ferramenta(COMPRA)}", data={"agora": "1"})
@@ -470,6 +578,8 @@ class TestePagamentoDoOrcamento(TesteBase):
 
         self.cliente.post("/carrinho/finalizar")
         self.assertEqual(self.situacao(), ("Aprovado", "Pago online"))
+        # pago pelo site já é dinheiro no caixa, mesmo antes do reparo terminar
+        self.assertIn(main.formatar_moeda(250), self.texto(self.cliente.get("/colaborador/financeiro")))
         self.assertEqual(self.carrinho(), [])
 
     def test_quem_saiu_do_carrinho_sem_pagar_consegue_pagar_depois(self):

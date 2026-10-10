@@ -1,4 +1,5 @@
-from .db import db_execute, STATUS_FATURADOS_SQL
+from .db import db_execute
+from .service import PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA
 
 # Status que o colaborador pode dar a um orçamento
 STATUS_ORCAMENTO = ('Aguardando Aprovação', 'Concluído')
@@ -9,14 +10,14 @@ class ColaboradorModel:
     @staticmethod
     def get_servicos_pendentes():
         """
-        Busca todos os serviços que precisam de atenção do colaborador.
+        Busca os serviços abertos, que ainda precisam do orçamento do colaborador.
         Faz um JOIN com a tabela de pessoas para pegar o nome do cliente.
         """
         arg = """
             SELECT s.id, p.nome, s.descricao_servico, s.status_servico, s.data_abertura 
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
-            WHERE s.status_servico = 'Aberto' OR s.status_servico = 'Aguardando Aprovação'
+            WHERE s.servico_solicitado = 'manutencao' AND s.status_servico = 'Aberto'
             ORDER BY s.data_abertura ASC;
         """
         res = db_execute(arg, fetch_type="all")
@@ -52,9 +53,10 @@ class ColaboradorModel:
         if valor < 0:
             return False, "Informe um valor válido (zero ou mais)."
 
-        # Só manutenção ainda pendente recebe orçamento (nunca uma venda ou um serviço já fechado)
+        # Só manutenção ainda pendente recebe orçamento (nunca uma venda ou um serviço já fechado).
+        # "Reprovado" entra na lista para o colaborador poder mandar um orçamento novo.
         atual = db_execute("SELECT servico_solicitado, status_servico FROM servicos WHERE id=%s;", id_servico, fetch_type="one")
-        if not atual[0] or not atual[1] or atual[1][0] != 'manutencao' or atual[1][1] not in ('Aberto', 'Aguardando Aprovação'):
+        if not atual[0] or not atual[1] or atual[1][0] != 'manutencao' or atual[1][1] not in ('Aberto', 'Aguardando Aprovação', 'Reprovado'):
             return False, "Só dá para fazer orçamento de manutenções pendentes."
 
         arg = "UPDATE servicos SET valor_servico=%s, status_servico=%s WHERE id=%s;"
@@ -75,27 +77,60 @@ class ColaboradorModel:
     @staticmethod
     def get_orcamentos_respondidos():
         """
-        Lista as manutenções com orçamento aprovado (falta fazer o serviço)
-        ou reprovado (falta devolver o equipamento ao cliente).
+        Lista as manutenções com orçamento enviado: aguardando a resposta do cliente
+        ou aprovado (falta fazer o serviço).
+        """
+        return ColaboradorModel._manutencoes_com_status("('Aguardando Aprovação', 'Aprovado')")
+
+    @staticmethod
+    def get_orcamentos_reprovados():
+        """Lista as manutenções que o cliente reprovou: falta mandar outro orçamento ou devolver o equipamento."""
+        return ColaboradorModel._manutencoes_com_status("('Reprovado')")
+
+    @staticmethod
+    def get_prontos_para_retirada():
+        """Lista as manutenções concluídas que o cliente ainda não veio buscar."""
+        return ColaboradorModel._manutencoes_com_status("('Concluído')")
+
+    @staticmethod
+    def entregar_servico(id_servico):
+        """
+        Registra que o cliente retirou o equipamento. Quem não tinha pago pelo site
+        paga na retirada, e é aí que o valor entra no caixa.
         """
         arg = """
+            UPDATE servicos
+            SET status_servico = 'Entregue',
+                pago_em = IF(pagamento = %s, pago_em, NOW()),
+                pagamento = IF(pagamento = %s, pagamento, %s)
+            WHERE id = %s AND servico_solicitado = 'manutencao' AND status_servico = 'Concluído';
+        """
+        res = db_execute(arg, PAGAMENTO_PAGO, PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA, id_servico)
+        if not res[0] or not res[1]:
+            return False, "Esse serviço não está pronto para retirada."
+        return True, "Entrega registrada."
+
+    @staticmethod
+    def _manutencoes_com_status(status_sql):
+        arg = f"""
             SELECT s.id, p.nome, p.telefone, s.descricao_servico, s.status_servico, s.valor_servico, s.pagamento
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
-            WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN ('Aprovado', 'Reprovado')
+            WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN {status_sql}
             ORDER BY s.data_abertura ASC;
         """
         res = db_execute(arg, fetch_type="all")
         if not res[0] or res[1] is None:
             return []
         return [{"id": linha[0], "cliente": linha[1], "telefone": linha[2], "descricao": linha[3],
-                 "status": linha[4], "valor": linha[5], "pagamento": linha[6]} for linha in res[1]]
+                 "status": linha[4], "valor": linha[5], "pagamento": linha[6],
+                 "pago": linha[6] == PAGAMENTO_PAGO} for linha in res[1]]
 
     @staticmethod
     def fechar_servico(id_servico):
         """
         Fecha uma manutenção já respondida pelo cliente:
-        aprovada vira 'Concluído' (entra no caixa), reprovada vira 'Encerrado' (não entra).
+        aprovada vira 'Concluído' (pronta para retirada), reprovada vira 'Encerrado'.
         """
         arg = """
             UPDATE servicos
@@ -151,9 +186,9 @@ class ColaboradorModel:
     @staticmethod
     def get_relatorio_caixa():
         """
-        Calcula o lucro obtido somando serviços aprovados/concluídos.
+        Soma o que já foi recebido (pago_em preenchido): vendas e aluguéis e manutenções pagas.
         """
-        arg = f"SELECT SUM(valor_servico) FROM servicos WHERE status_servico IN {STATUS_FATURADOS_SQL};"
+        arg = "SELECT SUM(valor_servico) FROM servicos WHERE pago_em IS NOT NULL;"
         res = db_execute(arg, fetch_type="one")
 
         lucro_total = 0
@@ -161,7 +196,7 @@ class ColaboradorModel:
             lucro_total = res[1][0]
 
         # Busca detalhes para montar a tabela do caixa
-        arg_lista = f"SELECT id, descricao_servico, status_servico, valor_servico, data_abertura FROM servicos WHERE status_servico IN {STATUS_FATURADOS_SQL} ORDER BY data_abertura DESC;"
+        arg_lista = "SELECT id, descricao_servico, status_servico, valor_servico, pago_em FROM servicos WHERE pago_em IS NOT NULL ORDER BY pago_em DESC;"
         res_lista = db_execute(arg_lista, fetch_type="all")
 
         servicos_caixa = []

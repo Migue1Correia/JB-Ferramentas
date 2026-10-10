@@ -89,9 +89,10 @@ class UserAccountModel:
         """
         Função para saber o perfil de um usuário
         :param username: Nome do usuário
-        :return: O nome do perfil (ex.: "Cliente", "Administrador"). None se não encontrar.
+        :return: O nome do perfil (ex.: "Cliente", "Administrador"). None se não encontrar
+                 ou se a conta estiver desativada.
         """
-        arg = "SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id = u.id_perfil WHERE u.nome_usuario=%s"
+        arg = "SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id = u.id_perfil WHERE u.nome_usuario=%s AND u.ativo=1"
         res = db_execute(arg, username, fetch_type="one")
         if not res[0] or res[1] is None:
             return None

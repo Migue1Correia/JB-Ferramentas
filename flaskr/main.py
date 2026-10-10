@@ -39,6 +39,11 @@ if not chave_secreta or chave_secreta.startswith('troque'):
     chave_secreta = secrets.token_hex(32)
 app.config['SECRET_KEY'] = chave_secreta
 
+# Cookie da sessão: não é enviado em pedidos vindos de outros sites e, com COOKIE_SO_HTTPS=1
+# no .env (quando o site estiver em HTTPS), nunca trafega sem criptografia.
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('COOKIE_SO_HTTPS') == '1'
+
 # Proteção CSRF: todo formulário (POST) precisa enviar o campo escondido csrf_token.
 # Isso impede que outro site envie formulários em nome de um usuário logado.
 csrf = CSRFProtect(app)
@@ -77,14 +82,25 @@ def proteger_areas_restritas():
     só para quem está logado com perfil de colaborador. Vale para todas as rotas
     que começam com /colaborador ou /admin, então rota nova já nasce protegida.
     """
+    # Relê o perfil no banco a cada página: quem foi rebaixado perde o acesso (e o card
+    # do painel no menu) na hora, sem precisar sair
+    if session.get('logged_in') and request.endpoint != 'static':
+        session['perfil'] = UserAccountModel.get_perfil(session.get('user_name'))
+        if session['perfil'] is None:  # conta desativada ou apagada: a sessão acaba aqui
+            session.clear()
+            flash("Sua conta não está mais ativa.", "danger")
+            return redirect(url_for('login'))
+
     if request.path.startswith(('/colaborador', '/admin', '/apidocs', '/apispec', '/flasgger_static')):
         if not session.get('logged_in'):
             return redirect(url_for('login'))
-        # Relê o perfil no banco: quem foi rebaixado perde o acesso na hora, sem precisar sair
-        session['perfil'] = UserAccountModel.get_perfil(session.get('user_name'))
         if not pode_ver_painel():
             flash("Você não tem permissão para acessar essa área.", "danger")
             return redirect(url_for('ferramentas_page'))
+        # Tudo que começa com /admin (perfis, filiais, unidades) é só do Administrador
+        if request.path.startswith('/admin') and not eh_administrador():
+            flash("Só o Administrador acessa essa área.", "danger")
+            return redirect(url_for('painel_colaborador'))
 
 
 def salvar_imagem(arquivo, prefixo):
@@ -121,13 +137,14 @@ def pode_ver_painel():
     """
     Diz se o usuário atual pode ver as telas de colaborador (e o card do painel nos menus).
     Pode quem está logado com um dos perfis de PERFIS_COLABORADOR.
-    O perfil fica na sessão: é lido no login e relido a cada acesso às áreas restritas.
+    O perfil fica na sessão: é lido no login e relido do banco a cada página.
     """
     return bool(session.get('logged_in')) and session.get('perfil') in PERFIS_COLABORADOR
 
 
 # shortcut: as tentativas de login ficam na memória deste processo (zeram ao reiniciar e não são
 # compartilhadas entre processos); passar para uma tabela se o site rodar em mais de um processo.
+# shortcut: atrás de um proxy todos chegam com o IP do proxy; nesse caso ler o cabeçalho X-Forwarded-For.
 TENTATIVAS_DE_LOGIN = {}
 MAX_TENTATIVAS = 5
 TEMPO_DE_BLOQUEIO = timedelta(minutes=5)
@@ -149,16 +166,21 @@ def registrar_erro_de_login(usuario):
     TENTATIVAS_DE_LOGIN[usuario] = (erros + 1, primeiro_erro or datetime.now())
 
 
+def eh_administrador():
+    return bool(session.get('logged_in')) and session.get('perfil') == PERFIL_ADMINISTRADOR
+
+
 @app.context_processor
 def variaveis_dos_menus():
     """
-    Deixa disponível em todos os templates: pode_ver_painel, a quantidade de itens no carrinho
+    Deixa disponível em todos os templates: pode_ver_painel, eh_administrador, a quantidade de itens no carrinho
     e para onde vai o card "Manutenção" do menu: o colaborador vai para a tela Serviços,
     o cliente vai para o pedido de manutenção.
     """
     colaborador = pode_ver_painel()
     return {
         "pode_ver_painel": colaborador,
+        "eh_administrador": eh_administrador(),
         "itens_no_carrinho": len(session.get('carrinho', [])),
         "link_manutencao": url_for('painel_colaborador' if colaborador else 'manutencao_page'),
     }
@@ -279,7 +301,8 @@ def login():
     if request.method == "POST":
         usuario = request.form.get("usuario") or ""
         senha = request.form.get("senha") or ""
-        chave = usuario.strip().lower()
+        # A contagem é por usuário E por endereço (IP): quem erra de propósito trava só a si mesmo
+        chave = f"{usuario.strip().lower()}|{request.remote_addr}"
 
         if login_bloqueado(chave):
             return render_template('index.html', status="Muitas tentativas. Aguarde 5 minutos e tente de novo.")
@@ -680,7 +703,9 @@ def painel_colaborador():
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
                            alugueis=ColaboradorModel.get_alugueis_em_aberto(),
-                           respondidos=ColaboradorModel.get_orcamentos_respondidos())
+                           respondidos=ColaboradorModel.get_orcamentos_respondidos(),
+                           reprovados=ColaboradorModel.get_orcamentos_reprovados(),
+                           prontos=ColaboradorModel.get_prontos_para_retirada())
 
 
 @app.route('/colaborador/devolucao/<int:id_servico>', methods=['POST'])
@@ -766,6 +791,27 @@ def fechar_servico(id_servico):
         description: Redireciona.
     """
     sucesso, mensagem = ColaboradorModel.fechar_servico(id_servico)
+    flash(mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('painel_colaborador'))
+
+
+@app.route('/colaborador/servico/<int:id_servico>/entregar', methods=['POST'])
+def entregar_servico(id_servico):
+    """
+    Entregar Equipamento
+    Registra que o cliente retirou o equipamento (e pagou, se o pagamento era na retirada).
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_servico
+        in: path
+        type: integer
+    responses:
+      302:
+        description: Redireciona.
+    """
+    sucesso, mensagem = ColaboradorModel.entregar_servico(id_servico)
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 
@@ -955,7 +1001,7 @@ def admin_perfis():
 def admin_mudar_perfil(id_usuario):
     """
     Trocar o Perfil de um Usuário
-    Só o Administrador pode, e nunca no próprio usuário (para não ficar sem administrador).
+    Só o Administrador chega aqui (rota /admin), e nunca troca o próprio perfil (para não ficar sem administrador).
     ---
     tags:
       - Administração Base
@@ -971,14 +1017,12 @@ def admin_mudar_perfil(id_usuario):
         description: Volta para a tela de perfis.
     """
     usuario = next((u for u in UserAccountModel.listar() if u["id"] == id_usuario), None)
-    if session.get('perfil') != PERFIL_ADMINISTRADOR:
-        flash("Só o Administrador pode trocar o perfil de um usuário.", "danger")
-    elif not usuario:
+    if not usuario:
         flash("Usuário não encontrado.", "danger")
     elif usuario["usuario"] == session.get('user_name'):
         flash("Você não pode trocar o seu próprio perfil.", "danger")
     elif UserAccountModel.mudar_perfil(id_usuario, request.form.get('id_perfil')):
-        flash(f"Perfil de {usuario['usuario']} atualizado. Vale a partir do próximo login dele.", "success")
+        flash(f"Perfil de {usuario['usuario']} atualizado. Vale na próxima página que ele abrir.", "success")
     else:
         flash("Não foi possível trocar o perfil.", "danger")
     return redirect(url_for('admin_perfis'))

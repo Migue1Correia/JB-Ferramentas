@@ -118,41 +118,7 @@ body {
    ========================================================================== */
 
 /* --- 1. MENUS DE NAVEGAÇÃO SUPERIOR (TOOL NAV) --- */
-.tool-nav {
-    display: flex;
-    gap: 30px;
-    margin-top: 25px;
-    position: relative;
-}
 
-.nav-link {
-    color: #aaaaaa;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 1.05rem;
-    padding: 8px 4px;
-    position: relative;
-    transition: color 0.2s ease;
-    text-transform: uppercase;
-}
-
-.nav-link:hover {
-    color: #ffffff;
-}
-
-.nav-link.active {
-    color: #ff6600 !important;
-}
-
-.active-indicator {
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: #ff6600;
-    border-radius: 2px;
-}
 
 /* --- 2. GRID E CARDS DE SERVIÇOS DO TOPO (MANUTENÇÃO / LOJA) --- */
 .service-cards {
@@ -343,7 +309,7 @@ body {
     z-index: 10;
 }
 
-.back-link, .user-icon-top, .header-top-bar a {
+.user-icon-top, .header-top-bar a {
     color: #ffffff;
     font-size: 1.6rem;
     cursor: pointer;
@@ -351,10 +317,6 @@ body {
     transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.back-link:hover {
-    color: #ff0000;
-    transform: translateX(-3px);
-}
 
 .user-icon-top:hover {
     color: #ff6600;
@@ -367,7 +329,7 @@ body {
 .header-top-bar .link-sair:hover { color: #ff6b6b; }
 
 /* --- CONTEÚDOS PRINCIPAIS --- */
-.dashboard-content, .catalog-main-content, .oficina-main-content, .profile-container {
+.dashboard-content, .oficina-main-content, .profile-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 30px 40px;
@@ -433,8 +395,6 @@ body {
 
 .prod-image-box img { height: 100%; padding: 10px; background: none; }
 
-.placeholder-tool-icon { font-size: 3.2rem; color: #333333; }
-.product-card:hover .placeholder-tool-icon { color: #ff6600; }
 
 .prod-details {
     padding: 18px;
@@ -497,36 +457,10 @@ body {
     padding: 40px;
 }
 
-.main-image-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 30px;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.category-tag {
-    align-self: flex-start;
-    background: rgba(255, 102, 0, 0.12);
-    color: #ff6600;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    margin-bottom: 15px;
-}
 
 .product-info-section h1 { font-size: 2.2rem; margin-bottom: 15px; }
 .product-description { color: #cccccc; line-height: 1.6; margin-bottom: 25px; }
 
-.specs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; }
-.spec-item { background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.spec-item i { color: #ff6600; }
-.spec-item span { font-size: 0.8rem; color: #aaaaaa; }
 
 .price-label { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 20px; margin-bottom: 25px; }
 .price-label span { color: #888888; font-size: 0.9rem; }
@@ -593,12 +527,24 @@ body {
 .product-card .btn-carrinho:hover { background: rgba(255, 255, 255, 0.08); }
 .btn-remover { background: none; border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
 .btn-remover:hover { border-color: #ff0000; color: #ff6b6b; }
-.status-tag { padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; background: rgba(46, 204, 113, 0.15); color: #2ecc71; }
 
 
 /* ==========================================================================
    ESTILOS EXCLUSIVOS: PAINEL COM GRÁFICOS
    ========================================================================== */
+/* Cards compactos dos pedidos aguardando orçamento (o formulário abre ao clicar em "Fazer orçamento") */
+.servicos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; align-items: start; }
+.servico-card { background: #141414; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 20px; }
+.servico-card h3 { font-size: 1.05rem; margin-bottom: 4px; }
+.servico-data { color: #aaaaaa; font-size: 0.85rem; margin-bottom: 10px; }
+.servico-problema { color: #cccccc; line-height: 1.4; margin-bottom: 14px; }
+/* Orçamento reprovado: card vermelho, para chamar a atenção do colaborador */
+.servico-reprovado { background: rgba(217, 0, 0, 0.16); border: 2px solid #d90000; }
+.servico-reprovado .servico-data { color: #dddddd; }
+.servico-card.servico-reprovado summary { color: #ffffff; text-decoration: underline; }
+.servico-card summary { cursor: pointer; color: #ff6600; font-weight: 700; padding: 6px 0; }
+.servico-card details[open] summary { margin-bottom: 14px; }
+
 .painel-aviso { background: rgba(15, 15, 15, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 24px; color: #cccccc; line-height: 1.5; }
 .painel-aviso i { color: #ff6600; margin-right: 8px; }
 
@@ -635,7 +581,7 @@ body {
     .form-grid { grid-template-columns: 1fr; }
     .input-group.full-width { grid-column: span 1; }
     .status-overview-row, .product-detail-container { grid-template-columns: 1fr; gap: 20px; }
-    .dashboard-content, .catalog-main-content, .oficina-main-content, .profile-container { padding: 20px; }
+    .dashboard-content, .oficina-main-content, .profile-container { padding: 20px; }
     .header-top-bar { padding: 0 20px; top: 20px; }
     .logo-box h1 { font-size: 2.8rem; }
     .company-subname { font-size: 1.3rem; }

@@ -182,7 +182,7 @@ CREATE TABLE `manutencoes` (
   PRIMARY KEY (`id`),
   KEY `id_servico` (`id_servico`),
   CONSTRAINT `manutencoes_ibfk_1` FOREIGN KEY (`id_servico`) REFERENCES `servicos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -349,6 +349,7 @@ CREATE TABLE `servicos` (
   `valor_servico` decimal(10,2) NOT NULL DEFAULT '0.00',
   `status_servico` varchar(50) NOT NULL DEFAULT 'Aberto',
   `pagamento` varchar(20) DEFAULT NULL,
+  `pago_em` datetime DEFAULT NULL,
   `id_pessoa_solicitante` int unsigned NOT NULL,
   `id_pessoa_abertura` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -358,7 +359,7 @@ CREATE TABLE `servicos` (
   KEY `id_pessoa_abertura` (`id_pessoa_abertura`),
   CONSTRAINT `servicos_ibfk_1` FOREIGN KEY (`id_pessoa_solicitante`) REFERENCES `pessoas` (`id`),
   CONSTRAINT `servicos_ibfk_2` FOREIGN KEY (`id_pessoa_abertura`) REFERENCES `pessoas` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -419,4 +420,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-10 11:31:26
+-- Dump completed on 2026-10-10 12:14:02

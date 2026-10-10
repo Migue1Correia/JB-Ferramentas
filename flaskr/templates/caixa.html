@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Caixa</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.5">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -15,7 +15,7 @@
     <main id="conteudo" class="dashboard-content">
         <section class="welcome-box">
             <h1>Caixa</h1>
-            <p>Soma dos serviços aprovados e concluídos (vendas, aluguéis e manutenções).</p>
+            <p>O que já foi recebido: vendas e aluguéis concluídos e manutenções pagas (pelo site ou na retirada).</p>
         </section>
 
         <section class="painel-indicadores" aria-label="Total do caixa">
@@ -38,7 +38,7 @@
                         <tr>
                             <th scope="col">Cód.</th>
                             <th scope="col">Descrição</th>
-                            <th scope="col">Data</th>
+                            <th scope="col">Recebido em</th>
                             <th scope="col">Status</th>
                             <th scope="col">Valor</th>
                         </tr>
@@ -57,7 +57,7 @@
                 </table>
             </div>
             {% else %}
-            <p style="color: #aaaaaa;">Nenhum serviço aprovado ou concluído ainda.</p>
+            <p style="color: #aaaaaa;">Nenhum valor recebido ainda.</p>
             {% endif %}
         </section>
     </main>

@@ -12,6 +12,7 @@ from getpass import getpass
 
 from main import app, jb_bcrypt, PERFIL_ADMINISTRADOR, PERFIL_CLIENTE, PERFIS_COLABORADOR
 from model.db import db_execute
+from model.person import PersonModel
 from model.user_account import UserAccountModel
 
 
@@ -40,7 +41,10 @@ def criar_admin(usuario, senha):
     res = db_execute(
         "INSERT INTO pessoas (nome, tipo, endereco, email, telefone) VALUES (%s, 'pj', 'JB Ferramentas', %s, '0000000000');",
         "Administrador", f"{usuario}@jbferramentas.local")
-    if not res[0] or not UserAccountModel.create(usuario, senha_embaralhada, res[1], id_admin, True):
+    if not res[0]:
+        raise ValueError(f"Erro no banco: {res[1]}")
+    if not UserAccountModel.create(usuario, senha_embaralhada, res[1], id_admin, True):
+        PersonModel.delete(res[1])  # não deixa pessoa sem conta
         raise ValueError("Erro ao criar a conta no banco.")
     return f"Administrador {usuario} criado."
 
