@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
     <div class="bg-container-tela-inicial"></div>
     
     <div class="main-wrapper">
@@ -18,7 +19,7 @@
             <p>FERRAMENTAS</p>
         </section>
 
-        <section class="form-card">
+        <section class="form-card" id="conteudo">
             <h2>Bem-vindo(a)</h2>
             
             {% with messages = get_flashed_messages(with_categories=true) %}

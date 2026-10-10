@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Soluções Completas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.2">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
     <div class="bg-container-tela-principal"></div>
 
-    <main class="landing-container">
+    <main id="conteudo" class="landing-container">
         <section class="logo-section">
             <div class="logo-wrapper">
                 <div class="logo-box">
@@ -18,9 +19,9 @@
                 </div>
                 <h2 class="company-subname">FERRAMENTAS</h2>
                 <div class="tool-icons-row">
-                    <i class="fas fa-screwdriver"></i>
-                    <i class="fas fa-wrench"></i>
-                    <i class="fas fa-hammer"></i>
+                    <i class="fas fa-screwdriver" aria-hidden="true"></i>
+                    <i class="fas fa-wrench" aria-hidden="true"></i>
+                    <i class="fas fa-hammer" aria-hidden="true"></i>
                 </div>
             </div>
         </section>
@@ -36,18 +37,18 @@
             <div class="action-buttons-group">
                 <a href="/ferramentas" class="btn-landing btn-red">
                     <div class="btn-content">
-                        <i class="fas fa-tools"></i>
+                        <i class="fas fa-tools" aria-hidden="true"></i>
                         <span>Serviços</span>
                     </div>
-                    <i class="fas fa-chevron-right arrow-icon"></i>
+                    <i class="fas fa-chevron-right arrow-icon" aria-hidden="true"></i>
                 </a>
                 
                 <a href="/login" class="btn-landing btn-dark">
                     <div class="btn-content">
-                        <i class="fas fa-user"></i>
+                        <i class="fas fa-user" aria-hidden="true"></i>
                         <span>Entrar</span>
                     </div>
-                    <i class="fas fa-chevron-right arrow-icon"></i>
+                    <i class="fas fa-chevron-right arrow-icon" aria-hidden="true"></i>
                 </a>
             </div>
 

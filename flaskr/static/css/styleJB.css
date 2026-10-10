@@ -296,23 +296,23 @@ body {
 
 /* Botão Alugar (Laranja) */
 .btn-buy {
-    background: #ff6600 !important;
+    background: #c24e00 !important;
     color: #ffffff !important;
 }
 
 .btn-buy:hover {
-    background: #e05900 !important;
+    background: #a84300 !important;
     box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3) !important;
 }
 
 /* Botão Comprar / Ação Escura (Vermelho Sólido de Ferramentas) */
 .btn-dark {
-    background: #ff0000 !important;
+    background: #d90000 !important;
     color: #ffffff !important;
 }
 
 .btn-dark:hover {
-    background: #cc0000 !important;
+    background: #b80000 !important;
     box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3) !important;
 }
 
@@ -471,8 +471,8 @@ body {
 }
 
 .filter-btn.active {
-    background: #ff6600;
-    border-color: #ff6600;
+    background: #c24e00;
+    border-color: #c24e00;
     box-shadow: 0 4px 12px rgba(255, 102, 0, 0.25);
 }
 
@@ -548,9 +548,9 @@ body {
 .input-group input:focus, .input-group textarea:focus, .input-group select:focus { outline: none; border-color: #ff6600; }
 
 .btn-submit-oficina {
-    width: 100%; background: #ff6600; color: #ffffff; border: none; padding: 14px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; background: #c24e00; color: #ffffff; border: none; padding: 14px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
 }
-.btn-submit-oficina:hover { background: #e05900; }
+.btn-submit-oficina:hover { background: #a84300; }
 
 
 /* ==========================================================================
@@ -570,8 +570,8 @@ body {
 .disabled-wrapper input { cursor: not-allowed; color: #888888; }
 
 .form-actions { margin-top: 35px; display: flex; gap: 15px; }
-.btn-save { background: #ff6600; color: #ffffff; border: none; padding: 13px 28px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-.btn-save:hover { background: #e05900; }
+.btn-save { background: #c24e00; color: #ffffff; border: none; padding: 13px 28px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-save:hover { background: #a84300; }
 
 .table-responsive { width: 100%; overflow-x: auto; }
 .history-table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -631,4 +631,22 @@ body {
     .logo-box h1 { font-size: 2.8rem; }
     .company-subname { font-size: 1.3rem; }
     .form-actions { flex-direction: column; }
+}
+
+/* ==========================================================================
+   ACESSIBILIDADE
+   ========================================================================== */
+/* Contorno visível em quem está com o foco do teclado (Tab) */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #ffffff !important;
+    outline-offset: 2px;
+}
+
+/* Link "Pular para o conteúdo": fica escondido até receber o foco do teclado */
+.pular-conteudo { position: absolute; left: -9999px; top: 10px; z-index: 1000; background: #ffffff; color: #000000; padding: 10px 16px; border-radius: 6px; font-weight: 700; }
+.pular-conteudo:focus { left: 10px; }
+
+/* Quem pediu menos animação no sistema não vê animações nem transições */
+@media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
 }

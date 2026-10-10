@@ -82,7 +82,7 @@
 .btn-submit {
     width: 100%;
     padding: 16px;
-    background-color: #ff0000;
+    background-color: #d90000;
     color: #fff;
     border: none;
     border-radius: 30px;
@@ -94,7 +94,7 @@
 }
 
 .btn-submit:hover {
-    background-color: #cc0000;
+    background-color: #b80000;
 }
 
 /* --- RODAPÉ --- */
@@ -387,12 +387,12 @@ body {
 
 /* Botão Vermelho (Serviços/ Entrar) */
 .btn-red {
-    background-color: #ff0000;
+    background-color: #d90000;
     color: #fff;
 }
 
 .btn-red:hover {
-    background-color: #cc0000;
+    background-color: #b80000;
     transform: translateX(5px);
 }
 
@@ -477,7 +477,7 @@ body {
 
 
 .btn-dark {
-    background: #ff0000;
+    background: #d90000;
     color: #fff;
     border: none;
     padding: 8px 15px;
@@ -523,4 +523,22 @@ body {
 .input-group input:focus{
     border-color: #ff2b2b;
     box-shadow: 0 0 10px rgba(255,0,0,0.35);
+}
+
+/* ==========================================================================
+   ACESSIBILIDADE
+   ========================================================================== */
+/* Contorno visível em quem está com o foco do teclado (Tab) */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #ffffff !important;
+    outline-offset: 2px;
+}
+
+/* Link "Pular para o conteúdo": fica escondido até receber o foco do teclado */
+.pular-conteudo { position: absolute; left: -9999px; top: 10px; z-index: 1000; background: #ffffff; color: #000000; padding: 10px 16px; border-radius: 6px; font-weight: 700; }
+.pular-conteudo:focus { left: 10px; }
+
+/* Quem pediu menos animação no sistema não vê animações nem transições */
+@media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
 }

@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catálogo JB - Compra e Aluguel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.5">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.7">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
     <div class="bg-container-loja"></div>
     
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -23,10 +24,10 @@
     <header class="dashboard-header">
         <div class="header-top-bar">
             <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left"></i> Voltar
+                <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar
             </a>
             <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
+                <a href="{{ url_for('perfil_page') }}" aria-label="Meu perfil" class="back-link"> <i class="fas fa-user-circle" aria-hidden="true"></i> </a>
             </div>
         </div>
 
@@ -38,59 +39,59 @@
             </div>
             <h2 class="company-subname">FERRAMENTAS</h2>
             <div class="tool-icons-row">
-                <i class="fas fa-screwdriver"></i>
-                <i class="fas fa-wrench"></i>
-                <i class="fas fa-hammer"></i>
+                <i class="fas fa-screwdriver" aria-hidden="true"></i>
+                <i class="fas fa-wrench" aria-hidden="true"></i>
+                <i class="fas fa-hammer" aria-hidden="true"></i>
             </div>
         </div>
     </a>
 </section>
 
         <div class="category-filters-container">
-            <button class="filter-btn active">TODOS</button>
-            <button class="filter-btn"><i class="fas fa-shopping-basket"></i> COMPRAR</button>
-            <button class="filter-btn"><i class="fas fa-clock"></i> ALUGAR</button>
+            <button class="filter-btn active" aria-pressed="true">TODOS</button>
+            <button class="filter-btn" aria-pressed="false"><i class="fas fa-shopping-basket" aria-hidden="true"></i> COMPRAR</button>
+            <button class="filter-btn" aria-pressed="false"><i class="fas fa-clock" aria-hidden="true"></i> ALUGAR</button>
         </div>
     </header>
 
-    <main class="oficina-main-content">
+    <main id="conteudo" class="oficina-main-content">
        <section class="service-cards" style="margin-bottom: 30px;">
     <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-home">
             <div class="card-info">
-                <i class="fas fa-home icon-main"></i>
+                <i class="fas fa-home icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Início</h3>
                     <p>Voltar para a página principal.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
     <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-orange">
             <div class="card-info">
-                <i class="fas fa-tools icon-main"></i>
+                <i class="fas fa-tools icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Manutenção</h3>
                     <p>Serviço especializado para reparo de ferramentas.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
     <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-glass">
             <div class="card-info">
-                <i class="fas fa-shopping-cart icon-main"></i>
+                <i class="fas fa-shopping-cart icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Compra ou Aluguel</h3>
                     <p>Ferramentas para comprar ou alugar de forma prática.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
@@ -107,11 +108,7 @@
                 <div class="prod-details">
                     <h3>{{ item.nome }}</h3>
                     <p class="price">{{ item.preco|moeda }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
-                    <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
-                        <button class="{% if item.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}">
-                            {{ item.tipo }}
-                        </button>
-                    </a>
+                    <a href="{{ url_for('detalhe_produto', id=item.id) }}" class="btn-main-action {% if item.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}" style="display: block; text-align: center; text-decoration: none;" aria-label="{{ item.tipo }}: {{ item.nome }}">{{ item.tipo }}</a>
                 </div>
             </div>
             {% endfor %}
@@ -124,8 +121,12 @@
 
         filters.forEach(filter => {
             filter.addEventListener('click', () => {
-                filters.forEach(btn => btn.classList.remove('active'));
+                filters.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.setAttribute('aria-pressed', 'false');
+                });
                 filter.classList.add('active');
+                filter.setAttribute('aria-pressed', 'true');
 
                 const categoria = filter.textContent.toLowerCase();
 
