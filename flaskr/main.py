@@ -1,4 +1,5 @@
 import os
+import hashlib
 import secrets
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -23,7 +24,12 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env'))
 
 app = Flask(__name__)
-swagger = Swagger(app)
+swagger = Swagger(app, template={"info": {
+    "title": "JB Ferramentas",
+    "version": "1.0",
+    "description": "Rotas do sistema. As rotas POST exigem o campo csrf_token dos formulários do site, "
+                   "por isso o botão \"Try it out\" não funciona para elas: use esta página para consulta.",
+}})
 
 app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost')
 app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root')
@@ -46,6 +52,9 @@ app.config['SESSION_COOKIE_SECURE'] = os.getenv('COOKIE_SO_HTTPS') == '1'
 
 # Proteção CSRF: todo formulário (POST) precisa enviar o campo escondido csrf_token.
 # Isso impede que outro site envie formulários em nome de um usuário logado.
+# O csrf_token vale enquanto durar a sessão (o padrão seria vencer em 1 hora,
+# e quem deixasse a tela aberta perderia o que digitou)
+app.config['WTF_CSRF_TIME_LIMIT'] = None
 csrf = CSRFProtect(app)
 
 UPLOAD_FOLDER = os.path.join(
@@ -75,6 +84,18 @@ def arquivo_grande_demais(erro):
     return "A foto pode ter no máximo 5 MB. Volte e envie um arquivo menor.", 413
 
 
+@app.errorhandler(404)
+def pagina_nao_encontrada(erro):
+    return render_template('erro.html', titulo="Página não encontrada",
+                           mensagem="O endereço que você abriu não existe ou foi removido."), 404
+
+
+@app.errorhandler(500)
+def erro_interno(erro):
+    return render_template('erro.html', titulo="Algo deu errado",
+                           mensagem="Tivemos um problema ao abrir esta página. Tente de novo em instantes."), 500
+
+
 @app.before_request
 def proteger_areas_restritas():
     """
@@ -85,11 +106,14 @@ def proteger_areas_restritas():
     # Relê o perfil no banco a cada página: quem foi rebaixado perde o acesso (e o card
     # do painel no menu) na hora, sem precisar sair
     if session.get('logged_in') and request.endpoint != 'static':
-        session['perfil'] = UserAccountModel.get_perfil(session.get('user_name'))
-        if session['perfil'] is None:  # conta desativada ou apagada: a sessão acaba aqui
+        perfil, senha = UserAccountModel.get_perfil_e_senha(session.get('user_name'))
+        # A sessão acaba aqui se a conta foi desativada ou apagada, ou se a senha foi trocada
+        # depois deste login (assim, trocar a senha derruba quem estava logado em outro lugar)
+        if perfil is None or marca_da_senha(senha) != session.get('marca'):
             session.clear()
-            flash("Sua conta não está mais ativa.", "danger")
+            flash("Sua sessão não é mais válida. Entre de novo.", "danger")
             return redirect(url_for('login'))
+        session['perfil'] = perfil
 
     if request.path.startswith(('/colaborador', '/admin', '/apidocs', '/apispec', '/flasgger_static')):
         if not session.get('logged_in'):
@@ -97,10 +121,18 @@ def proteger_areas_restritas():
         if not pode_ver_painel():
             flash("Você não tem permissão para acessar essa área.", "danger")
             return redirect(url_for('ferramentas_page'))
-        # Tudo que começa com /admin (perfis, filiais, unidades) é só do Administrador
+        # Tudo que começa com /admin (perfis e filiais) é só do Administrador
         if request.path.startswith('/admin') and not eh_administrador():
             flash("Só o Administrador acessa essa área.", "danger")
             return redirect(url_for('painel_colaborador'))
+
+
+def marca_da_senha(senha_em_hash):
+    """
+    Um resumo curto da senha guardada no banco. Fica na sessão para sabermos, a cada página,
+    se a senha ainda é a mesma do momento do login. Não dá para descobrir a senha por ele.
+    """
+    return hashlib.sha256(senha_em_hash.encode("utf-8")).hexdigest()[:16]
 
 
 def salvar_imagem(arquivo, prefixo):
@@ -315,6 +347,7 @@ def login():
                 session['user_code'] = dados_conta["id_person"]
                 session['logged_in'] = True
                 session['user_name'] = dados_conta["username"]  # como está no banco, não como foi digitado
+                session['marca'] = marca_da_senha(dados_conta["password"])
                 TENTATIVAS_DE_LOGIN.pop(chave, None)
                 session['perfil'] = UserAccountModel.get_perfil(usuario)
                 flash("Login realizado com sucesso!", "success")
@@ -374,6 +407,53 @@ def perfil_page():
     return render_template('perfil.html', user_infos=user_infos, status=status, historico=historico_servicos)
 
 
+@app.route('/perfil/senha', methods=['POST'])
+def alterar_senha():
+    """
+    Alterar Senha
+    O usuário logado troca a própria senha, informando a senha atual.
+    ---
+    tags:
+      - Conta do Cliente
+    parameters:
+      - name: senha_atual
+        in: formData
+        type: string
+      - name: nova_senha
+        in: formData
+        type: string
+      - name: confirmar_senha
+        in: formData
+        type: string
+    responses:
+      302:
+        description: Volta para o perfil.
+    """
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    usuario = session.get('user_name')
+    nova = request.form.get('nova_senha') or ''
+    nova_em_hash = jb_bcrypt.generate_password_hash(nova).decode("utf-8")
+    chave = f"{usuario.lower()}|{request.remote_addr}"  # o mesmo contador de erros do login
+
+    if login_bloqueado(chave):
+        flash("Muitas tentativas. Aguarde 5 minutos e tente de novo.", "danger")
+    elif not UserAccountModel.auth(usuario, request.form.get('senha_atual')):
+        registrar_erro_de_login(chave)
+        flash("A senha atual não confere.", "danger")
+    elif len(nova) < 8:
+        flash("A nova senha precisa ter pelo menos 8 caracteres.", "danger")
+    elif nova != request.form.get('confirmar_senha'):
+        flash("A confirmação não é igual à nova senha.", "danger")
+    elif UserAccountModel.mudar_senha(usuario, nova_em_hash):
+        TENTATIVAS_DE_LOGIN.pop(chave, None)
+        session['marca'] = marca_da_senha(nova_em_hash)  # este navegador continua logado; os outros caem
+        flash("Senha alterada com sucesso!", "success")
+    else:
+        flash("Não foi possível alterar a senha. Tente novamente.", "danger")
+    return redirect(url_for('perfil_page'))
+
+
 # === 7. CADASTRO DE USUÁRIOS ===
 @app.route("/register", methods=['GET', 'POST'])
 def register():
@@ -419,6 +499,12 @@ def register():
         if len(password) < 8:
             return render_template('register.html', status="A senha precisa ter pelo menos 8 caracteres.")
 
+        # Tamanhos máximos que o banco aceita (o endereço chega já com o número e o CEP juntos)
+        for campo, valor, maximo in (("nome", name, 100), ("endereço (contando número e CEP)", address, 200),
+                                     ("e-mail", email, 100), ("telefone", phone_number, 20), ("usuário", user, 100)):
+            if len(valor) > maximo:
+                return render_template('register.html', status=f"O campo {campo} aceita no máximo {maximo} caracteres.")
+
         documento_ok = cnpj_valido(code) if user_type == 'pj' else cpf_valido(code)
         if not documento_ok:
             status = "CNPJ inválido." if user_type == 'pj' else "CPF inválido."
@@ -448,8 +534,8 @@ def register():
             status = "Erro ao criar a conta. Tente novamente."
             return render_template('register.html', status=status)
 
-        status = "Cadastro realizado com sucesso"
-        return render_template('register.html', status=status)
+        flash("Cadastro realizado com sucesso! Faça o seu login.", "success")
+        return redirect(url_for('login'))
 
 
 # === 8. LOGOUT ===
@@ -497,6 +583,9 @@ def manutencao_page():
         tool_details = (request.form.get('detalhes_equipamento') or '').strip()
         if not description or not tool_details:
             flash("Informe a ferramenta e a descrição do problema.", "danger")
+            return redirect(url_for('manutencao_page'))
+        if len(tool_details) > 200:
+            flash("O nome da ferramenta aceita no máximo 200 caracteres.", "danger")
             return redirect(url_for('manutencao_page'))
         user_id = session.get('user_code')
         sucesso, mensagem = ServiceModel.create_maintenance(
@@ -1053,14 +1142,14 @@ def admin_filiais():
 
 
 # === 20. UNIDADES ===
-@app.route('/admin/unidades', methods=['POST'])
-def admin_unidades():
+@app.route('/colaborador/unidades', methods=['POST'])
+def cadastrar_unidade():
     """
     Cadastro de Unidade (Física)
-    Vincula série de ferramenta ao estoque da filial.
+    Vincula série de ferramenta ao estoque da filial. Colaborador e Administrador podem lançar.
     ---
     tags:
-      - Administração Base
+      - Gestão / Colaborador
     responses:
       302:
         description: OK.

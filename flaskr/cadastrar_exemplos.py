@@ -5,7 +5,7 @@ Como usar (com a .venv ativada):
     cd flaskr
     python cadastrar_exemplos.py
 
-Pode rodar mais de uma vez: a ferramenta que já existe só tem preço, tipo e foto atualizados.
+Pode rodar mais de uma vez: a ferramenta que já existe só recebe preço, tipo e foto se ainda estiver sem preço.
 """
 from main import app
 from model.db import db_execute
@@ -67,9 +67,10 @@ def cadastrar():
     for marca, modelo, descricao, preco, tipo_oferta, imagem in FERRAMENTAS:
         id_ferramenta = buscar_id("SELECT id FROM ferramentas WHERE marca=%s AND modelo=%s;", marca, modelo)
         if id_ferramenta:
-            executar("UPDATE ferramentas SET preco=%s, tipo_oferta=%s, imagem=%s WHERE id=%s;",
-                     preco, tipo_oferta, imagem, id_ferramenta)
-            print(f"Atualizada: {marca} {modelo}")
+            # Só preenche quem ainda está sem preço, para não desfazer um preço corrigido depois
+            alteradas = executar("UPDATE ferramentas SET preco=%s, tipo_oferta=%s, imagem=%s WHERE id=%s AND preco=0;",
+                                 preco, tipo_oferta, imagem, id_ferramenta)
+            print(f"{'Atualizada' if alteradas else 'Já cadastrada'}: {marca} {modelo}")
             continue
 
         id_ferramenta = executar(

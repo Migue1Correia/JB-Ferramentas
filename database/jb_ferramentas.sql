@@ -177,6 +177,7 @@ CREATE TABLE `manutencoes` (
   `garantia` int NOT NULL,
   `foto_equipamento` varchar(255) DEFAULT NULL,
   `id_servico` int unsigned NOT NULL,
+  `equipamento` varchar(200) DEFAULT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -222,7 +223,7 @@ CREATE TABLE `perfis` (
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_perfis_perfil` (`perfil`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -420,4 +421,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-10 12:14:02
+-- Dump completed on 2026-10-10 12:31:25

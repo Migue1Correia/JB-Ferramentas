@@ -22,8 +22,10 @@ class ServiceModel:
         # Os LEFT JOIN buscam o nome da ferramenta do pedido (manutenção não tem ferramenta vinculada).
         arg = """
             SELECT s.id, s.servico_solicitado, s.valor_servico, s.data_abertura,
-                   s.titulo_servico, f.marca, f.modelo, s.status_servico, s.pagamento
+                   s.titulo_servico, f.marca, f.modelo, s.status_servico, s.pagamento,
+                   m.equipamento, m.diagnostico, m.foto_equipamento
             FROM servicos s
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
             LEFT JOIN servico_ferramentas sf ON sf.id_servico = s.id
             LEFT JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
             LEFT JOIN ferramentas f ON f.id = u.id_ferramenta
@@ -36,7 +38,9 @@ class ServiceModel:
             return []
 
         historico = []
-        for id_servico, tipo, valor, data, titulo, marca, modelo, status, pagamento in res[1]:
+        for id_servico, tipo, valor, data, titulo, marca, modelo, status, pagamento, equipamento, diagnostico, foto in res[1]:
+            if equipamento:
+                titulo = f"Manutenção: {equipamento}"
             historico.append({
                 "id": id_servico,
                 "tipo": tipo,
@@ -44,6 +48,8 @@ class ServiceModel:
                 "data": data,
                 "descricao": f"{marca} {modelo}" if marca else titulo,
                 "status": status,
+                "diagnostico": diagnostico,
+                "foto": foto,
                 "pagamento": pagamento,
                 "pagamento_pendente": pagamento == PAGAMENTO_PENDENTE,
             })
@@ -133,28 +139,29 @@ class ServiceModel:
     @staticmethod
     def create_maintenance(user_id, description, tool_details):
         """
-        Função para abrir uma nova solicitação de manutenção
+        Função para abrir uma nova solicitação de manutenção.
+        Grava nas duas tabelas (servicos e manutencoes) em uma única transação:
+        ou grava tudo, ou não grava nada.
         """
-        arg_servico = """
-            INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, id_pessoa_solicitante, id_pessoa_abertura) 
-            VALUES ('manutencao', 'Manutenção de Equipamento', %s, %s, %s);
-        """
-        res_servico = db_execute(arg_servico, description, user_id, user_id)
-        
-        if not res_servico[0]:
-            print(res_servico[1])
-            return False, "Erro ao criar o serviço base."
-
-        id_servico = res_servico[1] 
-
-        # A sua tabela manutencoes pede garantia NOT NULL, adicionei 0 como padrão inicial
-        arg_manu = "INSERT INTO manutencoes (id_servico, diagnostico, garantia) VALUES (%s, %s, 0);"
-        res_manu = db_execute(arg_manu, id_servico, tool_details)
-
-        if not res_manu[0]:
-            return False, "Erro ao registrar detalhes da manutenção."
-
-        return True, "Manutenção solicitada com sucesso!"
+        conexao = jb_solucoes_db.connection
+        c = conexao.cursor()
+        try:
+            c.execute("""
+                INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, id_pessoa_solicitante, id_pessoa_abertura)
+                VALUES ('manutencao', 'Manutenção de Equipamento', %s, %s, %s);
+            """, (description, user_id, user_id))
+            # "equipamento" é o que o cliente informou; "diagnostico" fica vazio até o colaborador avaliar.
+            # A tabela manutencoes pede garantia NOT NULL, por isso o 0.
+            c.execute("INSERT INTO manutencoes (id_servico, equipamento, diagnostico, garantia) VALUES (%s, %s, '', 0);",
+                      (c.lastrowid, tool_details))
+            conexao.commit()
+            return True, "Manutenção solicitada com sucesso!"
+        except Exception as e:
+            conexao.rollback()
+            print(e)  # Para depuração no terminal
+            return False, "Erro ao registrar a manutenção."
+        finally:
+            c.close()
 
     @staticmethod
     def get_resumo_manutencoes(user_id):
@@ -176,16 +183,21 @@ class ServiceModel:
     def get_orcamento(id_servico, id_cliente):
         """
         Busca uma manutenção do cliente (para a tela de pagamento e para o carrinho).
-        :return: Dicionário com id, descricao, valor, status e pagamento. None se não for dele.
+        :return: Dicionário com id, descricao, valor, status, pagamento, equipamento,
+                 diagnostico e foto. None se não for dele.
         """
         arg = """
-            SELECT id, descricao_servico, valor_servico, status_servico, pagamento FROM servicos
-            WHERE id=%s AND id_pessoa_solicitante=%s AND servico_solicitado='manutencao';
+            SELECT s.id, s.descricao_servico, s.valor_servico, s.status_servico, s.pagamento,
+                   m.equipamento, m.diagnostico, m.foto_equipamento
+            FROM servicos s
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
+            WHERE s.id=%s AND s.id_pessoa_solicitante=%s AND s.servico_solicitado='manutencao';
         """
         res = db_execute(arg, id_servico, id_cliente, fetch_type="one")
         if not res[0] or not res[1]:
             return None
-        return {"id": res[1][0], "descricao": res[1][1], "valor": res[1][2], "status": res[1][3], "pagamento": res[1][4]}
+        return {"id": res[1][0], "descricao": res[1][1], "valor": res[1][2], "status": res[1][3], "pagamento": res[1][4],
+                "equipamento": res[1][5], "diagnostico": res[1][6], "foto": res[1][7]}
 
     @staticmethod
     def pagar_manutencao(id_servico, id_cliente):

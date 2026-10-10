@@ -70,6 +70,7 @@ class TesteBase(unittest.TestCase):
             sessao["user_name"] = "teste"
             sessao["user_code"] = 1
             sessao["perfil"] = "Administrador"
+            sessao["marca"] = main.marca_da_senha("x")  # confere com a senha 'x' gravada acima
 
     def tearDown(self):
         for comando in (
@@ -85,6 +86,13 @@ class TesteBase(unittest.TestCase):
             ok, resultado = db_execute(comando, *valores)
         self.assertTrue(ok, resultado)
         return resultado
+
+    def definir_senha(self, senha):
+        """Grava uma senha de verdade para o usuário "teste" e mantém a sessão de teste válida."""
+        em_hash = main.jb_bcrypt.generate_password_hash(senha).decode("utf-8")
+        self.sql("UPDATE usuarios SET senha=%s WHERE nome_usuario='teste';", em_hash)
+        with self.cliente.session_transaction() as sessao:
+            sessao["marca"] = main.marca_da_senha(em_hash)
 
     def definir_perfil(self, perfil, usuario="teste"):
         """Troca o perfil de um usuário direto no banco (criando o perfil, se preciso)."""
@@ -192,8 +200,21 @@ class TesteAcesso(TesteBase):
         self.assertEqual(self.sql("SELECT COUNT(*) FROM perfis WHERE perfil='Gerente Geral';")[0][0], 0)
         # nem vê os cards Filiais e Perfis, nem o cadastro de unidades em estoque
         catalogo = self.texto(self.cliente.get("/colaborador/ferramentas"))
-        for trecho in ("/admin/filiais", "/admin/perfis", "Cadastrar unidade em estoque"):
+        for trecho in ("/admin/filiais", "/admin/perfis"):
             self.assertNotIn(trecho, catalogo)
+
+    def test_colaborador_lanca_unidade_em_estoque(self):
+        self.definir_perfil("Colaborador")
+        self.assertIn("Cadastrar unidade em estoque", self.texto(self.cliente.get("/colaborador/ferramentas")))
+        ferramenta = self.id_ferramenta(COMPRA)
+        filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        self.cliente.post("/colaborador/unidades", data={"numero_serie": "TESTE-COLAB-1", "id_ferramenta": ferramenta, "id_filial": filial})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM unidade_ferramentas WHERE numero_serie='TESTE-COLAB-1';")[0][0], 1)
+        self.sql("DELETE FROM unidade_ferramentas WHERE numero_serie='TESTE-COLAB-1';")
+
+    def test_visitante_nao_ve_o_botao_do_carrinho_na_tela_inicial(self):
+        self.assertNotIn("Adicionar ao carrinho", self.texto(app.test_client().get("/ferramentas")))
+        self.assertIn("Adicionar ao carrinho", self.texto(self.cliente.get("/ferramentas")))
 
     def test_conta_desativada_e_deslogada_na_pagina_seguinte(self):
         self.assertEqual(self.cliente.get("/loja").status_code, 200)
@@ -231,7 +252,9 @@ class TesteAcesso(TesteBase):
         self.assertEqual(self.sql("SELECT nome FROM pessoas WHERE id=1;")[0][0], "Cliente Teste")
 
     def test_detalhe_de_ferramenta_que_nao_existe_da_404(self):
-        self.assertEqual(self.cliente.get("/detalhe/99999").status_code, 404)
+        resposta = self.cliente.get("/detalhe/99999")
+        self.assertEqual(resposta.status_code, 404)
+        self.assertIn("Página não encontrada", self.texto(resposta))  # página do site, não o erro padrão em inglês
 
     def test_upload_do_orcamento_recusa_arquivo_que_nao_e_imagem(self):
         self.cliente.post("/colaborador/orcamento/1", content_type="multipart/form-data",
@@ -246,7 +269,7 @@ class TesteCadastroELogin(TesteBase):
 
     def test_cadastro_cria_a_conta_e_o_login_funciona(self):
         visitante = app.test_client()
-        self.assertIn("Cadastro realizado com sucesso", self.texto(visitante.post("/register", data=self.DADOS)))
+        self.assertIn("Cadastro realizado com sucesso", self.texto(visitante.post("/register", data=self.DADOS, follow_redirects=True)))
         # O CPF é guardado só com números, e a senha nunca é guardada como foi digitada
         codigo, senha = self.sql("""
             SELECT p.codigo, u.senha FROM pessoas p JOIN usuarios u ON u.id_pessoa = p.id
@@ -347,6 +370,17 @@ class TesteCadastroELogin(TesteBase):
         self.cliente.post("/login", data={"usuario": "maria", "senha": "segredo123"})
         self.assertEqual(self.carrinho(), [])
 
+    def test_cadastro_recusado_devolve_o_que_foi_digitado(self):
+        pagina = self.texto(app.test_client().post("/register", data={**self.DADOS, "code": "111.444.777-36", "tipo": "pf"}))
+        for digitado in ('value="Maria Teste"', 'value="111.444.777-36"', 'value="maria@teste.com"', 'value="maria"'):
+            self.assertIn(digitado, pagina)
+        self.assertNotIn("segredo123", pagina)  # a senha nunca volta para a tela
+
+    def test_campo_longo_demais_e_explicado(self):
+        resposta = app.test_client().post("/register", data={**self.DADOS, "endereco": "R" * 250})
+        self.assertIn("aceita no máximo 200 caracteres", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM pessoas;")[0][0], 1)
+
     def test_cpf_invalido_nao_grava_nada(self):
         resposta = app.test_client().post("/register", data={**self.DADOS, "code": "111.444.777-36"})
         self.assertIn("CPF inválido", self.texto(resposta))
@@ -373,6 +407,50 @@ class TestePerfilEManutencao(TesteBase):
                          ("Nome Novo", "novo@teste.com", "52998224725"))
         self.sql("UPDATE pessoas SET email='cliente@teste.com', telefone='11999990000', endereco='Rua A, 1' WHERE id=1;")
 
+    def test_usuario_troca_a_propria_senha(self):
+        self.definir_senha("senha-antiga-1")
+        tentativas = (
+            ({"senha_atual": "errada", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"}, "senha atual não confere"),
+            ({"senha_atual": "senha-antiga-1", "nova_senha": "curta", "confirmar_senha": "curta"}, "pelo menos 8 caracteres"),
+            ({"senha_atual": "senha-antiga-1", "nova_senha": "senha-nova-22", "confirmar_senha": "outra-coisa-22"}, "confirmação não é igual"),
+            ({"senha_atual": "senha-antiga-1", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"}, "Senha alterada com sucesso"),
+        )
+        for dados, aviso in tentativas:
+            self.assertIn(aviso, self.texto(self.cliente.post("/perfil/senha", data=dados, follow_redirects=True)))
+        visitante = app.test_client()
+        self.assertIn("incorretos", self.texto(visitante.post("/login", data={"usuario": "teste", "senha": "senha-antiga-1"})))
+        self.assertEqual(visitante.post("/login", data={"usuario": "teste", "senha": "senha-nova-22"}).status_code, 302)
+
+    def test_trocar_a_senha_derruba_as_outras_sessoes(self):
+        self.definir_senha("senha-antiga-1")
+        outro_navegador = app.test_client()
+        outro_navegador.post("/login", data={"usuario": "teste", "senha": "senha-antiga-1"})
+        self.assertEqual(outro_navegador.get("/perfil").status_code, 200)
+
+        self.cliente.post("/perfil/senha", data={"senha_atual": "senha-antiga-1", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"})
+        self.assertEqual(self.cliente.get("/perfil").status_code, 200)                      # quem trocou continua logado
+        self.assertIn("/login", outro_navegador.get("/perfil").headers["Location"])          # o outro navegador cai
+
+    def test_troca_de_senha_bloqueia_depois_de_cinco_erros(self):
+        self.definir_senha("senha-antiga-1")
+        dados = {"senha_atual": "errada", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"}
+        for _ in range(5):
+            self.cliente.post("/perfil/senha", data=dados)
+        resposta = self.cliente.post("/perfil/senha", data={**dados, "senha_atual": "senha-antiga-1"}, follow_redirects=True)
+        self.assertIn("Muitas tentativas", self.texto(resposta))
+
+    def test_nome_de_equipamento_longo_demais_nao_grava_nada(self):
+        resposta = self.cliente.post("/manutencao", data={"detalhes_equipamento": "F" * 250, "descricao": "Não liga"}, follow_redirects=True)
+        self.assertIn("no máximo 200 caracteres", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+
+    def test_manutencao_nunca_fica_pela_metade(self):
+        # mesmo que a segunda gravação falhe (equipamento grande demais para a coluna), a primeira é desfeita
+        with app.app_context(), contextlib.redirect_stdout(io.StringIO()):
+            sucesso, _ = ServiceModel.create_maintenance(1, "Não liga", "F" * 250)
+        self.assertFalse(sucesso)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+
     def test_perfil_nao_apaga_telefone_nem_endereco(self):
         resposta = self.cliente.post("/perfil", follow_redirects=True,
                                      data={"nome": "Nome Novo", "email": "novo@teste.com", "telefone": "", "endereco": ""})
@@ -386,7 +464,7 @@ class TestePerfilEManutencao(TesteBase):
     def test_pedido_de_manutencao_e_gravado(self):
         self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
         self.assertEqual(self.sql("""
-            SELECT s.servico_solicitado, s.descricao_servico, m.diagnostico
+            SELECT s.servico_solicitado, s.descricao_servico, m.equipamento
             FROM servicos s JOIN manutencoes m ON m.id_servico = s.id;
         """), (("manutencao", "Não liga", "Furadeira X"),))
 
@@ -398,12 +476,19 @@ class TesteOrcamentoECaixa(TesteBase):
         servico = self.sql("SELECT id FROM servicos;")[0][0]
 
         # 1. O colaborador vê o pedido e manda o orçamento
-        self.assertIn("Não liga", self.texto(self.cliente.get("/colaborador/painel")))
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Não liga", pagina)
+        self.assertIn("<strong>Furadeira X</strong>", pagina)  # o card mostra qual é o equipamento
         self.assertIn("1 aguardando orçamento da oficina", self.texto(self.cliente.get("/manutencao")))
         self.cliente.post(f"/colaborador/orcamento/{servico}", data={
             "valor_servico": "120.50", "status_servico": "Aguardando Aprovação", "detalhes_dano": "Escova gasta"})
         self.assertEqual(self.sql("SELECT status_servico, valor_servico FROM servicos;")[0][0], "Aguardando Aprovação")
-        self.assertEqual(self.sql("SELECT diagnostico FROM manutencoes;")[0][0], "Escova gasta")
+        # o diagnóstico do colaborador não apaga o equipamento que o cliente informou
+        self.assertEqual(self.sql("SELECT equipamento, diagnostico FROM manutencoes;")[0], ("Furadeira X", "Escova gasta"))
+        self.assertIn("Furadeira X", self.texto(self.cliente.get("/colaborador/painel")))
+        # e o cliente vê o diagnóstico antes de decidir
+        for tela in (f"/cliente/orcamento/{servico}/pagamento", "/perfil"):
+            self.assertIn("Escova gasta", self.texto(self.cliente.get(tela)), tela)
 
         # 2. Ainda não aprovado: não conta no caixa, e o cliente vê o botão de aprovar
         self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
@@ -604,6 +689,14 @@ class TesteCatalogoDoColaborador(TesteBase):
     def tearDown(self):
         self.sql("DELETE FROM ferramentas WHERE modelo='Serra Circular de Teste';")
         super().tearDown()
+
+    def test_cadastrar_exemplos_nao_desfaz_preco_corrigido(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        self.sql("UPDATE ferramentas SET preco=999 WHERE id=%s;", ferramenta)
+        with app.app_context(), contextlib.redirect_stdout(io.StringIO()):
+            cadastrar()
+        self.assertEqual(float(self.sql("SELECT preco FROM ferramentas WHERE id=%s;", ferramenta)[0][0]), 999.0)
+        self.sql("UPDATE ferramentas SET preco=%s WHERE id=%s;", PRECO_COMPRA, ferramenta)
 
     def test_ferramenta_nova_aparece_na_loja_com_o_preco_cadastrado(self):
         tipo = self.sql("SELECT id FROM ferramenta_tipos LIMIT 1;")[0][0]

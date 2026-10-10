@@ -71,6 +71,20 @@ class UserAccountModel:
         return [{"id": linha[0], "usuario": linha[1], "nome": linha[2], "id_perfil": linha[3]} for linha in res[1]]
 
     @staticmethod
+    def mudar_senha(username, password):
+        """
+        Função para trocar a senha de um usuário
+        :param username: Nome do usuário
+        :param password: Nova senha, já em formato de Hash
+        :return: True, se a senha foi trocada. False, se ocorreu um erro no meio do processo.
+        """
+        res = db_execute("UPDATE usuarios SET senha=%s WHERE nome_usuario=%s;", password, username)
+        if not res[0]:
+            print(res[1])
+            return False
+        return True
+
+    @staticmethod
     def mudar_perfil(id_usuario, id_perfil):
         """
         Função para trocar o perfil de um usuário
@@ -83,6 +97,19 @@ class UserAccountModel:
             print(res[1])
             return False
         return True
+
+    @staticmethod
+    def get_perfil_e_senha(username):
+        """
+        Função usada a cada página para conferir se a sessão ainda vale
+        :param username: Nome do usuário
+        :return: (perfil, senha em Hash) da conta ativa. (None, None) se não existir ou estiver desativada.
+        """
+        arg = "SELECT p.perfil, u.senha FROM usuarios u JOIN perfis p ON p.id = u.id_perfil WHERE u.nome_usuario=%s AND u.ativo=1"
+        res = db_execute(arg, username, fetch_type="one")
+        if not res[0] or res[1] is None:
+            return None, None
+        return res[1]
 
     @staticmethod
     def get_perfil(username):

@@ -6,7 +6,7 @@
     <title>JB Ferramentas - Perfil do Usuário</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.5">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body class="dashboard-body">
     <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
@@ -136,6 +136,33 @@
             </form>
         </section>
 
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-key" aria-hidden="true"></i>
+                <h2>Alterar senha</h2>
+            </div>
+            <form method="POST" action="{{ url_for('alterar_senha') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group full-width">
+                        <label for="senha_atual">Senha atual</label>
+                        <input type="password" id="senha_atual" name="senha_atual" autocomplete="current-password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="nova_senha">Nova senha (pelo menos 8 caracteres)</label>
+                        <input type="password" id="nova_senha" name="nova_senha" minlength="8" autocomplete="new-password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="confirmar_senha">Repita a nova senha</label>
+                        <input type="password" id="confirmar_senha" name="confirmar_senha" minlength="8" autocomplete="new-password" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-key" aria-hidden="true"></i> Alterar senha</button>
+                </div>
+            </form>
+        </section>
+
         <section class="profile-card text-center">
             <div class="card-header">
                 <i class="fas fa-history" aria-hidden="true"></i>
@@ -159,7 +186,11 @@
                             {% for pedido in historico %}
                             <tr>
                                 <td>#{{ pedido.id }}</td>
-                                <td><strong>{{ pedido.descricao }}</strong></td>
+                                <td>
+                                    <strong>{{ pedido.descricao }}</strong>
+                                    {% if pedido.diagnostico %}<br><small style="color: #aaaaaa;">Diagnóstico: {{ pedido.diagnostico }}</small>{% endif %}
+                                    {% if pedido.foto %}<br><a href="{{ url_for('static', filename=pedido.foto) }}" style="color: #ff6600;">Ver foto do equipamento</a>{% endif %}
+                                </td>
                                 <td>{{ pedido.data.strftime('%d/%m/%Y') }}</td>
                                 <td>
                                     {% if pedido.tipo == 'venda' %}

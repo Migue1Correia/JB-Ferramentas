@@ -14,9 +14,10 @@ class ColaboradorModel:
         Faz um JOIN com a tabela de pessoas para pegar o nome do cliente.
         """
         arg = """
-            SELECT s.id, p.nome, s.descricao_servico, s.status_servico, s.data_abertura 
+            SELECT s.id, p.nome, s.descricao_servico, s.status_servico, s.data_abertura, m.equipamento 
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
             WHERE s.servico_solicitado = 'manutencao' AND s.status_servico = 'Aberto'
             ORDER BY s.data_abertura ASC;
         """
@@ -33,7 +34,8 @@ class ColaboradorModel:
                 "cliente": row[1],
                 "descricao": row[2],
                 "status": row[3],
-                "data": row[4]
+                "data": row[4],
+                "equipamento": row[5]
             })
         return servicos
 
@@ -113,9 +115,11 @@ class ColaboradorModel:
     @staticmethod
     def _manutencoes_com_status(status_sql):
         arg = f"""
-            SELECT s.id, p.nome, p.telefone, s.descricao_servico, s.status_servico, s.valor_servico, s.pagamento
+            SELECT s.id, p.nome, p.telefone, s.descricao_servico, s.status_servico, s.valor_servico, s.pagamento,
+                   m.equipamento
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
             WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN {status_sql}
             ORDER BY s.data_abertura ASC;
         """
@@ -124,7 +128,7 @@ class ColaboradorModel:
             return []
         return [{"id": linha[0], "cliente": linha[1], "telefone": linha[2], "descricao": linha[3],
                  "status": linha[4], "valor": linha[5], "pagamento": linha[6],
-                 "pago": linha[6] == PAGAMENTO_PAGO} for linha in res[1]]
+                 "pago": linha[6] == PAGAMENTO_PAGO, "equipamento": linha[7]} for linha in res[1]]
 
     @staticmethod
     def fechar_servico(id_servico):

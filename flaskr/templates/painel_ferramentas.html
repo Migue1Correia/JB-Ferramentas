@@ -6,7 +6,7 @@
     <title>JB Ferramentas - Catálogo de ferramentas</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.5">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body class="dashboard-body">
     <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
@@ -67,14 +67,13 @@
             {% endif %}
         </section>
 
-        {% if eh_administrador %}
         <section class="profile-card">
             <div class="card-header">
                 <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
                 <h2>Cadastrar unidade em estoque</h2>
             </div>
             {% if ferramentas and filiais %}
-            <form method="POST" action="{{ url_for('admin_unidades') }}">
+            <form method="POST" action="{{ url_for('cadastrar_unidade') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-grid">
                     <div class="input-group">
@@ -106,7 +105,6 @@
             <p style="color: #aaaaaa;">Cadastre pelo menos uma ferramenta e uma filial para lançar unidades em estoque.</p>
             {% endif %}
         </section>
-        {% endif %}
 
         <section class="profile-card">
             <div class="card-header">
