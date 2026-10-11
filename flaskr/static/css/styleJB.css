@@ -578,6 +578,13 @@ body {
    ========================================================================== */
 @media (max-width: 768px) {
     .service-cards { grid-template-columns: 1fr; gap: 15px; }
+    /* Menu do colaborador (8 cards): no celular vira duas colunas, só com ícone e nome,
+       para o conteúdo da tela não ficar lá embaixo */
+    .menu-colaborador { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .menu-colaborador .card-item { padding: 12px 14px; }
+    .menu-colaborador .card-info { gap: 12px; }
+    .menu-colaborador .card-info h3 { font-size: 1rem; margin-bottom: 0; }
+    .menu-colaborador .card-info p, .menu-colaborador .arrow { display: none; }
     .form-grid { grid-template-columns: 1fr; }
     .input-group.full-width { grid-column: span 1; }
     .status-overview-row, .product-detail-container { grid-template-columns: 1fr; gap: 20px; }
