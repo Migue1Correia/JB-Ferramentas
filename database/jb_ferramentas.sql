@@ -154,6 +154,7 @@ CREATE TABLE `manutencao_pecas` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `quantidade` int unsigned NOT NULL DEFAULT '1',
   `preco_unitario` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `cobrar_na_retirada` tinyint(1) NOT NULL DEFAULT '0',
   `id_manutencao` int unsigned NOT NULL,
   `id_estoque_peca` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -424,4 +425,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-11  8:05:58
+-- Dump completed on 2026-10-11  8:15:50

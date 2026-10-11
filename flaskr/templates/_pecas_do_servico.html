@@ -1,21 +1,27 @@
-{# Peças lançadas em uma manutenção. Espera: servico, pecas_usadas e estoques. #}
+{# Peças lançadas em uma manutenção. Espera: servico, pecas_usadas, estoques e diferencas. #}
 {% set uso = pecas_usadas.get(servico.id) %}
 {% set pode_mexer = servico.status != 'Aguardando Aprovação' %}
+{% set aprovado = servico.status == 'Aprovado' %}
+{% set campo = "background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;" %}
+{# Serviço já aprovado: um formulário só, com a escolha "manter o valor ou avisar o cliente" valendo
+   para usar e para remover. Nos outros casos, cada botão tem o seu formulário. #}
+{% if aprovado and (uso or estoques) %}
+<form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {# Primeiro botão do formulário: é o que o Enter aciona (sem ele, o Enter acionaria um "Remover") #}
+    {% if estoques %}<button type="submit" hidden tabindex="-1" aria-hidden="true"></button>{% endif %}
+{% endif %}
 {% if uso %}
 <ul style="list-style: none; padding: 0; margin: 10px 0 0;">
     {% for item in uso.itens %}
     <li style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px;">
         <small style="color: #aaaaaa;">Peça usada: {{ item.texto }} · {{ item.valor|moeda if item.valor else 'sem custo para o cliente' }}</small>
-        {% if pode_mexer %}
-        <form method="POST" action="{{ url_for('remover_peca', id_uso=item.id) }}" style="display: flex; gap: 6px; flex-wrap: wrap;">
+        {% if aprovado %}
+        <button type="submit" formaction="{{ url_for('remover_peca', id_uso=item.id) }}" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} do serviço {{ servico.id }}">Remover</button>
+        {% elif pode_mexer %}
+        <form method="POST" action="{{ url_for('remover_peca', id_uso=item.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% if servico.status == 'Aprovado' %}
-    {# Serviço já aprovado: o colaborador escolhe se o valor combinado continua o mesmo ou se o cliente é avisado #}
-    <button type="submit" name="valor" value="manter" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }}, mantendo o valor do serviço {{ servico.id }}">Remover e manter o valor</button>
-    <button type="submit" name="valor" value="avisar" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} e avisar o cliente do novo valor do serviço {{ servico.id }}">Remover e avisar o cliente</button>
-    {% else %}
-    <button type="submit" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} do serviço {{ servico.id }}">Remover</button>
-    {% endif %}
+            <button type="submit" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} do serviço {{ servico.id }}">Remover</button>
         </form>
         {% endif %}
     </li>
@@ -28,27 +34,40 @@
 {% if acerto > 0 %}<strong style="display: block; color: #ffcc66;">Diferença a receber na retirada: {{ acerto|moeda }}</strong>
 {% elif acerto < 0 %}<strong style="display: block; color: #ffcc66;">Devolver ao cliente na retirada: {{ (-acerto)|moeda }}</strong>
 {% endif %}
-{% if servico.status == 'Aprovado' and (uso or estoques) %}
-<small style="display: block; color: #aaaaaa; margin-top: 6px;">Serviço já aprovado: ao mexer nas peças, escolha se o valor continua o mesmo ou se o cliente é avisado do novo valor{% if servico.pago %}. Como ele já pagou pelo site, "avisar o cliente" deixa o acerto para a retirada: peça a mais vira diferença a receber, peça tirada vira valor a devolver{% endif %}.</small>
-{% endif %}
-{% if pode_mexer and estoques %}
+{% if aprovado and (uso or estoques) %}
+    <div style="margin-top: 10px;">
+        <label for="valor_{{ servico.id }}" style="display: block; color: #aaaaaa; font-size: 0.8rem; margin-bottom: 4px;">Serviço já aprovado. Ao usar ou remover peça:</label>
+        <select id="valor_{{ servico.id }}" name="valor" required style="max-width: 100%; {{ campo }}">
+            <option value="">Escolha o que fazer com o valor</option>
+            <option value="manter">Manter o valor combinado</option>
+            <option value="avisar">{% if servico.pago %}Avisar o cliente (já pagou: acerto na retirada){% else %}Avisar o cliente do novo valor{% endif %}</option>
+        </select>
+    </div>
+    {% if estoques %}
+    <div style="display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap;">
+        <select name="id_estoque" required aria-label="Peça usada no serviço {{ servico.id }}" style="max-width: 220px; {{ campo }}">
+            {% for estoque in estoques %}
+            <option value="{{ estoque.id_estoque }}">{{ estoque.nome }} - {{ estoque.filial }} ({{ estoque.quantidade }})</option>
+            {% endfor %}
+        </select>
+        <input type="number" name="quantidade" value="1" min="1" step="1" required aria-label="Quantidade da peça no serviço {{ servico.id }}" style="width: 70px; {{ campo }}">
+        <button type="submit" class="btn-remover">Usar peça</button>
+    </div>
+    {% endif %}
+</form>
+{% elif pode_mexer and estoques %}
 <form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" style="display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <select name="id_estoque" required aria-label="Peça usada no serviço {{ servico.id }}" style="max-width: 220px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
+    <select name="id_estoque" required aria-label="Peça usada no serviço {{ servico.id }}" style="max-width: 220px; {{ campo }}">
         {% for estoque in estoques %}
         <option value="{{ estoque.id_estoque }}">{{ estoque.nome }} - {{ estoque.filial }} ({{ estoque.quantidade }})</option>
         {% endfor %}
     </select>
-    <input type="number" name="quantidade" value="1" min="1" step="1" required aria-label="Quantidade da peça no serviço {{ servico.id }}" style="width: 70px; background: #141414; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 8px 10px; color: #ffffff;">
-    {% if servico.status == 'Aprovado' %}
-    {# Serviço já aprovado: o colaborador escolhe se o valor combinado continua o mesmo ou se o cliente é avisado #}
-    <button type="submit" name="valor" value="manter" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Usar a peça, mantendo o valor do serviço {{ servico.id }}">Usar e manter o valor</button>
-    <button type="submit" name="valor" value="avisar" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Usar a peça e avisar o cliente do novo valor do serviço {{ servico.id }}">Usar e avisar o cliente</button>
-    {% else %}
+    <input type="number" name="quantidade" value="1" min="1" step="1" required aria-label="Quantidade da peça no serviço {{ servico.id }}" style="width: 70px; {{ campo }}">
     <button type="submit" class="btn-remover">Usar peça</button>
-    {% endif %}
 </form>
-{% elif pode_mexer %}
-{# Sem peça em estoque os botões não aparecem: avisa onde cadastrar, em vez de ficar em branco #}
+{% endif %}
+{% if pode_mexer and not estoques %}
+{# Sem peça em estoque o "Usar peça" não aparece: avisa onde cadastrar, em vez de ficar em branco #}
 <small style="display: block; color: #aaaaaa; margin-top: 6px;">Para usar peça neste serviço, <a href="{{ url_for('gerenciar_pecas') }}" style="color: #ff6600;">cadastre uma peça com estoque</a>.</small>
 {% endif %}

@@ -71,6 +71,7 @@ python cadastrar_exemplos.py   # opcional: ferramentas de exemplo na loja
 mysql -u root -p jb_ferramentas -e "ALTER TABLE ferramentas ADD COLUMN ativo TINYINT(1) NOT NULL DEFAULT 1 AFTER imagem"
 mysql -u root -p jb_ferramentas -e "ALTER TABLE manutencao_pecas ADD COLUMN preco_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER quantidade"
 mysql -u root -p jb_ferramentas -e "ALTER TABLE servicos ADD COLUMN valor_a_devolver DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER valor_servico"
+mysql -u root -p jb_ferramentas -e "ALTER TABLE manutencao_pecas ADD COLUMN cobrar_na_retirada TINYINT(1) NOT NULL DEFAULT 0 AFTER preco_unitario"
 ```
 Se algum deles responder "Duplicate column name", a coluna já existe: é só seguir.
 

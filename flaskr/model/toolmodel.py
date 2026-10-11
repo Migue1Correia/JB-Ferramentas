@@ -72,7 +72,7 @@ class ToolModel:
     @staticmethod
     def _validar(marca, modelo, preco, tipo_oferta):
         """Confere os campos da ferramenta. Devolve (preço como número, mensagem de erro ou None)."""
-        if not (marca or "").strip() or not (modelo or "").strip():
+        if not marca or not modelo:
             return None, "Preencha os campos obrigatórios (Marca e Modelo)."
 
         try:
@@ -90,6 +90,7 @@ class ToolModel:
     def create(marca, modelo, descricao, id_tipo, preco, tipo_oferta, imagem=None):
         if not id_tipo:
             return False, "Preencha os campos obrigatórios (Marca, Modelo e Tipo)."
+        marca, modelo = (marca or "").strip(), (modelo or "").strip()
         preco, erro = ToolModel._validar(marca, modelo, preco, tipo_oferta)
         if erro:
             return False, erro
@@ -109,6 +110,7 @@ class ToolModel:
     @staticmethod
     def update(tool_id, marca, modelo, descricao, preco, tipo_oferta, imagem=None):
         """Altera os dados de uma ferramenta. Sem foto nova, a foto atual é mantida."""
+        marca, modelo = (marca or "").strip(), (modelo or "").strip()
         preco, erro = ToolModel._validar(marca, modelo, preco, tipo_oferta)
         if erro:
             return False, erro

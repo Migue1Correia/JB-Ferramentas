@@ -6,13 +6,12 @@ STATUS_QUE_MEXEM_EM_PECAS = ('Aberto', 'Reprovado', 'Aprovado')
 MENSAGEM_ORCAMENTO_REABERTO = " O valor mudou: o orçamento voltou para o cliente aprovar de novo."
 MENSAGEM_PECAS_TRAVADAS = "Não dá para mexer nas peças enquanto o cliente analisa o orçamento, nem em serviço já fechado."
 
-# Diferença a receber na retirada: soma das peças cobradas lançadas DEPOIS que o cliente pagou pelo site.
+# Diferença a receber na retirada: soma das peças lançadas depois que o cliente pagou pelo site
+# (marcadas com cobrar_na_retirada = 1 no lançamento).
 # "{servico}" é o nome (ou apelido) da tabela servicos na consulta que usa este trecho.
-# shortcut: reconhece a peça "de depois do pagamento" pela hora do lançamento (criando_em > pago_em);
-# criar uma coluna própria no lançamento se um dia existir pagamento parcial ou estorno.
 DIFERENCA_SQL = """(SELECT COALESCE(SUM(mp.quantidade * mp.preco_unitario), 0)
                     FROM manutencao_pecas mp JOIN manutencoes m ON m.id = mp.id_manutencao
-                    WHERE m.id_servico = {servico}.id AND mp.criando_em > {servico}.pago_em)"""
+                    WHERE m.id_servico = {servico}.id AND mp.cobrar_na_retirada = 1)"""
 
 
 class PecaModel:
@@ -260,8 +259,10 @@ class PecaModel:
 
             c.execute("SELECT p.preco_venda FROM estoque_pecas e JOIN pecas p ON p.id = e.id_peca WHERE e.id=%s;", (id_estoque,))
             preco = 0 if modo == "manter" else c.fetchone()[0]  # valor mantido: a peça não é cobrada do cliente
-            c.execute("INSERT INTO manutencao_pecas (quantidade, preco_unitario, id_manutencao, id_estoque_peca) VALUES (%s, %s, %s, %s);",
-                      (quantidade, preco, id_manutencao, id_estoque))
+            c.execute("""
+                INSERT INTO manutencao_pecas (quantidade, preco_unitario, cobrar_na_retirada, id_manutencao, id_estoque_peca)
+                VALUES (%s, %s, %s, %s, %s);
+            """, (quantidade, preco, 1 if modo == "diferenca" else 0, id_manutencao, id_estoque))
             mensagem = "Peça registrada no serviço e baixada do estoque."
             if modo == "manter":
                 mensagem += " O valor do serviço foi mantido."
@@ -293,10 +294,7 @@ class PecaModel:
             _, id_servico, status, pagamento = servico
             modo = PecaModel._modo(status, pagamento, avisar_cliente)
 
-            c.execute("""
-                SELECT mp.quantidade, mp.preco_unitario, mp.id_estoque_peca, mp.criando_em > s.pago_em
-                FROM manutencao_pecas mp JOIN servicos s ON s.id = %s WHERE mp.id = %s;
-            """, (id_servico, id_uso))
+            c.execute("SELECT quantidade, preco_unitario, id_estoque_peca, cobrar_na_retirada FROM manutencao_pecas WHERE id=%s;", (id_uso,))
             quantidade, preco, id_estoque, depois_do_pagamento = c.fetchone()
             # Peça que o cliente já pagou pelo site e não vai ser usada: o valor dela fica para devolver na retirada
             a_devolver = quantidade * preco if modo == "diferenca" and not depois_do_pagamento else 0
