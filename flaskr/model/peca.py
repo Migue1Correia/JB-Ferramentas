@@ -298,10 +298,10 @@ class PecaModel:
                 FROM manutencao_pecas mp JOIN servicos s ON s.id = %s WHERE mp.id = %s;
             """, (id_servico, id_uso))
             quantidade, preco, id_estoque, depois_do_pagamento = c.fetchone()
-            if modo == "diferenca" and preco and not depois_do_pagamento:
-                conexao.rollback()
-                return False, ("Essa peça já foi paga pelo cliente e o sistema não faz estorno. "
-                               "Para tirar a peça, use \"Remover e manter o valor\" e combine o acerto na retirada.")
+            # Peça que o cliente já pagou pelo site e não vai ser usada: o valor dela fica para devolver na retirada
+            a_devolver = quantidade * preco if modo == "diferenca" and not depois_do_pagamento else 0
+            if a_devolver:
+                c.execute("UPDATE servicos SET valor_a_devolver = valor_a_devolver + %s WHERE id=%s;", (a_devolver, id_servico))
 
             c.execute("UPDATE estoque_pecas SET quantidade_atual = quantidade_atual + %s WHERE id=%s;", (quantidade, id_estoque))
             c.execute("DELETE FROM manutencao_pecas WHERE id=%s;", (id_uso,))
@@ -309,6 +309,9 @@ class PecaModel:
             if modo == "reabrir":
                 PecaModel._reabrir_orcamento(c, id_servico, -quantidade * preco)
                 mensagem += MENSAGEM_ORCAMENTO_REABERTO
+            elif a_devolver:
+                valor = f"{float(a_devolver):.2f}".replace(".", ",")
+                mensagem += f" O cliente já tinha pago por ela: R$ {valor} ficam para devolver na retirada."
             elif pagamento == PAGAMENTO_PAGO and preco and depois_do_pagamento:
                 mensagem += " A diferença a receber na retirada diminuiu."
             elif modo:
@@ -325,12 +328,14 @@ class PecaModel:
     @staticmethod
     def diferencas():
         """
-        Diferença a receber na retirada, por serviço: peças cobradas lançadas depois que o cliente
-        pagou pelo site. Entra no valor do serviço (e no caixa) quando a entrega é registrada.
-        :return: dicionário {id do serviço: valor}, só com os serviços que têm diferença.
+        Acerto a fazer na retirada, por serviço já pago pelo site: peças cobradas lançadas depois do
+        pagamento (a receber) menos peças já pagas que foram removidas (a devolver).
+        Entra no valor do serviço (e no caixa) quando a entrega é registrada.
+        :return: dicionário {id do serviço: valor}. Positivo: o cliente paga a diferença.
+                 Negativo: a loja devolve. Só traz os serviços que têm acerto.
         """
         arg = f"""
-            SELECT s.id, {DIFERENCA_SQL.format(servico="s")}
+            SELECT s.id, {DIFERENCA_SQL.format(servico="s")} - s.valor_a_devolver
             FROM servicos s
             WHERE s.servico_solicitado = 'manutencao' AND s.pagamento = %s AND s.status_servico IN ('Aprovado', 'Concluído');
         """

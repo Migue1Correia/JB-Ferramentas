@@ -350,6 +350,7 @@ CREATE TABLE `servicos` (
   `descricao_servico` text NOT NULL,
   `data_abertura` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `valor_servico` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `valor_a_devolver` decimal(10,2) NOT NULL DEFAULT '0.00',
   `status_servico` varchar(50) NOT NULL DEFAULT 'Aberto',
   `pagamento` varchar(20) DEFAULT NULL,
   `pago_em` datetime DEFAULT NULL,
@@ -423,4 +424,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-10 13:23:30
+-- Dump completed on 2026-10-11  8:05:58

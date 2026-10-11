@@ -191,7 +191,9 @@
                                     {% if pedido.diagnostico %}<br><small style="color: #aaaaaa;">Diagnóstico: {{ pedido.diagnostico }}</small>{% endif %}
                                     {% if pedido.foto %}<br><a href="{{ url_for('static', filename=pedido.foto) }}" style="color: #ff6600;">Ver foto do equipamento</a>{% endif %}
                                     {% for item in pecas_usadas.get(pedido.id, {}).get('itens', []) %}<br><small style="color: #aaaaaa;">Peça: {{ item.texto }} · {{ item.valor|moeda if item.valor else 'sem custo' }}</small>{% endfor %}
-                                    {% if diferencas.get(pedido.id) %}<br><strong style="color: #ffcc66;">Diferença a pagar na retirada (peças a mais): {{ diferencas[pedido.id]|moeda }}</strong>{% endif %}
+                                    {% set acerto = diferencas.get(pedido.id, 0) %}
+                                    {% if acerto > 0 %}<br><strong style="color: #ffcc66;">Diferença a pagar na retirada (peças a mais): {{ acerto|moeda }}</strong>
+                                    {% elif acerto < 0 %}<br><strong style="color: #ffcc66;">Você recebe de volta na retirada (peça não usada): {{ (-acerto)|moeda }}</strong>{% endif %}
                                 </td>
                                 <td>{{ pedido.data.strftime('%d/%m/%Y') }}</td>
                                 <td>

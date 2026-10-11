@@ -103,12 +103,12 @@ class ColaboradorModel:
     def entregar_servico(id_servico):
         """
         Registra que o cliente retirou o equipamento. Quem não tinha pago pelo site
-        paga na retirada, e é aí que o valor entra no caixa. Quem já tinha pago pelo site e
-        recebeu peça a mais depois paga a diferença agora: ela é somada ao valor do serviço.
+        paga na retirada, e é aí que o valor entra no caixa. Quem já tinha pago pelo site faz
+        o acerto agora: peça a mais é somada ao valor do serviço, peça paga e não usada é descontada.
         """
         arg = f"""
             UPDATE servicos
-            SET valor_servico = valor_servico + IF(pagamento = %s, {DIFERENCA_SQL.format(servico="servicos")}, 0),
+            SET valor_servico = GREATEST(valor_servico + IF(pagamento = %s, {DIFERENCA_SQL.format(servico="servicos")} - valor_a_devolver, 0), 0),
                 status_servico = 'Entregue',
                 pago_em = IF(pagamento = %s, pago_em, NOW()),
                 pagamento = IF(pagamento = %s, pagamento, %s)

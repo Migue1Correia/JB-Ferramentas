@@ -957,17 +957,41 @@ class TestePecasNaManutencao(TesteBase):
         self.assertIn("sem custo para o cliente", pagina)
         self.assertEqual((self.em_estoque(), situacao()), (2, ("Aprovado", 119.90, "Pago online")))
 
-        # peça que o cliente já pagou não sai "avisando o cliente": o sistema não faz estorno
+        # peça que o cliente já pagou (1 x 19,90) e não vai ser usada: volta ao estoque e o valor fica para devolver
         resposta = self.cliente.post(f"/colaborador/servico/peca/{peca_ja_paga}/remover", data={"valor": "avisar"}, follow_redirects=True)
-        self.assertIn("não faz estorno", self.texto(resposta))
-        self.assertEqual(self.em_estoque(), 2)
+        self.assertIn("ficam para devolver na retirada", self.texto(resposta))
+        self.assertEqual((self.em_estoque(), float(self.sql("SELECT valor_a_devolver FROM servicos;")[0][0])), (3, 19.90))
 
-        # na retirada a diferença é recebida: entra no valor do serviço e no caixa
+        # na retirada o acerto é um só: 50,00 a receber - 19,90 a devolver = 30,10; entra no valor do serviço e no caixa
         self.cliente.post(f"/colaborador/servico/{servico}/fechar")
-        self.assertIn("Entregue e recebida a diferença de " + main.formatar_moeda(50), self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("Entregue e recebida a diferença de " + main.formatar_moeda(30.10), self.texto(self.cliente.get("/colaborador/painel")))
         self.cliente.post(f"/colaborador/servico/{servico}/entregar")
-        self.assertEqual(situacao(), ("Entregue", 169.90, "Pago online"))
-        self.assertIn(main.formatar_moeda(169.90), self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertEqual(situacao(), ("Entregue", 150.0, "Pago online"))
+        self.assertIn(main.formatar_moeda(150), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+    def test_peca_paga_e_nao_usada_e_devolvida_na_retirada(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "2")  # 2 x 19,90
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
+        self.cliente.post("/carrinho/finalizar")  # cliente pagou 139,80 pelo site
+        self.sql("UPDATE manutencao_pecas SET criando_em = criando_em - INTERVAL 2 MINUTE;")
+        self.sql("UPDATE servicos SET pago_em = pago_em - INTERVAL 1 MINUTE;")
+
+        uso = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+        pagina = self.texto(self.cliente.post(f"/colaborador/servico/peca/{uso}/remover", data={"valor": "avisar"}, follow_redirects=True))
+        self.assertIn("Devolver ao cliente na retirada: " + main.formatar_moeda(39.80), pagina)
+        self.assertEqual(self.em_estoque(), 5)
+        self.assertIn("Você recebe de volta na retirada", self.texto(self.cliente.get("/perfil")))
+        # até a entrega, o caixa continua com o que foi recebido de verdade
+        self.assertIn(main.formatar_moeda(139.80), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+        self.cliente.post(f"/colaborador/servico/{servico}/fechar")
+        self.assertIn("Entregue e devolvidos " + main.formatar_moeda(39.80), self.texto(self.cliente.get("/colaborador/painel")))
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")
+        self.assertEqual(float(self.sql("SELECT valor_servico FROM servicos;")[0][0]), 100.0)
+        self.assertIn(main.formatar_moeda(100), self.texto(self.cliente.get("/colaborador/financeiro")))
 
     def test_em_servico_aprovado_o_colaborador_escolhe_manter_o_valor_ou_avisar(self):
         servico = self.abrir_servico()

@@ -22,10 +22,14 @@
     {% endfor %}
 </ul>
 <small style="color: #aaaaaa;">Total em peças: {{ uso.total|moeda }}</small>
-{% if diferencas.get(servico.id) %}<br><strong style="color: #ffcc66;">Diferença a receber na retirada: {{ diferencas[servico.id]|moeda }}</strong>{% endif %}
+{% endif %}
+{# Acerto de serviço já pago pelo site: aparece mesmo quando a última peça foi tirada #}
+{% set acerto = diferencas.get(servico.id, 0) %}
+{% if acerto > 0 %}<strong style="display: block; color: #ffcc66;">Diferença a receber na retirada: {{ acerto|moeda }}</strong>
+{% elif acerto < 0 %}<strong style="display: block; color: #ffcc66;">Devolver ao cliente na retirada: {{ (-acerto)|moeda }}</strong>
 {% endif %}
 {% if servico.status == 'Aprovado' and (uso or estoques) %}
-<small style="display: block; color: #aaaaaa; margin-top: 6px;">Serviço já aprovado: ao mexer nas peças, escolha se o valor continua o mesmo ou se o cliente é avisado do novo valor{% if servico.pago %}. Como ele já pagou pelo site, "avisar o cliente" deixa o valor da peça como diferença a receber na retirada{% endif %}.</small>
+<small style="display: block; color: #aaaaaa; margin-top: 6px;">Serviço já aprovado: ao mexer nas peças, escolha se o valor continua o mesmo ou se o cliente é avisado do novo valor{% if servico.pago %}. Como ele já pagou pelo site, "avisar o cliente" deixa o acerto para a retirada: peça a mais vira diferença a receber, peça tirada vira valor a devolver{% endif %}.</small>
 {% endif %}
 {% if pode_mexer and estoques %}
 <form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" style="display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap;">
