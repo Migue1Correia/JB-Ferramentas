@@ -577,14 +577,17 @@ body {
    SUPORTE DE RESPONSIVIDADE (MOBILE)
    ========================================================================== */
 @media (max-width: 768px) {
-    .service-cards { grid-template-columns: 1fr; gap: 15px; }
-    /* Menu do colaborador (8 cards): no celular vira duas colunas, só com ícone e nome,
-       para o conteúdo da tela não ficar lá embaixo */
-    .menu-colaborador { grid-template-columns: 1fr 1fr; gap: 10px; }
-    .menu-colaborador .card-item { padding: 12px 14px; }
-    .menu-colaborador .card-info { gap: 12px; }
-    .menu-colaborador .card-info h3 { font-size: 1rem; margin-bottom: 0; }
-    .menu-colaborador .card-info p, .menu-colaborador .arrow { display: none; }
+    /* Menus de cards (cliente e colaborador): no celular viram duas colunas, só com ícone e nome,
+       para o conteúdo da tela (produtos, formulários) não ficar lá embaixo */
+    .service-cards { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+    .service-cards .card-item { padding: 12px 14px; height: 100%; }
+    .service-cards .card-info { gap: 12px; }
+    .service-cards .card-info h3 { font-size: 0.95rem; margin-bottom: 0; }
+    .service-cards .card-info p, .service-cards .arrow { display: none; }
+    .service-cards .icon-main { font-size: 1.3rem !important; }
+    /* Filtros da loja: os três botões cabem na largura do celular */
+    .category-filters-container { gap: 8px; padding: 0 12px; }
+    .filter-btn { padding: 10px 12px; flex: 1; justify-content: center; }
     .form-grid { grid-template-columns: 1fr; }
     .input-group.full-width { grid-column: span 1; }
     .status-overview-row, .product-detail-container { grid-template-columns: 1fr; gap: 20px; }

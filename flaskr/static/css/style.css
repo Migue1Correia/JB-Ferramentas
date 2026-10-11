@@ -451,8 +451,16 @@ body {
         grid-template-columns: 1fr; /* Uma coluna no celular */
         text-align: center;
         padding: 20px;
-        gap: 40px;
+        gap: 24px;
+        align-content: center; /* junta logo e botões no meio, em vez de esticar pela tela */
+        min-height: 100dvh;    /* altura que desconta a barra do navegador do celular */
     }
+
+    /* Logo menor: os botões "Serviços" e "Entrar" aparecem sem precisar rolar */
+    .logo-box { padding: 10px 28px; }
+    .logo-box h1 { font-size: 72px; }
+    .text-content { margin-bottom: 24px; }
+    .action-buttons-group { margin-bottom: 16px; }
 
     .content-collumn {
         padding-left: 0;
@@ -460,7 +468,7 @@ body {
     }
 
     .main-headline {
-        font-size: 32px;
+        font-size: 28px;
     }
 
     .description-text {
