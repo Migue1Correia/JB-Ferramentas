@@ -1,5 +1,5 @@
 from .db import db_execute
-from .peca import PecaModel
+from .peca import PecaModel, DIFERENCA_SQL
 from .service import PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA
 
 # Dias inteiros de atraso de um aluguel (zero se ainda está no prazo). A coluna a.data_devolucao é o prazo.
@@ -103,16 +103,18 @@ class ColaboradorModel:
     def entregar_servico(id_servico):
         """
         Registra que o cliente retirou o equipamento. Quem não tinha pago pelo site
-        paga na retirada, e é aí que o valor entra no caixa.
+        paga na retirada, e é aí que o valor entra no caixa. Quem já tinha pago pelo site e
+        recebeu peça a mais depois paga a diferença agora: ela é somada ao valor do serviço.
         """
-        arg = """
+        arg = f"""
             UPDATE servicos
-            SET status_servico = 'Entregue',
+            SET valor_servico = valor_servico + IF(pagamento = %s, {DIFERENCA_SQL.format(servico="servicos")}, 0),
+                status_servico = 'Entregue',
                 pago_em = IF(pagamento = %s, pago_em, NOW()),
                 pagamento = IF(pagamento = %s, pagamento, %s)
             WHERE id = %s AND servico_solicitado = 'manutencao' AND status_servico = 'Concluído';
         """
-        res = db_execute(arg, PAGAMENTO_PAGO, PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA, id_servico)
+        res = db_execute(arg, PAGAMENTO_PAGO, PAGAMENTO_PAGO, PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA, id_servico)
         if not res[0] or not res[1]:
             return False, "Esse serviço não está pronto para retirada."
         return True, "Entrega registrada."

@@ -938,15 +938,36 @@ class TestePecasNaManutencao(TesteBase):
         # depois de pago pelo site, o valor não muda mais
         self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
         self.cliente.post("/carrinho/finalizar")
-        self.assertIn("já foi pago", self.usar(servico, "1"))
-        self.assertEqual((self.em_estoque(), situacao()), (4, ("Aprovado", 119.90, "Pago online")))
-        # ...mas a peça pode entrar mantendo o valor: baixa o estoque e não cobra do cliente
+        # (os testes rodam no mesmo segundo: afasta as horas para o sistema saber o que veio antes do pagamento)
+        self.sql("UPDATE manutencao_pecas SET criando_em = criando_em - INTERVAL 2 MINUTE;")
+        self.sql("UPDATE servicos SET pago_em = pago_em - INTERVAL 1 MINUTE;")
+        peca_ja_paga = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+
+        # peça a mais avisando o cliente: o serviço continua pago e a peça vira diferença a receber na retirada
+        pagina = self.usar(servico, "1")
+        self.assertIn("diferença a receber na retirada", pagina)
+        self.assertIn("Diferença a receber na retirada: " + main.formatar_moeda(50), pagina)
+        self.assertEqual((self.em_estoque(), situacao()), (3, ("Aprovado", 119.90, "Pago online")))
+        self.assertIn("Diferença a pagar na retirada", self.texto(self.cliente.get("/perfil")))
+
+        # peça a mais mantendo o valor: baixa o estoque e não cobra nada
         pagina = self.texto(self.cliente.post(f"/colaborador/servico/{servico}/peca", follow_redirects=True,
                                               data={"id_estoque": self.estoque, "quantidade": "1", "valor": "manter"}))
         self.assertIn("O valor do serviço foi mantido", pagina)
         self.assertIn("sem custo para o cliente", pagina)
-        self.assertNotIn("e avisar o cliente</button>", pagina)  # serviço pago só oferece "manter o valor"
-        self.assertEqual((self.em_estoque(), situacao()), (3, ("Aprovado", 119.90, "Pago online")))
+        self.assertEqual((self.em_estoque(), situacao()), (2, ("Aprovado", 119.90, "Pago online")))
+
+        # peça que o cliente já pagou não sai "avisando o cliente": o sistema não faz estorno
+        resposta = self.cliente.post(f"/colaborador/servico/peca/{peca_ja_paga}/remover", data={"valor": "avisar"}, follow_redirects=True)
+        self.assertIn("não faz estorno", self.texto(resposta))
+        self.assertEqual(self.em_estoque(), 2)
+
+        # na retirada a diferença é recebida: entra no valor do serviço e no caixa
+        self.cliente.post(f"/colaborador/servico/{servico}/fechar")
+        self.assertIn("Entregue e recebida a diferença de " + main.formatar_moeda(50), self.texto(self.cliente.get("/colaborador/painel")))
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")
+        self.assertEqual(situacao(), ("Entregue", 169.90, "Pago online"))
+        self.assertIn(main.formatar_moeda(169.90), self.texto(self.cliente.get("/colaborador/financeiro")))
 
     def test_em_servico_aprovado_o_colaborador_escolhe_manter_o_valor_ou_avisar(self):
         servico = self.abrir_servico()

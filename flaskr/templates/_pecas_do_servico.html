@@ -12,9 +12,7 @@
             {% if servico.status == 'Aprovado' %}
     {# Serviço já aprovado: o colaborador escolhe se o valor combinado continua o mesmo ou se o cliente é avisado #}
     <button type="submit" name="valor" value="manter" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }}, mantendo o valor do serviço {{ servico.id }}">Remover e manter o valor</button>
-    {% if not servico.pago %}
     <button type="submit" name="valor" value="avisar" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} e avisar o cliente do novo valor do serviço {{ servico.id }}">Remover e avisar o cliente</button>
-    {% endif %}
     {% else %}
     <button type="submit" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Remover {{ item.texto }} do serviço {{ servico.id }}">Remover</button>
     {% endif %}
@@ -24,9 +22,10 @@
     {% endfor %}
 </ul>
 <small style="color: #aaaaaa;">Total em peças: {{ uso.total|moeda }}</small>
+{% if diferencas.get(servico.id) %}<br><strong style="color: #ffcc66;">Diferença a receber na retirada: {{ diferencas[servico.id]|moeda }}</strong>{% endif %}
 {% endif %}
 {% if servico.status == 'Aprovado' and (uso or estoques) %}
-<small style="display: block; color: #aaaaaa; margin-top: 6px;">Serviço já aprovado: ao mexer nas peças, escolha se o valor continua o mesmo ou se o cliente é avisado do novo valor{% if servico.pago %} (já pago pelo site: só mantendo o valor){% endif %}.</small>
+<small style="display: block; color: #aaaaaa; margin-top: 6px;">Serviço já aprovado: ao mexer nas peças, escolha se o valor continua o mesmo ou se o cliente é avisado do novo valor{% if servico.pago %}. Como ele já pagou pelo site, "avisar o cliente" deixa o valor da peça como diferença a receber na retirada{% endif %}.</small>
 {% endif %}
 {% if pode_mexer and estoques %}
 <form method="POST" action="{{ url_for('usar_peca', id_servico=servico.id) }}" style="display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap;">
@@ -40,11 +39,12 @@
     {% if servico.status == 'Aprovado' %}
     {# Serviço já aprovado: o colaborador escolhe se o valor combinado continua o mesmo ou se o cliente é avisado #}
     <button type="submit" name="valor" value="manter" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Usar a peça, mantendo o valor do serviço {{ servico.id }}">Usar e manter o valor</button>
-    {% if not servico.pago %}
     <button type="submit" name="valor" value="avisar" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;" aria-label="Usar a peça e avisar o cliente do novo valor do serviço {{ servico.id }}">Usar e avisar o cliente</button>
-    {% endif %}
     {% else %}
     <button type="submit" class="btn-remover">Usar peça</button>
     {% endif %}
 </form>
+{% elif pode_mexer %}
+{# Sem peça em estoque os botões não aparecem: avisa onde cadastrar, em vez de ficar em branco #}
+<small style="display: block; color: #aaaaaa; margin-top: 6px;">Para usar peça neste serviço, <a href="{{ url_for('gerenciar_pecas') }}" style="color: #ff6600;">cadastre uma peça com estoque</a>.</small>
 {% endif %}

@@ -6,6 +6,14 @@ STATUS_QUE_MEXEM_EM_PECAS = ('Aberto', 'Reprovado', 'Aprovado')
 MENSAGEM_ORCAMENTO_REABERTO = " O valor mudou: o orçamento voltou para o cliente aprovar de novo."
 MENSAGEM_PECAS_TRAVADAS = "Não dá para mexer nas peças enquanto o cliente analisa o orçamento, nem em serviço já fechado."
 
+# Diferença a receber na retirada: soma das peças cobradas lançadas DEPOIS que o cliente pagou pelo site.
+# "{servico}" é o nome (ou apelido) da tabela servicos na consulta que usa este trecho.
+# shortcut: reconhece a peça "de depois do pagamento" pela hora do lançamento (criando_em > pago_em);
+# criar uma coluna própria no lançamento se um dia existir pagamento parcial ou estorno.
+DIFERENCA_SQL = """(SELECT COALESCE(SUM(mp.quantidade * mp.preco_unitario), 0)
+                    FROM manutencao_pecas mp JOIN manutencoes m ON m.id = mp.id_manutencao
+                    WHERE m.id_servico = {servico}.id AND mp.criando_em > {servico}.pago_em)"""
+
 
 class PecaModel:
 
@@ -191,18 +199,20 @@ class PecaModel:
         return linha, None
 
     @staticmethod
-    def _muda_o_valor(status, pagamento, avisar_cliente):
+    def _modo(status, pagamento, avisar_cliente):
         """
-        Em serviço já aprovado, o colaborador escolhe: manter o valor combinado (a peça entra ou sai
-        sem custo para o cliente) ou avisar o cliente do novo valor (o orçamento volta para ele aprovar).
-        :return: (True se o valor do serviço vai mudar, mensagem de erro ou None)
+        Em serviço já aprovado, o colaborador escolhe o que acontece com o valor:
+        - "manter": o valor combinado continua (a peça entra ou sai sem custo para o cliente);
+        - "reabrir": o valor muda e o orçamento volta para o cliente aprovar;
+        - "diferenca": o cliente já pagou pelo site, então a peça a mais vira uma diferença
+          a receber na retirada (não dá para "despagar" o que já foi pago).
+        Fora de serviço aprovado devolve None: a peça entra normalmente no próximo orçamento.
         """
-        if status != 'Aprovado' or not avisar_cliente:
-            return False, None
-        if pagamento == PAGAMENTO_PAGO:
-            return False, ("Esse serviço já foi pago pelo cliente: só dá para mexer nas peças mantendo o valor. "
-                           "A diferença, se houver, é combinada na retirada.")
-        return True, None
+        if status != 'Aprovado':
+            return None
+        if not avisar_cliente:
+            return "manter"
+        return "diferenca" if pagamento == PAGAMENTO_PAGO else "reabrir"
 
     @staticmethod
     def _reabrir_orcamento(c, id_servico, diferenca):
@@ -239,10 +249,7 @@ class PecaModel:
                 conexao.rollback()
                 return False, erro
             id_manutencao, _, status, pagamento = servico
-            muda_o_valor, erro = PecaModel._muda_o_valor(status, pagamento, avisar_cliente)
-            if erro:
-                conexao.rollback()
-                return False, erro
+            modo = PecaModel._modo(status, pagamento, avisar_cliente)
 
             # A baixa só acontece se houver peças suficientes (confere e desconta no mesmo comando)
             c.execute("UPDATE estoque_pecas SET quantidade_atual = quantidade_atual - %s WHERE id=%s AND quantidade_atual >= %s;",
@@ -252,17 +259,17 @@ class PecaModel:
                 return False, "Não há essa quantidade da peça em estoque."
 
             c.execute("SELECT p.preco_venda FROM estoque_pecas e JOIN pecas p ON p.id = e.id_peca WHERE e.id=%s;", (id_estoque,))
-            preco = c.fetchone()[0]
-            if status == 'Aprovado' and not muda_o_valor:
-                preco = 0  # valor mantido: a peça não é cobrada do cliente
+            preco = 0 if modo == "manter" else c.fetchone()[0]  # valor mantido: a peça não é cobrada do cliente
             c.execute("INSERT INTO manutencao_pecas (quantidade, preco_unitario, id_manutencao, id_estoque_peca) VALUES (%s, %s, %s, %s);",
                       (quantidade, preco, id_manutencao, id_estoque))
             mensagem = "Peça registrada no serviço e baixada do estoque."
-            if status == 'Aprovado' and not muda_o_valor:
+            if modo == "manter":
                 mensagem += " O valor do serviço foi mantido."
-            if muda_o_valor:
+            elif modo == "reabrir":
                 PecaModel._reabrir_orcamento(c, id_servico, quantidade * preco)
                 mensagem += MENSAGEM_ORCAMENTO_REABERTO
+            elif modo == "diferenca":
+                mensagem += " O cliente já pagou pelo site: o valor desta peça fica como diferença a receber na retirada."
             conexao.commit()
             return True, mensagem
         except Exception as e:
@@ -284,21 +291,28 @@ class PecaModel:
                 conexao.rollback()
                 return False, erro
             _, id_servico, status, pagamento = servico
-            muda_o_valor, erro = PecaModel._muda_o_valor(status, pagamento, avisar_cliente)
-            if erro:
-                conexao.rollback()
-                return False, erro
+            modo = PecaModel._modo(status, pagamento, avisar_cliente)
 
-            c.execute("SELECT quantidade, preco_unitario, id_estoque_peca FROM manutencao_pecas WHERE id=%s;", (id_uso,))
-            quantidade, preco, id_estoque = c.fetchone()
+            c.execute("""
+                SELECT mp.quantidade, mp.preco_unitario, mp.id_estoque_peca, mp.criando_em > s.pago_em
+                FROM manutencao_pecas mp JOIN servicos s ON s.id = %s WHERE mp.id = %s;
+            """, (id_servico, id_uso))
+            quantidade, preco, id_estoque, depois_do_pagamento = c.fetchone()
+            if modo == "diferenca" and preco and not depois_do_pagamento:
+                conexao.rollback()
+                return False, ("Essa peça já foi paga pelo cliente e o sistema não faz estorno. "
+                               "Para tirar a peça, use \"Remover e manter o valor\" e combine o acerto na retirada.")
+
             c.execute("UPDATE estoque_pecas SET quantidade_atual = quantidade_atual + %s WHERE id=%s;", (quantidade, id_estoque))
             c.execute("DELETE FROM manutencao_pecas WHERE id=%s;", (id_uso,))
             mensagem = "Peça removida do serviço e devolvida ao estoque."
-            if status == 'Aprovado' and not muda_o_valor:
-                mensagem += " O valor do serviço foi mantido."
-            if muda_o_valor:
+            if modo == "reabrir":
                 PecaModel._reabrir_orcamento(c, id_servico, -quantidade * preco)
                 mensagem += MENSAGEM_ORCAMENTO_REABERTO
+            elif pagamento == PAGAMENTO_PAGO and preco and depois_do_pagamento:
+                mensagem += " A diferença a receber na retirada diminuiu."
+            elif modo:
+                mensagem += " O valor do serviço foi mantido."
             conexao.commit()
             return True, mensagem
         except Exception as e:
@@ -307,6 +321,23 @@ class PecaModel:
             return False, "Erro ao remover a peça."
         finally:
             c.close()
+
+    @staticmethod
+    def diferencas():
+        """
+        Diferença a receber na retirada, por serviço: peças cobradas lançadas depois que o cliente
+        pagou pelo site. Entra no valor do serviço (e no caixa) quando a entrega é registrada.
+        :return: dicionário {id do serviço: valor}, só com os serviços que têm diferença.
+        """
+        arg = f"""
+            SELECT s.id, {DIFERENCA_SQL.format(servico="s")}
+            FROM servicos s
+            WHERE s.servico_solicitado = 'manutencao' AND s.pagamento = %s AND s.status_servico IN ('Aprovado', 'Concluído');
+        """
+        res = db_execute(arg, PAGAMENTO_PAGO, fetch_type="all")
+        if not res[0] or not res[1]:
+            return {}
+        return {id_servico: valor for id_servico, valor in res[1] if valor}
 
     @staticmethod
     def devolver_do_encerrado(id_servico):

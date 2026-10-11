@@ -173,12 +173,13 @@
                             <td>{{ servico.cliente }}<br><small style="color: #aaaaaa;">{{ servico.telefone }}</small></td>
                             <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}</td>
                             <td>{{ servico.valor|moeda }}</td>
-                            <td>{% if servico.pago %}{{ servico.pagamento }}{% else %}<strong>A receber na retirada</strong>{% endif %}</td>
+                            <td>{% if servico.pago %}{{ servico.pagamento }}{% else %}<strong>A receber na retirada</strong>{% endif %}
+                                {% if diferencas.get(servico.id) %}<br><strong style="color: #ffcc66;">+ {{ diferencas[servico.id]|moeda }} de diferença a receber (peças a mais)</strong>{% endif %}</td>
                             <td>
                                 <form method="POST" action="{{ url_for('entregar_servico', id_servico=servico.id) }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-remover">
-                                        {% if servico.pago %}Entregue ao cliente{% else %}Entregue e pago{% endif %}
+                                        {% if diferencas.get(servico.id) %}Entregue e recebida a diferença de {{ diferencas[servico.id]|moeda }}{% elif servico.pago %}Entregue ao cliente{% else %}Entregue e pago{% endif %}
                                     </button>
                                 </form>
                             </td>

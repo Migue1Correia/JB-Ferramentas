@@ -408,7 +408,7 @@ def perfil_page():
 
     historico_servicos = ServiceModel.get_user_history(user_code)
     return render_template('perfil.html', user_infos=user_infos, status=status, historico=historico_servicos,
-                           pecas_usadas=PecaModel.usadas_por_servico())
+                           pecas_usadas=PecaModel.usadas_por_servico(), diferencas=PecaModel.diferencas())
 
 
 @app.route('/perfil/senha', methods=['POST'])
@@ -799,6 +799,7 @@ def painel_colaborador():
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
                            estoques=[p for p in PecaModel.listar() if p["quantidade"]],  # só o que tem para usar
                            pecas_usadas=PecaModel.usadas_por_servico(),
+                           diferencas=PecaModel.diferencas(),
                            alugueis=ColaboradorModel.get_alugueis_em_aberto(),
                            respondidos=ColaboradorModel.get_orcamentos_respondidos(),
                            reprovados=ColaboradorModel.get_orcamentos_reprovados(),
