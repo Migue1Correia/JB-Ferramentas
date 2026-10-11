@@ -65,6 +65,14 @@ python criar_admin.py          # cria o primeiro administrador (pede usuário e 
 python cadastrar_exemplos.py   # opcional: ferramentas de exemplo na loja
 ```
 
+**Já tinha o banco criado?** Não precisa recriar. Rode só os comandos abaixo, uma vez, para criar as colunas novas
+(sem elas a loja e o Catálogo aparecem vazios e a tela Serviços dá erro):
+```
+mysql -u root -p jb_ferramentas -e "ALTER TABLE ferramentas ADD COLUMN ativo TINYINT(1) NOT NULL DEFAULT 1 AFTER imagem"
+mysql -u root -p jb_ferramentas -e "ALTER TABLE manutencao_pecas ADD COLUMN preco_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER quantidade"
+```
+Se algum deles responder "Duplicate column name", a coluna já existe: é só seguir.
+
 **4. Rodar:**
 ```
 cd flaskr
