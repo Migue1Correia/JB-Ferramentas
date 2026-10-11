@@ -197,6 +197,44 @@
             {% endif %}
         </section>
 
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-user-plus" aria-hidden="true"></i>
+                <h2>Abrir serviço no balcão</h2>
+            </div>
+            <p style="color: #aaaaaa; margin-bottom: 16px;">Para o cliente que veio à loja pessoalmente. O pedido entra em "Pedidos aguardando orçamento" e aparece no perfil dele.</p>
+            {% if clientes %}
+            <form method="POST" action="{{ url_for('abrir_servico_no_balcao') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group full-width">
+                        <label for="balcao_cliente">Cliente</label>
+                        <select id="balcao_cliente" name="id_cliente" required>
+                            <option value="">Escolha o cliente</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nome }} · CPF/CNPJ {{ cliente.codigo }} · {{ cliente.telefone }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="balcao_equipamento">Ferramenta (marca e modelo)</label>
+                        <input type="text" id="balcao_equipamento" name="detalhes_equipamento" maxlength="200" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="balcao_descricao">Problema informado pelo cliente</label>
+                        <input type="text" id="balcao_descricao" name="descricao" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Abrir serviço</button>
+                </div>
+            </form>
+            <p style="color: #aaaaaa; margin-top: 12px;">Cliente sem cadastro? <a href="{{ url_for('register') }}" style="color: #ff6600;">Faça o cadastro dele</a> e volte aqui.</p>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhum cliente cadastrado ainda. <a href="{{ url_for('register') }}" style="color: #ff6600;">Faça o cadastro do cliente</a> e volte aqui.</p>
+            {% endif %}
+        </section>
+
         <section aria-labelledby="titulo-pendentes">
             <h2 id="titulo-pendentes" class="section-title"><i class="fas fa-screwdriver-wrench" aria-hidden="true" style="color: #ff6600;"></i> Pedidos aguardando orçamento ({{ servicos|length }})</h2>
             {% if servicos %}

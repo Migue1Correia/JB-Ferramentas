@@ -797,6 +797,7 @@ def painel_colaborador():
     """
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
+                           clientes=PersonModel.listar_com_conta(),
                            estoques=[p for p in PecaModel.listar() if p["quantidade"]],  # só o que tem para usar
                            pecas_usadas=PecaModel.usadas_por_servico(),
                            diferencas=PecaModel.diferencas(),
@@ -804,6 +805,45 @@ def painel_colaborador():
                            respondidos=ColaboradorModel.get_orcamentos_respondidos(),
                            reprovados=ColaboradorModel.get_orcamentos_reprovados(),
                            prontos=ColaboradorModel.get_prontos_para_retirada())
+
+
+@app.route('/colaborador/servico/novo', methods=['POST'])
+def abrir_servico_no_balcao():
+    """
+    Abrir Serviço no Balcão
+    O colaborador abre o pedido de manutenção para um cliente que veio à loja pessoalmente.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_cliente
+        in: formData
+        type: integer
+      - name: detalhes_equipamento
+        in: formData
+        type: string
+      - name: descricao
+        in: formData
+        type: string
+    responses:
+      302:
+        description: Volta para a tela Serviços.
+    """
+    descricao = (request.form.get('descricao') or '').strip()
+    equipamento = (request.form.get('detalhes_equipamento') or '').strip()
+    # O cliente precisa ser alguém com conta: é pelo perfil dele que o orçamento é aprovado
+    cliente = next((c for c in PersonModel.listar_com_conta() if str(c["id"]) == request.form.get('id_cliente')), None)
+    if not cliente:
+        flash("Escolha o cliente. Se ele ainda não tem cadastro, faça o cadastro dele antes.", "danger")
+    elif not descricao or not equipamento:
+        flash("Informe a ferramenta e a descrição do problema.", "danger")
+    elif len(equipamento) > 200:
+        flash("O nome da ferramenta aceita no máximo 200 caracteres.", "danger")
+    else:
+        sucesso, mensagem = ServiceModel.create_maintenance(
+            cliente["id"], descricao, equipamento, aberto_por=session.get('user_code'))
+        flash(f"Serviço aberto para {cliente['nome']}." if sucesso else mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('painel_colaborador'))
 
 
 @app.route('/colaborador/devolucao/<int:id_servico>', methods=['POST'])

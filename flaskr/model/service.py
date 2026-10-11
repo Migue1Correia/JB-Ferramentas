@@ -137,11 +137,13 @@ class ServiceModel:
         return True, "Compra realizada com sucesso!"
 
     @staticmethod
-    def create_maintenance(user_id, description, tool_details):
+    def create_maintenance(user_id, description, tool_details, aberto_por=None):
         """
         Função para abrir uma nova solicitação de manutenção.
         Grava nas duas tabelas (servicos e manutencoes) em uma única transação:
         ou grava tudo, ou não grava nada.
+        "aberto_por" é a pessoa que abriu o pedido quando não foi o próprio cliente
+        (o colaborador, no atendimento de balcão). Sem ele, quem abriu foi o cliente.
         """
         conexao = jb_solucoes_db.connection
         c = conexao.cursor()
@@ -149,7 +151,7 @@ class ServiceModel:
             c.execute("""
                 INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, id_pessoa_solicitante, id_pessoa_abertura)
                 VALUES ('manutencao', 'Manutenção de Equipamento', %s, %s, %s);
-            """, (description, user_id, user_id))
+            """, (description, user_id, aberto_por or user_id))
             # "equipamento" é o que o cliente informou; "diagnostico" fica vazio até o colaborador avaliar.
             # A tabela manutencoes pede garantia NOT NULL, por isso o 0.
             c.execute("INSERT INTO manutencoes (id_servico, equipamento, diagnostico, garantia) VALUES (%s, %s, '', 0);",

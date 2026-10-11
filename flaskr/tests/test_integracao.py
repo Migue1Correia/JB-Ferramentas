@@ -858,6 +858,31 @@ class TesteFerramentasPecasEUsuarios(TesteBase):
         self.assertNotIn("Repor (mínimo", pagina)
 
 
+class TesteServicoNoBalcao(TesteBase):
+
+    def test_colaborador_abre_servico_para_cliente_que_veio_a_loja(self):
+        app.test_client().post("/register", data=TesteCadastroELogin.DADOS)
+        maria = self.sql("SELECT id_pessoa FROM usuarios WHERE nome_usuario='maria';")[0][0]
+        self.assertIn("Abrir serviço no balcão", self.texto(self.cliente.get("/colaborador/painel")))
+
+        dados = {"id_cliente": maria, "detalhes_equipamento": "Serra circular Makita", "descricao": "Disco travando"}
+        pagina = self.texto(self.cliente.post("/colaborador/servico/novo", data=dados, follow_redirects=True))
+        self.assertIn("Serviço aberto para", pagina)
+        self.assertIn("Serra circular Makita", pagina)  # já aparece nos pedidos aguardando orçamento
+        # o pedido é da cliente; quem abriu foi o colaborador (o usuário de teste é a pessoa 1)
+        self.assertEqual(self.sql("SELECT id_pessoa_solicitante, id_pessoa_abertura, status_servico FROM servicos;")[0], (maria, 1, "Aberto"))
+
+        # sem cliente, com cliente que não existe ou sem a ferramenta: não abre
+        for errado in ({**dados, "id_cliente": ""}, {**dados, "id_cliente": "999999"}, {**dados, "detalhes_equipamento": " "}):
+            self.cliente.post("/colaborador/servico/novo", data=errado)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 1)
+
+        # a cliente vê o pedido no perfil dela, como se tivesse aberto pelo site
+        visitante = app.test_client()
+        visitante.post("/login", data={"usuario": "maria", "senha": "segredo123"})
+        self.assertIn("Serra circular Makita", self.texto(visitante.get("/perfil")))
+
+
 class TestePecasNaManutencao(TesteBase):
 
     def setUp(self):

@@ -104,6 +104,24 @@ class PersonModel:
         }
 
     @staticmethod
+    def listar_com_conta():
+        """
+        Lista as pessoas que têm conta ativa no site, em ordem de nome
+        (para o colaborador escolher o cliente ao abrir um serviço no balcão).
+        :return: Lista de dicionários (id, nome, codigo, telefone). Lista vazia se ocorrer um erro.
+        """
+        arg = """
+            SELECT p.id, p.nome, p.codigo, p.telefone
+            FROM pessoas p JOIN usuarios u ON u.id_pessoa = p.id
+            WHERE u.ativo = 1
+            ORDER BY p.nome;
+        """
+        res = db_execute(arg, fetch_type="all")
+        if not res[0] or res[1] is None:
+            return []
+        return [{"id": l[0], "nome": l[1], "codigo": l[2], "telefone": l[3]} for l in res[1]]
+
+    @staticmethod
     def delete(id):
         """
         Função para apagar um cadastro. Usada quando a conta de usuário não pôde ser criada,
