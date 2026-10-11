@@ -1,0 +1,52 @@
+/* ==========================================================================
+   MOVIMENTO DA INTERFACE
+   Regras seguidas (skill design-motion-principles): movimento curto (até 300 ms),
+   só onde ajuda a entender o que aconteceu; saída mais discreta que a entrada;
+   nada de animar todos os elementos nem de laço infinito decorativo.
+   Quem pede "menos movimento" no sistema não vê nada disto: o acessibilidade.css
+   desliga animações e transições, e a troca de página abaixo só vale sem esse pedido.
+   ========================================================================== */
+
+/* 1. Troca de página: a tela antiga some rápido e a nova entra suave (navegadores que suportam) */
+@media (prefers-reduced-motion: no-preference) {
+    @view-transition { navigation: auto; }
+    ::view-transition-old(root) { animation: 120ms cubic-bezier(0.4, 0, 1, 1) both pagina-sai; }
+    ::view-transition-new(root) { animation: 200ms cubic-bezier(0.22, 1, 0.36, 1) both pagina-entra; }
+}
+@keyframes pagina-sai { to { opacity: 0; } }
+@keyframes pagina-entra { from { opacity: 0; transform: translateY(6px); } }
+
+/* 2. Avisos (sucesso/erro): descem de leve para chamar a atenção de quem acabou de enviar algo */
+[role="status"], [role="alert"] { animation: aviso-entra 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes aviso-entra { from { opacity: 0; transform: translateY(-8px); } }
+
+/* 3. Barra de progresso no topo, enquanto a próxima página carrega (ligada pelo movimento.js) */
+.barra-progresso {
+    position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999;
+    background: #ff6600; pointer-events: none;
+    opacity: 0; transform: scaleX(0); transform-origin: left;
+}
+.barra-progresso.ativa {
+    opacity: 1; transform: scaleX(0.85);
+    transition: transform 8s cubic-bezier(0.1, 0.7, 0.1, 1), opacity 150ms;
+}
+
+/* 4. Formulário enviado: o botão mostra que está trabalhando e não aceita um segundo clique */
+form.enviando button, form.enviando input[type="submit"] { pointer-events: none; opacity: 0.7; }
+.girando::before {
+    content: ""; display: inline-block; width: 0.9em; height: 0.9em; margin-right: 0.5em;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+    vertical-align: -0.1em; animation: gira 700ms linear infinite;
+}
+@keyframes gira { to { transform: rotate(360deg); } }
+
+/* 5. Esqueleto: enquanto a foto do produto ou o gráfico carrega, o espaço mostra um brilho passando */
+.carregando { position: relative; overflow: hidden; background: rgba(255, 255, 255, 0.04); }
+.carregando::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    animation: brilho 1.2s linear infinite;
+}
+.carregando > img, .carregando > canvas { opacity: 0; }
+.prod-image-box img, .product-image-container img { transition: opacity 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes brilho { to { transform: translateX(100%); } }

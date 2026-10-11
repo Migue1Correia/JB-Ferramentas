@@ -778,6 +778,10 @@ class TesteFerramentasPecasEUsuarios(TesteBase):
         self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
             "marca": "   ", "modelo": ALUGUEL, "preco": "400", "tipo_oferta": "Comprar"})
         self.assertEqual(self.sql("SELECT marca FROM ferramentas WHERE id=%s;", ferramenta)[0][0], "JB Pro")
+        # e os espaços nas pontas não são gravados
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "  JB Pro  ", "modelo": ALUGUEL, "preco": "400", "tipo_oferta": "Comprar"})
+        self.assertEqual(self.sql("SELECT marca FROM ferramentas WHERE id=%s;", ferramenta)[0][0], "JB Pro")
         self.sql("UPDATE ferramentas SET preco=%s, tipo_oferta='Alugar' WHERE id=%s;", DIARIA, ferramenta)
 
     def test_administrador_exclui_so_perfil_criado_e_sem_uso(self):
@@ -938,9 +942,6 @@ class TestePecasNaManutencao(TesteBase):
         # depois de pago pelo site, o valor não muda mais
         self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
         self.cliente.post("/carrinho/finalizar")
-        # (os testes rodam no mesmo segundo: afasta as horas para o sistema saber o que veio antes do pagamento)
-        self.sql("UPDATE manutencao_pecas SET criando_em = criando_em - INTERVAL 2 MINUTE;")
-        self.sql("UPDATE servicos SET pago_em = pago_em - INTERVAL 1 MINUTE;")
         peca_ja_paga = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
 
         # peça a mais avisando o cliente: o serviço continua pago e a peça vira diferença a receber na retirada
@@ -976,8 +977,6 @@ class TestePecasNaManutencao(TesteBase):
             "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
         self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
         self.cliente.post("/carrinho/finalizar")  # cliente pagou 139,80 pelo site
-        self.sql("UPDATE manutencao_pecas SET criando_em = criando_em - INTERVAL 2 MINUTE;")
-        self.sql("UPDATE servicos SET pago_em = pago_em - INTERVAL 1 MINUTE;")
 
         uso = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
         pagina = self.texto(self.cliente.post(f"/colaborador/servico/peca/{uso}/remover", data={"valor": "avisar"}, follow_redirects=True))
@@ -1000,8 +999,8 @@ class TestePecasNaManutencao(TesteBase):
         self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
         situacao = lambda: [(s, float(v)) for s, v in self.sql("SELECT status_servico, valor_servico FROM servicos;")][0]
         pagina = self.texto(self.cliente.get("/colaborador/painel"))
-        for botao in ("Usar e manter o valor", "Usar e avisar o cliente"):
-            self.assertIn(botao, pagina)
+        for opcao in ("Manter o valor combinado", "Avisar o cliente do novo valor"):
+            self.assertIn(opcao, pagina)
 
         # manter o valor: a peça entra, o estoque baixa e nada muda para o cliente
         self.cliente.post(f"/colaborador/servico/{servico}/peca", data={"id_estoque": self.estoque, "quantidade": "2", "valor": "manter"})
@@ -1055,6 +1054,19 @@ class TestePecasNaManutencao(TesteBase):
     def test_excluir_peca_sem_uso_apaga_o_estoque_junto(self):
         self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir")
         self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (0, 0))
+
+
+class TesteMovimento(TesteBase):
+
+    def test_toda_tela_carrega_o_movimento_e_a_loja_adia_as_fotos(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        for rota in ("/", "/login", "/register", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho", "/perfil",
+                     "/manutencao", "/colaborador/painel", "/colaborador/pecas", "/colaborador/ferramentas",
+                     "/colaborador/financeiro", "/colaborador/graficos", "/admin/perfis", "/admin/filiais", "/pagina-que-nao-existe"):
+            pagina = self.texto(self.cliente.get(rota))
+            self.assertIn("css/movimento.css", pagina, rota)
+            self.assertIn("js/movimento.js", pagina, rota)
+        self.assertIn('loading="lazy"', self.texto(self.cliente.get("/loja")))
 
 
 class TesteCarrinho(TesteBase):
