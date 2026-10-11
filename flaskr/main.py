@@ -1250,8 +1250,10 @@ def usar_peca(id_servico):
       302:
         description: Volta para a tela Serviços.
     """
+    # Em serviço já aprovado a tela pergunta: manter o valor ou avisar o cliente do novo valor
     sucesso, mensagem = PecaModel.usar_na_manutencao(
-        id_servico, request.form.get('id_estoque'), request.form.get('quantidade'))
+        id_servico, request.form.get('id_estoque'), request.form.get('quantidade'),
+        avisar_cliente=request.form.get('valor') != 'manter')
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 
@@ -1272,7 +1274,7 @@ def remover_peca(id_uso):
       302:
         description: Volta para a tela Serviços.
     """
-    sucesso, mensagem = PecaModel.remover_da_manutencao(id_uso)
+    sucesso, mensagem = PecaModel.remover_da_manutencao(id_uso, avisar_cliente=request.form.get('valor') != 'manter')
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 

@@ -940,6 +940,36 @@ class TestePecasNaManutencao(TesteBase):
         self.cliente.post("/carrinho/finalizar")
         self.assertIn("já foi pago", self.usar(servico, "1"))
         self.assertEqual((self.em_estoque(), situacao()), (4, ("Aprovado", 119.90, "Pago online")))
+        # ...mas a peça pode entrar mantendo o valor: baixa o estoque e não cobra do cliente
+        pagina = self.texto(self.cliente.post(f"/colaborador/servico/{servico}/peca", follow_redirects=True,
+                                              data={"id_estoque": self.estoque, "quantidade": "1", "valor": "manter"}))
+        self.assertIn("O valor do serviço foi mantido", pagina)
+        self.assertIn("sem custo para o cliente", pagina)
+        self.assertNotIn("e avisar o cliente</button>", pagina)  # serviço pago só oferece "manter o valor"
+        self.assertEqual((self.em_estoque(), situacao()), (3, ("Aprovado", 119.90, "Pago online")))
+
+    def test_em_servico_aprovado_o_colaborador_escolhe_manter_o_valor_ou_avisar(self):
+        servico = self.abrir_servico()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        situacao = lambda: [(s, float(v)) for s, v in self.sql("SELECT status_servico, valor_servico FROM servicos;")][0]
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        for botao in ("Usar e manter o valor", "Usar e avisar o cliente"):
+            self.assertIn(botao, pagina)
+
+        # manter o valor: a peça entra, o estoque baixa e nada muda para o cliente
+        self.cliente.post(f"/colaborador/servico/{servico}/peca", data={"id_estoque": self.estoque, "quantidade": "2", "valor": "manter"})
+        self.assertEqual((self.em_estoque(), situacao()), (3, ("Aprovado", 100.0)))
+        # tirar essa mesma peça avisando o cliente não desconta o que nunca foi cobrado
+        uso = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+        self.cliente.post(f"/colaborador/servico/peca/{uso}/remover", data={"valor": "avisar"})
+        self.assertEqual((self.em_estoque(), situacao()), (5, ("Aguardando Aprovação", 100.0)))
+
+        # avisar o cliente: soma a peça e o orçamento volta para ele aprovar
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        self.cliente.post(f"/colaborador/servico/{servico}/peca", data={"id_estoque": self.estoque, "quantidade": "1", "valor": "avisar"})
+        self.assertEqual((self.em_estoque(), situacao()), (4, ("Aguardando Aprovação", 119.90)))
 
     def test_servico_encerrado_sem_conserto_devolve_as_pecas(self):
         servico = self.abrir_servico()

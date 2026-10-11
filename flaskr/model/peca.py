@@ -188,9 +188,21 @@ class PecaModel:
         linha = c.fetchone()
         if not linha or linha[2] not in STATUS_QUE_MEXEM_EM_PECAS:
             return None, MENSAGEM_PECAS_TRAVADAS
-        if linha[2] == 'Aprovado' and linha[3] == PAGAMENTO_PAGO:
-            return None, "Esse serviço já foi pago pelo cliente: o valor não pode mais mudar."
         return linha, None
+
+    @staticmethod
+    def _muda_o_valor(status, pagamento, avisar_cliente):
+        """
+        Em serviço já aprovado, o colaborador escolhe: manter o valor combinado (a peça entra ou sai
+        sem custo para o cliente) ou avisar o cliente do novo valor (o orçamento volta para ele aprovar).
+        :return: (True se o valor do serviço vai mudar, mensagem de erro ou None)
+        """
+        if status != 'Aprovado' or not avisar_cliente:
+            return False, None
+        if pagamento == PAGAMENTO_PAGO:
+            return False, ("Esse serviço já foi pago pelo cliente: só dá para mexer nas peças mantendo o valor. "
+                           "A diferença, se houver, é combinada na retirada.")
+        return True, None
 
     @staticmethod
     def _reabrir_orcamento(c, id_servico, diferenca):
@@ -205,11 +217,12 @@ class PecaModel:
         """, (diferenca, id_servico))
 
     @staticmethod
-    def usar_na_manutencao(id_servico, id_estoque, quantidade):
+    def usar_na_manutencao(id_servico, id_estoque, quantidade, avisar_cliente=True):
         """
         Registra que uma manutenção usa uma peça e dá baixa no estoque,
         em uma única transação: ou grava tudo, ou não grava nada.
-        O preço da peça no dia fica guardado no lançamento (preco_unitario).
+        O preço cobrado pela peça fica guardado no lançamento (preco_unitario): é o preço do dia,
+        ou zero quando o serviço já estava aprovado e o colaborador escolheu manter o valor.
         """
         try:
             quantidade = int(quantidade)
@@ -225,7 +238,11 @@ class PecaModel:
             if erro:
                 conexao.rollback()
                 return False, erro
-            id_manutencao, _, status, _ = servico
+            id_manutencao, _, status, pagamento = servico
+            muda_o_valor, erro = PecaModel._muda_o_valor(status, pagamento, avisar_cliente)
+            if erro:
+                conexao.rollback()
+                return False, erro
 
             # A baixa só acontece se houver peças suficientes (confere e desconta no mesmo comando)
             c.execute("UPDATE estoque_pecas SET quantidade_atual = quantidade_atual - %s WHERE id=%s AND quantidade_atual >= %s;",
@@ -236,10 +253,14 @@ class PecaModel:
 
             c.execute("SELECT p.preco_venda FROM estoque_pecas e JOIN pecas p ON p.id = e.id_peca WHERE e.id=%s;", (id_estoque,))
             preco = c.fetchone()[0]
+            if status == 'Aprovado' and not muda_o_valor:
+                preco = 0  # valor mantido: a peça não é cobrada do cliente
             c.execute("INSERT INTO manutencao_pecas (quantidade, preco_unitario, id_manutencao, id_estoque_peca) VALUES (%s, %s, %s, %s);",
                       (quantidade, preco, id_manutencao, id_estoque))
             mensagem = "Peça registrada no serviço e baixada do estoque."
-            if status == 'Aprovado':
+            if status == 'Aprovado' and not muda_o_valor:
+                mensagem += " O valor do serviço foi mantido."
+            if muda_o_valor:
                 PecaModel._reabrir_orcamento(c, id_servico, quantidade * preco)
                 mensagem += MENSAGEM_ORCAMENTO_REABERTO
             conexao.commit()
@@ -252,7 +273,7 @@ class PecaModel:
             c.close()
 
     @staticmethod
-    def remover_da_manutencao(id_uso):
+    def remover_da_manutencao(id_uso, avisar_cliente=True):
         """Desfaz um "Usar peça" lançado errado: a peça volta para o estoque, em uma única transação."""
         conexao = jb_solucoes_db.connection
         c = conexao.cursor()
@@ -262,14 +283,20 @@ class PecaModel:
             if erro:
                 conexao.rollback()
                 return False, erro
-            _, id_servico, status, _ = servico
+            _, id_servico, status, pagamento = servico
+            muda_o_valor, erro = PecaModel._muda_o_valor(status, pagamento, avisar_cliente)
+            if erro:
+                conexao.rollback()
+                return False, erro
 
             c.execute("SELECT quantidade, preco_unitario, id_estoque_peca FROM manutencao_pecas WHERE id=%s;", (id_uso,))
             quantidade, preco, id_estoque = c.fetchone()
             c.execute("UPDATE estoque_pecas SET quantidade_atual = quantidade_atual + %s WHERE id=%s;", (quantidade, id_estoque))
             c.execute("DELETE FROM manutencao_pecas WHERE id=%s;", (id_uso,))
             mensagem = "Peça removida do serviço e devolvida ao estoque."
-            if status == 'Aprovado':
+            if status == 'Aprovado' and not muda_o_valor:
+                mensagem += " O valor do serviço foi mantido."
+            if muda_o_valor:
                 PecaModel._reabrir_orcamento(c, id_servico, -quantidade * preco)
                 mensagem += MENSAGEM_ORCAMENTO_REABERTO
             conexao.commit()
