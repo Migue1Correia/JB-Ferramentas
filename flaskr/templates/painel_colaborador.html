@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JB Ferramentas: venda, aluguel e manutenção de ferramentas, com atendimento na matriz e nas filiais.">
     <title>JB Ferramentas - Serviços e devoluções</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.7">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
@@ -133,6 +134,16 @@
                             <td>
                                 {% if servico.status == 'Aguardando Aprovação' %}
                                 <span style="color: #aaaaaa;">Esperando o cliente responder</span>
+                                {# Cliente que está na loja responde na hora: o colaborador registra por ele #}
+                                <form method="POST" action="{{ url_for('responder_orcamento_no_balcao', id_servico=servico.id) }}" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" name="resposta" value="Aprovado" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
+                                            onclick="return confirm('Registrar que o cliente APROVOU o orçamento no balcão? O pagamento fica para a retirada.')"
+                                            aria-label="Aprovou no balcão: serviço {{ servico.id }}">Aprovou no balcão</button>
+                                    <button type="submit" name="resposta" value="Reprovado" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
+                                            onclick="return confirm('Registrar que o cliente REPROVOU o orçamento no balcão?')"
+                                            aria-label="Reprovou no balcão: serviço {{ servico.id }}">Reprovou no balcão</button>
+                                </form>
                                 {% else %}
                                 <form method="POST" action="{{ url_for('fechar_servico', id_servico=servico.id) }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -212,7 +223,7 @@
                         <select id="balcao_cliente" name="id_cliente" required>
                             <option value="">Escolha o cliente</option>
                             {% for cliente in clientes %}
-                            <option value="{{ cliente.id }}">{{ cliente.nome }} · CPF/CNPJ {{ cliente.codigo }} · {{ cliente.telefone }}</option>
+                            <option value="{{ cliente.id }}">{{ cliente.nome }} · CPF/CNPJ {{ cliente.documento }}</option>
                             {% endfor %}
                         </select>
                     </div>

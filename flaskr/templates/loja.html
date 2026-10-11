@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JB Ferramentas: venda, aluguel e manutenção de ferramentas, com atendimento na matriz e nas filiais.">
     <title>Catálogo JB - Compra e Aluguel</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.7">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
@@ -90,7 +91,7 @@
                     <p class="price">{{ item.preco|moeda }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
                     <form method="POST" action="{{ url_for('carrinho_adicionar', ferramenta_id=item.id) }}" style="width: 100%;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-carrinho" aria-label="Adicionar {{ item.nome }} ao carrinho">
+                        <button type="submit" class="btn-carrinho" aria-label="Adicionar ao carrinho{% if item.tipo == 'Alugar' %} (1 dia){% endif %}: {{ item.nome }}">
                             <i class="fas fa-cart-plus" aria-hidden="true"></i> Adicionar ao carrinho{% if item.tipo == 'Alugar' %} (1 dia){% endif %}
                         </button>
                     </form>

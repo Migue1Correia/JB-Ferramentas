@@ -863,7 +863,12 @@ class TesteServicoNoBalcao(TesteBase):
     def test_colaborador_abre_servico_para_cliente_que_veio_a_loja(self):
         app.test_client().post("/register", data=TesteCadastroELogin.DADOS)
         maria = self.sql("SELECT id_pessoa FROM usuarios WHERE nome_usuario='maria';")[0][0]
-        self.assertIn("Abrir serviço no balcão", self.texto(self.cliente.get("/colaborador/painel")))
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Abrir serviço no balcão", pagina)
+        # a lista mostra só clientes, com o CPF mascarado (o número inteiro não aparece)
+        self.assertIn("Maria Teste · CPF/CNPJ ***.***.777-35", pagina)
+        self.assertNotIn("11144477735", pagina)
+        self.assertNotIn("Cliente Teste · CPF/CNPJ", pagina)  # o usuário de teste é administrador
 
         dados = {"id_cliente": maria, "detalhes_equipamento": "Serra circular Makita", "descricao": "Disco travando"}
         pagina = self.texto(self.cliente.post("/colaborador/servico/novo", data=dados, follow_redirects=True))
@@ -877,10 +882,51 @@ class TesteServicoNoBalcao(TesteBase):
             self.cliente.post("/colaborador/servico/novo", data=errado)
         self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 1)
 
+        # funcionário não pode ser escolhido como cliente, nem enviando o id direto
+        self.cliente.post("/colaborador/servico/novo", data={**dados, "id_cliente": "1"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 1)
+
         # a cliente vê o pedido no perfil dela, como se tivesse aberto pelo site
         visitante = app.test_client()
         visitante.post("/login", data={"usuario": "maria", "senha": "segredo123"})
         self.assertIn("Serra circular Makita", self.texto(visitante.get("/perfil")))
+
+
+class TesteRespostaNoBalcao(TesteBase):
+
+    def setUp(self):
+        super().setUp()
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        self.servico = self.sql("SELECT id FROM servicos;")[0][0]
+        self.situacao = lambda: self.sql("SELECT status_servico, pagamento FROM servicos;")[0]
+
+    def responder(self, resposta):
+        return self.texto(self.cliente.post(f"/colaborador/servico/{self.servico}/resposta", data={"resposta": resposta}, follow_redirects=True))
+
+    def test_colaborador_registra_a_aprovacao_do_cliente_que_esta_na_loja(self):
+        # sem orçamento enviado ainda não há o que responder
+        self.assertIn("não está aguardando resposta", self.responder("Aprovado"))
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.assertIn("Aprovou no balcão", self.texto(self.cliente.get("/colaborador/painel")))
+
+        self.assertIn("Resposta inválida", self.responder("Entregue"))
+        self.assertEqual(self.situacao(), ("Aguardando Aprovação", None))
+
+        self.assertIn("pagamento fica para a retirada", self.responder("Aprovado"))
+        self.assertEqual(self.situacao(), ("Aprovado", "Na retirada"))
+        # segue o fluxo normal: conclui, entrega e entra no caixa
+        self.cliente.post(f"/colaborador/servico/{self.servico}/fechar")
+        self.cliente.post(f"/colaborador/servico/{self.servico}/entregar")
+        self.assertEqual(self.situacao(), ("Entregue", "Pago na retirada"))
+        self.assertIn(main.formatar_moeda(100), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+    def test_colaborador_registra_a_reprovacao_no_balcao(self):
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.assertIn("Reprovação registrada", self.responder("Reprovado"))
+        self.assertEqual(self.situacao(), ("Reprovado", None))
+        self.assertIn("servico-reprovado", self.texto(self.cliente.get("/colaborador/painel")))  # cai no card vermelho
 
 
 class TestePecasNaManutencao(TesteBase):
@@ -1091,7 +1137,12 @@ class TesteMovimento(TesteBase):
             pagina = self.texto(self.cliente.get(rota))
             self.assertIn("css/movimento.css", pagina, rota)
             self.assertIn("js/movimento.js", pagina, rota)
-        self.assertIn('loading="lazy"', self.texto(self.cliente.get("/loja")))
+        loja = self.texto(self.cliente.get("/loja"))
+        self.assertIn('loading="lazy"', loja)
+        # o nome de leitura do botão começa igual ao texto que aparece (WCAG 2.5.3)
+        self.assertIn(f'aria-label="Adicionar ao carrinho: JB Pro {COMPRA}"', loja)
+        self.assertIn(f'aria-label="Adicionar ao carrinho (1 dia): JB Pro {ALUGUEL}"', loja)
+        self.assertIn('<meta name="description"', loja)
 
 
 class TesteCarrinho(TesteBase):

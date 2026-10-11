@@ -797,7 +797,7 @@ def painel_colaborador():
     """
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
-                           clientes=PersonModel.listar_com_conta(),
+                           clientes=PersonModel.listar_clientes(PERFIL_CLIENTE),
                            estoques=[p for p in PecaModel.listar() if p["quantidade"]],  # só o que tem para usar
                            pecas_usadas=PecaModel.usadas_por_servico(),
                            diferencas=PecaModel.diferencas(),
@@ -832,7 +832,7 @@ def abrir_servico_no_balcao():
     descricao = (request.form.get('descricao') or '').strip()
     equipamento = (request.form.get('detalhes_equipamento') or '').strip()
     # O cliente precisa ser alguém com conta: é pelo perfil dele que o orçamento é aprovado
-    cliente = next((c for c in PersonModel.listar_com_conta() if str(c["id"]) == request.form.get('id_cliente')), None)
+    cliente = next((c for c in PersonModel.listar_clientes(PERFIL_CLIENTE) if str(c["id"]) == request.form.get('id_cliente')), None)
     if not cliente:
         flash("Escolha o cliente. Se ele ainda não tem cadastro, faça o cadastro dele antes.", "danger")
     elif not descricao or not equipamento:
@@ -843,6 +843,30 @@ def abrir_servico_no_balcao():
         sucesso, mensagem = ServiceModel.create_maintenance(
             cliente["id"], descricao, equipamento, aberto_por=session.get('user_code'))
         flash(f"Serviço aberto para {cliente['nome']}." if sucesso else mensagem, "success" if sucesso else "danger")
+    return redirect(url_for('painel_colaborador'))
+
+
+@app.route('/colaborador/servico/<int:id_servico>/resposta', methods=['POST'])
+def responder_orcamento_no_balcao(id_servico):
+    """
+    Resposta do Cliente no Balcão
+    O colaborador registra que o cliente aprovou ou reprovou o orçamento pessoalmente.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: id_servico
+        in: path
+        type: integer
+      - name: resposta
+        in: formData
+        type: string
+    responses:
+      302:
+        description: Volta para a tela Serviços.
+    """
+    sucesso, mensagem = ColaboradorModel.responder_pelo_cliente(id_servico, request.form.get('resposta'))
+    flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 
 

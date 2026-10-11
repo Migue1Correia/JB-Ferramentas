@@ -1,4 +1,5 @@
 from .db import db_execute
+from validacao import mascarar_documento
 
 # Colunas na mesma ordem em que o PersonModel.get monta o dicionário.
 # (Antes era SELECT *, e a ordem das colunas no banco é outra: os campos vinham trocados.)
@@ -104,22 +105,27 @@ class PersonModel:
         }
 
     @staticmethod
-    def listar_com_conta():
+    def listar_clientes(perfil_cliente):
         """
-        Lista as pessoas que têm conta ativa no site, em ordem de nome
+        Lista os clientes com conta ativa no site, em ordem de nome
         (para o colaborador escolher o cliente ao abrir um serviço no balcão).
-        :return: Lista de dicionários (id, nome, codigo, telefone). Lista vazia se ocorrer um erro.
+        O CPF/CNPJ sai mascarado: o final basta para conferir a pessoa, e o número
+        inteiro não precisa aparecer na tela de quem atende.
+        :param perfil_cliente: Nome do perfil dos clientes (funcionários não entram na lista).
+        :return: Lista de dicionários (id, nome, documento). Lista vazia se ocorrer um erro.
         """
         arg = """
-            SELECT p.id, p.nome, p.codigo, p.telefone
-            FROM pessoas p JOIN usuarios u ON u.id_pessoa = p.id
-            WHERE u.ativo = 1
+            SELECT p.id, p.nome, p.codigo
+            FROM pessoas p
+            JOIN usuarios u ON u.id_pessoa = p.id
+            JOIN perfis pf ON pf.id = u.id_perfil
+            WHERE u.ativo = 1 AND pf.perfil = %s
             ORDER BY p.nome;
         """
-        res = db_execute(arg, fetch_type="all")
+        res = db_execute(arg, perfil_cliente, fetch_type="all")
         if not res[0] or res[1] is None:
             return []
-        return [{"id": l[0], "nome": l[1], "codigo": l[2], "telefone": l[3]} for l in res[1]]
+        return [{"id": l[0], "nome": l[1], "documento": mascarar_documento(l[2])} for l in res[1]]
 
     @staticmethod
     def delete(id):

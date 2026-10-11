@@ -1,6 +1,6 @@
 from .db import db_execute
 from .peca import PecaModel, DIFERENCA_SQL
-from .service import PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA
+from .service import PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA, PAGAMENTO_RETIRADA
 
 # Dias inteiros de atraso de um aluguel (zero se ainda está no prazo). A coluna a.data_devolucao é o prazo.
 DIAS_DE_ATRASO_SQL = "GREATEST(DATEDIFF(CURDATE(), DATE(a.data_devolucao)), 0)"
@@ -79,6 +79,25 @@ class ColaboradorModel:
             db_execute(arg_manu, detalhes_dano, caminho_imagem, id_servico)
 
         return True, "Orçamento, avaliação e foto registrados com sucesso!"
+
+    @staticmethod
+    def responder_pelo_cliente(id_servico, resposta):
+        """
+        Registra a resposta que o cliente deu pessoalmente, no balcão, a um orçamento.
+        Aprovado no balcão fica para pagar na retirada do equipamento.
+        """
+        if resposta not in ('Aprovado', 'Reprovado'):
+            return False, "Resposta inválida."
+        arg = """
+            UPDATE servicos SET status_servico=%s, pagamento=%s
+            WHERE id=%s AND servico_solicitado='manutencao' AND status_servico='Aguardando Aprovação';
+        """
+        res = db_execute(arg, resposta, PAGAMENTO_RETIRADA if resposta == 'Aprovado' else None, id_servico)
+        if not res[0] or not res[1]:
+            return False, "Esse orçamento não está aguardando resposta."
+        if resposta == 'Aprovado':
+            return True, "Aprovação registrada. O pagamento fica para a retirada do equipamento."
+        return True, "Reprovação registrada."
 
     # === ORÇAMENTOS QUE O CLIENTE JÁ RESPONDEU ===
     @staticmethod
