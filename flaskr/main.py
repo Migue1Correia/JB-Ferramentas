@@ -230,6 +230,7 @@ def variaveis_dos_menus():
         "pode_ver_painel": colaborador,
         "eh_administrador": eh_administrador(),
         "itens_no_carrinho": len(session.get('carrinho', [])),
+        "endereco_do_cadastro": endereco_do_cadastro(),
         "link_manutencao": url_for('painel_colaborador' if colaborador else 'manutencao_page'),
     }
 
@@ -498,7 +499,7 @@ def register():
     if pode_ver_painel():
         session['balcao'] = True
     if request.method == "GET":
-        return render_template('register.html', endereco_do_cadastro=endereco_do_cadastro())
+        return render_template('register.html')
     if request.method == "POST":
         name = (request.form.get('nome') or '').strip()
         user_type = request.form.get('tipo')
@@ -853,7 +854,6 @@ def painel_colaborador():
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
                            clientes=PersonModel.listar_clientes(PERFIL_CLIENTE),
                            # Endereço do cadastro que vai no e-mail para o cliente: o público, se estiver no .env
-                           endereco_do_cadastro=endereco_do_cadastro(),
                            site_publico=bool(os.getenv('ENDERECO_DO_SITE')),
                            estoques=[p for p in PecaModel.listar() if p["quantidade"]],  # só o que tem para usar
                            pecas_usadas=PecaModel.usadas_por_servico(),

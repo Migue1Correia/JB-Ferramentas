@@ -925,6 +925,12 @@ class TesteRespostaNoBalcao(TesteBase):
         self.assertEqual(quem, 1)
         self.assertIsNotNone(quando)
         self.assertIn("Resposta registrada no balcão por Cliente Teste, em " + quando.strftime("%d/%m/%Y"), pagina)
+        # se o orçamento volta a aguardar resposta (valor mudou), a frase da resposta antiga some
+        self.sql("UPDATE servicos SET status_servico='Aguardando Aprovação', pagamento=NULL;")
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Esperando o cliente responder", pagina)
+        self.assertNotIn("Resposta registrada no balcão", pagina)
+        self.assertIn("pagamento fica para a retirada", self.responder("Aprovado"))
         # segue o fluxo normal: conclui, entrega e entra no caixa
         self.cliente.post(f"/colaborador/servico/{self.servico}/fechar")
         self.cliente.post(f"/colaborador/servico/{self.servico}/entregar")
@@ -967,6 +973,11 @@ class TesteRespostaNoBalcao(TesteBase):
         self.assertNotIn("Atendimento no balcão", visitante)
         self.assertNotIn("qr_cadastro", visitante)
         self.assertIn("Voltar para login", visitante)
+
+        # se o cliente erra um campo, a tela volta com o erro e o QR code continua com o endereço
+        pagina = self.texto(self.cliente.post("/register", data={**TesteCadastroELogin.DADOS, "code": "111.111.111-11"}))
+        self.assertIn("CPF inválido", pagina)
+        self.assertIn('id="qr_cadastro" data-endereco="http://localhost/register"', pagina)
 
         # com o aparelho na mão do cliente, nenhuma outra tela abre: tudo volta para o cadastro
         for rota in ("/colaborador/painel", "/admin/perfis", "/perfil", "/loja", "/", "/login"):

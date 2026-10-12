@@ -166,8 +166,10 @@ class ColaboradorModel:
         return [{"id": linha[0], "cliente": linha[1], "telefone": linha[2], "descricao": linha[3],
                  "status": linha[4], "valor": linha[5], "pagamento": linha[6],
                  "pago": linha[6] in PAGAMENTOS_ADIANTADOS, "equipamento": linha[7],
-                 # preenchido só quando a resposta do orçamento foi registrada por um atendente, no balcão
-                 "balcao": f"{linha[8]}, em {linha[9].strftime('%d/%m/%Y às %H:%M')}" if linha[8] and linha[9] else None}
+                 # preenchido só quando a resposta do orçamento foi registrada por um atendente, no balcão.
+                 # Orçamento que voltou a aguardar resposta (valor mudou) ainda não tem resposta para mostrar.
+                 "balcao": (f"{linha[8]}, em {linha[9].strftime('%d/%m/%Y às %H:%M')}"
+                            if linha[8] and linha[9] and linha[4] != 'Aguardando Aprovação' else None)}
                 for linha in res[1]]
 
     @staticmethod
