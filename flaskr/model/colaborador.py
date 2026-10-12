@@ -81,9 +81,11 @@ class ColaboradorModel:
         return True, "Orçamento, avaliação e foto registrados com sucesso!"
 
     @staticmethod
-    def responder_pelo_cliente(id_servico, resposta, pago_agora=False):
+    def responder_pelo_cliente(id_servico, resposta, id_atendente, pago_agora=False):
         """
         Registra a resposta que o cliente deu pessoalmente, no balcão, a um orçamento.
+        Fica gravado qual atendente registrou e quando (id_pessoa_resposta e respondido_em),
+        para haver como conferir depois se o cliente contestar.
         Aprovado no balcão fica para pagar na retirada, a não ser que o cliente já pague ali
         (pago_agora): aí o valor entra no caixa na hora.
         """
@@ -94,10 +96,11 @@ class ColaboradorModel:
         if resposta == 'Aprovado':
             pagamento = PAGAMENTO_BALCAO if pago_agora else PAGAMENTO_RETIRADA
         arg = """
-            UPDATE servicos SET status_servico=%s, pagamento=%s, pago_em=IF(%s, NOW(), pago_em)
+            UPDATE servicos SET status_servico=%s, pagamento=%s, pago_em=IF(%s, NOW(), pago_em),
+                                id_pessoa_resposta=%s, respondido_em=NOW()
             WHERE id=%s AND servico_solicitado='manutencao' AND status_servico='Aguardando Aprovação';
         """
-        res = db_execute(arg, resposta, pagamento, 1 if pago_agora else 0, id_servico)
+        res = db_execute(arg, resposta, pagamento, 1 if pago_agora else 0, id_atendente, id_servico)
         if not res[0] or not res[1]:
             return False, "Esse orçamento não está aguardando resposta."
         if pago_agora:
@@ -149,10 +152,11 @@ class ColaboradorModel:
     def _manutencoes_com_status(status_sql):
         arg = f"""
             SELECT s.id, p.nome, p.telefone, s.descricao_servico, s.status_servico, s.valor_servico, s.pagamento,
-                   m.equipamento
+                   m.equipamento, atendente.nome, s.respondido_em
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
             LEFT JOIN manutencoes m ON m.id_servico = s.id
+            LEFT JOIN pessoas atendente ON atendente.id = s.id_pessoa_resposta
             WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN {status_sql}
             ORDER BY s.data_abertura ASC;
         """
@@ -161,7 +165,10 @@ class ColaboradorModel:
             return []
         return [{"id": linha[0], "cliente": linha[1], "telefone": linha[2], "descricao": linha[3],
                  "status": linha[4], "valor": linha[5], "pagamento": linha[6],
-                 "pago": linha[6] in PAGAMENTOS_ADIANTADOS, "equipamento": linha[7]} for linha in res[1]]
+                 "pago": linha[6] in PAGAMENTOS_ADIANTADOS, "equipamento": linha[7],
+                 # preenchido só quando a resposta do orçamento foi registrada por um atendente, no balcão
+                 "balcao": f"{linha[8]}, em {linha[9].strftime('%d/%m/%Y às %H:%M')}" if linha[8] and linha[9] else None}
+                for linha in res[1]]
 
     @staticmethod
     def fechar_servico(id_servico):

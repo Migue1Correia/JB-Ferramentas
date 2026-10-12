@@ -917,8 +917,14 @@ class TesteRespostaNoBalcao(TesteBase):
         self.assertIn("Resposta inválida", self.responder("Entregue"))
         self.assertEqual(self.situacao(), ("Aguardando Aprovação", None))
 
-        self.assertIn("pagamento fica para a retirada", self.responder("Aprovado"))
+        pagina = self.responder("Aprovado")
+        self.assertIn("pagamento fica para a retirada", pagina)
         self.assertEqual(self.situacao(), ("Aprovado", "Na retirada"))
+        # fica gravado e aparece na tela qual atendente registrou a resposta (o usuário de teste é a pessoa 1)
+        quem, quando = self.sql("SELECT id_pessoa_resposta, respondido_em FROM servicos;")[0]
+        self.assertEqual(quem, 1)
+        self.assertIsNotNone(quando)
+        self.assertIn("Resposta registrada no balcão por Cliente Teste, em " + quando.strftime("%d/%m/%Y"), pagina)
         # segue o fluxo normal: conclui, entrega e entra no caixa
         self.cliente.post(f"/colaborador/servico/{self.servico}/fechar")
         self.cliente.post(f"/colaborador/servico/{self.servico}/entregar")
@@ -955,8 +961,11 @@ class TesteRespostaNoBalcao(TesteBase):
         pagina = self.texto(self.cliente.get("/register"))
         self.assertIn("o atendente não escolhe nem vê a senha", pagina)
         self.assertNotIn("Voltar para login", pagina)
+        # o QR code leva o endereço do cadastro, para o cliente fazer no celular dele
+        self.assertIn('id="qr_cadastro" data-endereco="http://localhost/register"', pagina)
         visitante = self.texto(app.test_client().get("/register"))  # cliente em casa: sem aviso e sem trava
         self.assertNotIn("Atendimento no balcão", visitante)
+        self.assertNotIn("qr_cadastro", visitante)
         self.assertIn("Voltar para login", visitante)
 
         # com o aparelho na mão do cliente, nenhuma outra tela abre: tudo volta para o cadastro
@@ -976,6 +985,11 @@ class TesteRespostaNoBalcao(TesteBase):
         self.cliente.post("/balcao/destravar", data={"senha": "chute"})
         self.assertIn("Senha do atendente incorreta", self.texto(self.cliente.get("/register")))
         self.assertTrue(self.cliente.get("/colaborador/painel").headers["Location"].endswith("/register"))
+        # errar a senha de destravar várias vezes trava só o destravar, não o login do atendente
+        for _ in range(6):
+            self.cliente.post("/balcao/destravar", data={"senha": "chute"})
+        self.assertFalse(main.login_bloqueado("teste|127.0.0.1"))
+        main.TENTATIVAS_DE_LOGIN.clear()
         # o atendente destrava com a senha dele e volta para Serviços
         resposta = self.cliente.post("/balcao/destravar", data={"senha": "senha-do-atendente"})
         self.assertTrue(resposta.headers["Location"].endswith("/colaborador/painel"))

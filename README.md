@@ -72,6 +72,7 @@ mysql -u root -p jb_ferramentas -e "ALTER TABLE ferramentas ADD COLUMN ativo TIN
 mysql -u root -p jb_ferramentas -e "ALTER TABLE manutencao_pecas ADD COLUMN preco_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER quantidade"
 mysql -u root -p jb_ferramentas -e "ALTER TABLE servicos ADD COLUMN valor_a_devolver DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER valor_servico"
 mysql -u root -p jb_ferramentas -e "ALTER TABLE manutencao_pecas ADD COLUMN cobrar_na_retirada TINYINT(1) NOT NULL DEFAULT 0 AFTER preco_unitario"
+mysql -u root -p jb_ferramentas -e "ALTER TABLE servicos ADD COLUMN id_pessoa_resposta INT UNSIGNED NULL, ADD COLUMN respondido_em DATETIME NULL, ADD CONSTRAINT servicos_resposta_fk FOREIGN KEY (id_pessoa_resposta) REFERENCES pessoas (id)"
 ```
 Se algum deles responder "Duplicate column name", a coluna já existe: é só seguir.
 
@@ -89,6 +90,7 @@ O comando `flask run` é só para desenvolver. No servidor, use o Waitress (já 
 cd flaskr
 waitress-serve --port=8000 main:app
 ```
+No `.env` do servidor, preencha também `ENDERECO_DO_SITE` com o endereço público do site (ex.: `https://jbferramentas.com.br`). É ele que vai no link e no QR code de cadastro que o atendente passa ao cliente no balcão; em branco, o link só funciona dentro da loja.
 
 ## Testes
 

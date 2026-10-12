@@ -173,6 +173,14 @@ PERFIS_COLABORADOR = (PERFIL_ADMINISTRADOR, "Colaborador")
 PERFIS_DO_SISTEMA = PERFIS_COLABORADOR + (PERFIL_CLIENTE,)
 
 
+def endereco_do_cadastro():
+    """
+    Endereço completo da tela de cadastro, para o cliente abrir no aparelho dele (link por e-mail
+    e QR code do balcão). Usa o endereço público do .env; sem ele, o endereço que está em uso agora.
+    """
+    return (os.getenv('ENDERECO_DO_SITE') or request.url_root).rstrip('/') + url_for('register')
+
+
 def pode_ver_painel():
     """
     Diz se o usuário atual pode ver as telas de colaborador (e o card do painel nos menus).
@@ -490,7 +498,7 @@ def register():
     if pode_ver_painel():
         session['balcao'] = True
     if request.method == "GET":
-        return render_template('register.html')
+        return render_template('register.html', endereco_do_cadastro=endereco_do_cadastro())
     if request.method == "POST":
         name = (request.form.get('nome') or '').strip()
         user_type = request.form.get('tipo')
@@ -574,7 +582,8 @@ def destravar_balcao():
     if not session.get('balcao'):
         return redirect(url_for('ferramentas_page'))
     usuario = session.get('user_name') or ''
-    chave = f"{usuario.lower()}|{request.remote_addr}"  # o mesmo contador de erros do login
+    # Contador próprio: cliente errando a senha aqui não pode bloquear o login do atendente
+    chave = f"destravar|{usuario.lower()}|{request.remote_addr}"
     if login_bloqueado(chave):
         flash("Muitas tentativas. Aguarde 5 minutos e tente de novo.", "danger")
     elif UserAccountModel.auth(usuario, request.form.get('senha') or ''):
@@ -844,7 +853,7 @@ def painel_colaborador():
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
                            clientes=PersonModel.listar_clientes(PERFIL_CLIENTE),
                            # Endereço do cadastro que vai no e-mail para o cliente: o público, se estiver no .env
-                           endereco_do_cadastro=(os.getenv('ENDERECO_DO_SITE') or request.url_root).rstrip('/') + url_for('register'),
+                           endereco_do_cadastro=endereco_do_cadastro(),
                            site_publico=bool(os.getenv('ENDERECO_DO_SITE')),
                            estoques=[p for p in PecaModel.listar() if p["quantidade"]],  # só o que tem para usar
                            pecas_usadas=PecaModel.usadas_por_servico(),
@@ -916,7 +925,7 @@ def responder_orcamento_no_balcao(id_servico):
     # "Pago" é o botão "Aprovou e pagou no balcão": aprovação com o valor já recebido
     resposta = request.form.get('resposta')
     sucesso, mensagem = ColaboradorModel.responder_pelo_cliente(
-        id_servico, 'Aprovado' if resposta == 'Pago' else resposta, pago_agora=resposta == 'Pago')
+        id_servico, 'Aprovado' if resposta == 'Pago' else resposta, session.get('user_code'), pago_agora=resposta == 'Pago')
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 

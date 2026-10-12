@@ -71,7 +71,7 @@
                     <p class="servico-data">Telefone: {{ servico.telefone }}</p>
                     {% if servico.equipamento %}<p class="servico-problema"><strong>{{ servico.equipamento }}</strong></p>{% endif %}
                     <p class="servico-problema">{{ servico.descricao }}</p>
-                    <p class="servico-problema"><strong>Reprovado pelo cliente:</strong> {{ servico.valor|moeda }}</p>
+                    <p class="servico-problema"><strong>Reprovado pelo cliente:</strong> {{ servico.valor|moeda }}{% if servico.balcao %}<br><small style="color: #aaaaaa;">Resposta registrada no balcão por {{ servico.balcao }}</small>{% endif %}</p>
                     <p class="servico-data">O cliente já vê o aviso para retirar o equipamento na loja.</p>
                     {% include '_pecas_do_servico.html' %}
 
@@ -129,7 +129,7 @@
                             <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}
                                 {% include '_pecas_do_servico.html' %}</td>
                             <td>{{ servico.valor|moeda }}</td>
-                            <td><strong>{{ servico.status }}</strong></td>
+                            <td><strong>{{ servico.status }}</strong>{% if servico.balcao %}<br><small style="color: #aaaaaa;">Resposta registrada no balcão por {{ servico.balcao }}</small>{% endif %}</td>
                             <td>{{ servico.pagamento or '-' }}</td>
                             <td>
                                 {% if servico.status == 'Aguardando Aprovação' %}
@@ -189,7 +189,7 @@
                             <td>{{ servico.cliente }}<br><small style="color: #aaaaaa;">{{ servico.telefone }}</small></td>
                             <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}</td>
                             <td>{{ servico.valor|moeda }}</td>
-                            <td>{% if servico.pago %}{{ servico.pagamento }}{% else %}<strong>A receber na retirada</strong>{% endif %}
+                            <td>{% if servico.pago %}{{ servico.pagamento }}{% else %}<strong>A receber na retirada</strong>{% endif %}{% if servico.balcao %}<br><small style="color: #aaaaaa;">Resposta registrada no balcão por {{ servico.balcao }}</small>{% endif %}
                                 {% set acerto = diferencas.get(servico.id, 0) %}
                                 {% if acerto > 0 %}<br><strong style="color: #ffcc66;">+ {{ acerto|moeda }} de diferença a receber (peças a mais)</strong>
                                 {% elif acerto < 0 %}<br><strong style="color: #ffcc66;">Devolver {{ (-acerto)|moeda }} ao cliente (peça paga e não usada)</strong>{% endif %}</td>

@@ -359,11 +359,15 @@ CREATE TABLE `servicos` (
   `id_pessoa_abertura` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `id_pessoa_resposta` int unsigned DEFAULT NULL,
+  `respondido_em` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `id_pessoa_solicitante` (`id_pessoa_solicitante`),
   KEY `id_pessoa_abertura` (`id_pessoa_abertura`),
+  KEY `servicos_resposta_fk` (`id_pessoa_resposta`),
   CONSTRAINT `servicos_ibfk_1` FOREIGN KEY (`id_pessoa_solicitante`) REFERENCES `pessoas` (`id`),
-  CONSTRAINT `servicos_ibfk_2` FOREIGN KEY (`id_pessoa_abertura`) REFERENCES `pessoas` (`id`)
+  CONSTRAINT `servicos_ibfk_2` FOREIGN KEY (`id_pessoa_abertura`) REFERENCES `pessoas` (`id`),
+  CONSTRAINT `servicos_resposta_fk` FOREIGN KEY (`id_pessoa_resposta`) REFERENCES `pessoas` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -425,4 +429,4 @@ CREATE TABLE `usuarios` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-10-11  8:15:50
+-- Dump completed on 2026-10-12 13:55:50

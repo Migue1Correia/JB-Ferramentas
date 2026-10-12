@@ -40,6 +40,15 @@
             <div role="note" style="background: #fff3cd; color: #664d03; border: 1px solid #ffecb5; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 0.9rem; line-height: 1.4;">
                 <strong>Atendimento no balcão:</strong> entregue o aparelho ao cliente. Os dados e a senha devem ser digitados por ele; o atendente não escolhe nem vê a senha (LGPD). Esta tela fica travada no cadastro até o atendente destravar.
             </div>
+            {# O cliente também pode se cadastrar no próprio celular: o QR code leva o endereço do cadastro #}
+            <div style="display: flex; gap: 14px; align-items: center; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                <div id="qr_cadastro" data-endereco="{{ endereco_do_cadastro }}" role="img" aria-label="QR code com o endereço do cadastro"
+                     style="background: #ffffff; padding: 8px; border-radius: 6px; line-height: 0; flex-shrink: 0;"></div>
+                <p style="font-size: 0.9rem; line-height: 1.4; margin: 0;">
+                    <strong>Prefere fazer no seu celular?</strong> Aponte a câmera para o QR code ou abra
+                    <span style="word-break: break-all;">{{ endereco_do_cadastro }}</span>
+                </p>
+            </div>
             {% endif %}
 
             {% include '_mensagens.html' %}
@@ -252,6 +261,14 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/register.js') }}"></script>
+    {% if session.get('balcao') %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        // Desenha o QR code; se a biblioteca não carregar, o endereço escrito ao lado continua valendo
+        var caixaDoQr = document.getElementById('qr_cadastro');
+        if (caixaDoQr && window.QRCode) new QRCode(caixaDoQr, { text: caixaDoQr.dataset.endereco, width: 132, height: 132 });
+    </script>
+    {% endif %}
 
 </body>
 </html>

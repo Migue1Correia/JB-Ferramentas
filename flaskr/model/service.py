@@ -231,7 +231,7 @@ class ServiceModel:
         # Ajuste no nome da coluna: id_pessoa_solicitante
         arg = """
             UPDATE servicos 
-            SET status_servico=%s, pagamento=%s 
+            SET status_servico=%s, pagamento=%s, id_pessoa_resposta=NULL, respondido_em=NOW() 
             WHERE id=%s AND id_pessoa_solicitante=%s AND status_servico='Aguardando Aprovação';
         """
         res = db_execute(arg, resposta, pagamento, id_servico, id_cliente)
