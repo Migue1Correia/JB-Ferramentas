@@ -4,6 +4,10 @@ from .db import db_execute, jb_solucoes_db
 PAGAMENTO_RETIRADA = "Na retirada"
 PAGAMENTO_PENDENTE = "Online (pendente)"
 PAGAMENTO_PAGO = "Pago online"
+PAGAMENTO_BALCAO = "Pago no balcão"   # cliente aprovou o orçamento na loja e já pagou ali
+# Formas em que o serviço foi pago antes da retirada: o valor já entrou no caixa, então
+# mexer nas peças depois vira acerto na retirada (diferença a receber ou valor a devolver)
+PAGAMENTOS_ADIANTADOS = (PAGAMENTO_PAGO, PAGAMENTO_BALCAO)
 PAGAMENTO_PAGO_RETIRADA = "Pago na retirada"
 # A coluna servicos.pago_em guarda quando o dinheiro entrou. É por ela que o Caixa e o
 # Painel de gráficos sabem o que já foi recebido: venda e aluguel na hora do pedido,

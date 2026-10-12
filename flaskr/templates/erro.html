@@ -15,20 +15,27 @@
     <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
     <div class="bg-container-perfil"></div>
 
+    {# sem_menu: tela mostrada a um cliente no aparelho do atendente; não leva a lugar nenhum #}
+    {% if not sem_menu %}
     <header class="dashboard-header">
         {% include '_topo.html' %}
     </header>
+    {% endif %}
 
     <main id="conteudo" class="profile-container">
         <section class="profile-card">
             <div class="card-header">
-                <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                <i class="fas {{ icone or 'fa-triangle-exclamation' }}" aria-hidden="true"></i>
                 <h1 style="font-size: 1.3rem;">{{ titulo }}</h1>
             </div>
             <p style="color: #cccccc; line-height: 1.6; margin-bottom: 24px;">{{ mensagem }}</p>
+            {% if sem_menu %}
+            <button type="button" class="btn-save" onclick="window.close()"><i class="fas fa-xmark" aria-hidden="true"></i> Fechar esta janela</button>
+            {% else %}
             <a href="{{ url_for('ferramentas_page') }}" class="btn-save" style="display: inline-block; text-decoration: none;">
                 <i class="fas fa-home" aria-hidden="true"></i> Voltar para o início
             </a>
+            {% endif %}
         </section>
     </main>
 </body>

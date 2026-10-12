@@ -29,7 +29,7 @@
 </ul>
 <small style="color: #aaaaaa;">Total em peças: {{ uso.total|moeda }}</small>
 {% endif %}
-{# Acerto de serviço já pago pelo site: aparece mesmo quando a última peça foi tirada #}
+{# Acerto de serviço pago adiantado: aparece mesmo quando a última peça foi tirada #}
 {% set acerto = diferencas.get(servico.id, 0) %}
 {% if acerto > 0 %}<strong style="display: block; color: #ffcc66;">Diferença a receber na retirada: {{ acerto|moeda }}</strong>
 {% elif acerto < 0 %}<strong style="display: block; color: #ffcc66;">Devolver ao cliente na retirada: {{ (-acerto)|moeda }}</strong>

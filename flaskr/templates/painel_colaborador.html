@@ -140,6 +140,9 @@
                                     <button type="submit" name="resposta" value="Aprovado" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
                                             onclick="return confirm('Registrar que o cliente APROVOU o orçamento no balcão? O pagamento fica para a retirada.')"
                                             aria-label="Aprovou no balcão: serviço {{ servico.id }}">Aprovou no balcão</button>
+                                    <button type="submit" name="resposta" value="Pago" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
+                                            onclick="return confirm('Registrar que o cliente APROVOU e JÁ PAGOU {{ servico.valor|moeda }} no balcão? O valor entra no caixa agora.')"
+                                            aria-label="Aprovou e pagou no balcão: serviço {{ servico.id }}">Aprovou e pagou no balcão</button>
                                     <button type="submit" name="resposta" value="Reprovado" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
                                             onclick="return confirm('Registrar que o cliente REPROVOU o orçamento no balcão?')"
                                             aria-label="Reprovou no balcão: serviço {{ servico.id }}">Reprovou no balcão</button>
@@ -214,6 +217,20 @@
                 <h2>Abrir serviço no balcão</h2>
             </div>
             <p style="color: #aaaaaa; margin-bottom: 16px;">Para o cliente que veio à loja pessoalmente. O pedido entra em "Pedidos aguardando orçamento" e aparece no perfil dele.</p>
+{# Cliente sem cadastro: quem digita os dados e a senha é ele (LGPD). Duas saídas para o atendente. #}
+            {% set cadastro_do_cliente %}
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                <a href="{{ url_for('register') }}" target="cadastro_cliente" class="btn-remover" style="text-decoration: none; font-size: 0.85rem;"
+                   onclick="window.open(this.href, 'cadastro_cliente', 'width=520,height=860'); return false;">
+                    <i class="fas fa-up-right-from-square" aria-hidden="true"></i> Abrir cadastro para o cliente digitar aqui
+                </a>
+                <a href="mailto:?subject={{ 'Seu cadastro na JB Ferramentas'|urlencode }}&body={{ ('Olá! Para fazer o seu cadastro na JB Ferramentas, abra este endereço e preencha os seus dados: ' ~ url_for('register', _external=True))|urlencode }}"
+                   class="btn-remover" style="text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-envelope" aria-hidden="true"></i> Enviar o link do cadastro por e-mail
+                </a>
+            </div>
+            <small style="display: block; color: #aaaaaa; margin-top: 8px;">A janela de cadastro abre sem o menu do atendente: entregue o aparelho, o cliente digita os dados e a senha e fecha a janela. Depois recarregue esta tela para ele aparecer na lista.</small>
+            {% endset %}
             {% if clientes %}
             <form method="POST" action="{{ url_for('abrir_servico_no_balcao') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -240,9 +257,11 @@
                     <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Abrir serviço</button>
                 </div>
             </form>
-            <p style="color: #aaaaaa; margin-top: 12px;">Cliente sem cadastro? <a href="{{ url_for('register') }}" style="color: #ff6600;">Faça o cadastro dele</a> e volte aqui.</p>
+            <p style="color: #aaaaaa; margin-top: 12px;">Cliente sem cadastro?</p>
+            {{ cadastro_do_cliente }}
             {% else %}
-            <p style="color: #aaaaaa;">Nenhum cliente cadastrado ainda. <a href="{{ url_for('register') }}" style="color: #ff6600;">Faça o cadastro do cliente</a> e volte aqui.</p>
+            <p style="color: #aaaaaa;">Nenhum cliente cadastrado ainda.</p>
+            {{ cadastro_do_cliente }}
             {% endif %}
         </section>
 

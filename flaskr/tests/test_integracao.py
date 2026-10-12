@@ -869,6 +869,10 @@ class TesteServicoNoBalcao(TesteBase):
         self.assertIn("Maria Teste · CPF/CNPJ ***.***.777-35", pagina)
         self.assertNotIn("11144477735", pagina)
         self.assertNotIn("Cliente Teste · CPF/CNPJ", pagina)  # o usuário de teste é administrador
+        # as duas saídas para quem não tem cadastro: janela para o cliente digitar e link por e-mail
+        self.assertIn("window.open(this.href, 'cadastro_cliente'", pagina)
+        self.assertIn("mailto:?subject=", pagina)
+        self.assertIn("http%3A//localhost/register", pagina)   # o e-mail leva o endereço completo do cadastro
 
         dados = {"id_cliente": maria, "detalhes_equipamento": "Serra circular Makita", "descricao": "Disco travando"}
         pagina = self.texto(self.cliente.post("/colaborador/servico/novo", data=dados, follow_redirects=True))
@@ -920,6 +924,49 @@ class TesteRespostaNoBalcao(TesteBase):
         self.cliente.post(f"/colaborador/servico/{self.servico}/entregar")
         self.assertEqual(self.situacao(), ("Entregue", "Pago na retirada"))
         self.assertIn(main.formatar_moeda(100), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+    def test_cliente_aprova_e_paga_no_balcao(self):
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.assertIn("Aprovou e pagou no balcão", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("já entrou no caixa", self.responder("Pago"))
+        self.assertEqual(self.situacao(), ("Aprovado", "Pago no balcão"))
+        self.assertIn(main.formatar_moeda(100), self.texto(self.cliente.get("/colaborador/financeiro")))  # recebido na hora
+
+        # como já está pago, peça a mais vira diferença a receber na retirada (o orçamento não reabre)
+        filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        self.cliente.post("/colaborador/pecas", data={
+            "codigo_barras": "789", "nome": "Escova de carvão", "fabricante": "Bosch", "custo": "8.50",
+            "preco_venda": "19.90", "id_filial": filial, "quantidade": "5", "minimo": "1"})
+        estoque = self.sql("SELECT id FROM estoque_pecas;")[0][0]
+        pagina = self.texto(self.cliente.post(f"/colaborador/servico/{self.servico}/peca", follow_redirects=True,
+                                              data={"id_estoque": estoque, "quantidade": "1", "valor": "avisar"}))
+        self.assertIn("Diferença a receber na retirada: " + main.formatar_moeda(19.90), pagina)
+        self.assertEqual(self.situacao(), ("Aprovado", "Pago no balcão"))
+
+        self.cliente.post(f"/colaborador/servico/{self.servico}/fechar")
+        self.cliente.post(f"/colaborador/servico/{self.servico}/entregar")
+        self.assertEqual(self.situacao(), ("Entregue", "Pago no balcão"))
+        self.assertEqual(float(self.sql("SELECT valor_servico FROM servicos;")[0][0]), 119.90)
+
+    def test_cliente_se_cadastra_no_aparelho_do_atendente(self):
+        # o atendente abre o cadastro e vê o aviso de entregar o aparelho (quem digita a senha é o cliente)
+        self.assertIn("o atendente não escolhe nem vê a senha", self.texto(self.cliente.get("/register")))
+        self.assertNotIn("Atendimento no balcão", self.texto(app.test_client().get("/register")))  # cliente em casa não vê o aviso
+
+        # ao concluir, a tela é neutra: não mostra a área do colaborador nem dados de outros clientes
+        resposta = self.cliente.post("/register", data=TesteCadastroELogin.DADOS)
+        pagina = self.texto(resposta)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("devolva o aparelho ao atendente", pagina)
+        self.assertIn("Fechar esta janela", pagina)
+        for nao_pode in ("Serviços e devoluções", "Voltar para o início", "/perfil", "/colaborador"):
+            self.assertNotIn(nao_pode, pagina)   # nenhum caminho para as telas do atendente
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Maria Teste · CPF/CNPJ ***.***.777-35", pagina)
+        # a conta criada é de Cliente, e quem cadastrou continua logado como antes
+        self.assertEqual(self.sql("SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id=u.id_perfil WHERE u.nome_usuario='maria';")[0][0], "Cliente")
+        self.assertEqual(self.cliente.get("/colaborador/painel").status_code, 200)
 
     def test_colaborador_registra_a_reprovacao_no_balcao(self):
         self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={

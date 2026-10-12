@@ -1,12 +1,12 @@
 from .db import db_execute, jb_solucoes_db
-from .service import PAGAMENTO_PAGO
+from .service import PAGAMENTOS_ADIANTADOS
 
 # Enquanto o cliente analisa o orçamento, e depois que o serviço fecha, as peças não mudam
 STATUS_QUE_MEXEM_EM_PECAS = ('Aberto', 'Reprovado', 'Aprovado')
 MENSAGEM_ORCAMENTO_REABERTO = " O valor mudou: o orçamento voltou para o cliente aprovar de novo."
 MENSAGEM_PECAS_TRAVADAS = "Não dá para mexer nas peças enquanto o cliente analisa o orçamento, nem em serviço já fechado."
 
-# Diferença a receber na retirada: soma das peças lançadas depois que o cliente pagou pelo site
+# Diferença a receber na retirada: soma das peças lançadas depois que o cliente pagou adiantado (pelo site ou no balcão)
 # (marcadas com cobrar_na_retirada = 1 no lançamento).
 # "{servico}" é o nome (ou apelido) da tabela servicos na consulta que usa este trecho.
 DIFERENCA_SQL = """(SELECT COALESCE(SUM(mp.quantidade * mp.preco_unitario), 0)
@@ -203,7 +203,7 @@ class PecaModel:
         Em serviço já aprovado, o colaborador escolhe o que acontece com o valor:
         - "manter": o valor combinado continua (a peça entra ou sai sem custo para o cliente);
         - "reabrir": o valor muda e o orçamento volta para o cliente aprovar;
-        - "diferenca": o cliente já pagou pelo site, então a peça a mais vira uma diferença
+        - "diferenca": o cliente já pagou (pelo site ou no balcão), então a peça a mais vira uma diferença
           a receber na retirada (não dá para "despagar" o que já foi pago).
         Fora de serviço aprovado devolve None: a peça entra normalmente no próximo orçamento.
         """
@@ -211,7 +211,7 @@ class PecaModel:
             return None
         if not avisar_cliente:
             return "manter"
-        return "diferenca" if pagamento == PAGAMENTO_PAGO else "reabrir"
+        return "diferenca" if pagamento in PAGAMENTOS_ADIANTADOS else "reabrir"
 
     @staticmethod
     def _reabrir_orcamento(c, id_servico, diferenca):
@@ -270,7 +270,7 @@ class PecaModel:
                 PecaModel._reabrir_orcamento(c, id_servico, quantidade * preco)
                 mensagem += MENSAGEM_ORCAMENTO_REABERTO
             elif modo == "diferenca":
-                mensagem += " O cliente já pagou pelo site: o valor desta peça fica como diferença a receber na retirada."
+                mensagem += " O cliente já pagou: o valor desta peça fica como diferença a receber na retirada."
             conexao.commit()
             return True, mensagem
         except Exception as e:
@@ -296,7 +296,7 @@ class PecaModel:
 
             c.execute("SELECT quantidade, preco_unitario, id_estoque_peca, cobrar_na_retirada FROM manutencao_pecas WHERE id=%s;", (id_uso,))
             quantidade, preco, id_estoque, depois_do_pagamento = c.fetchone()
-            # Peça que o cliente já pagou pelo site e não vai ser usada: o valor dela fica para devolver na retirada
+            # Peça que o cliente já pagou e não vai ser usada: o valor dela fica para devolver na retirada
             a_devolver = quantidade * preco if modo == "diferenca" and not depois_do_pagamento else 0
             if a_devolver:
                 c.execute("UPDATE servicos SET valor_a_devolver = valor_a_devolver + %s WHERE id=%s;", (a_devolver, id_servico))
@@ -310,7 +310,7 @@ class PecaModel:
             elif a_devolver:
                 valor = f"{float(a_devolver):.2f}".replace(".", ",")
                 mensagem += f" O cliente já tinha pago por ela: R$ {valor} ficam para devolver na retirada."
-            elif pagamento == PAGAMENTO_PAGO and preco and depois_do_pagamento:
+            elif pagamento in PAGAMENTOS_ADIANTADOS and preco and depois_do_pagamento:
                 mensagem += " A diferença a receber na retirada diminuiu."
             elif modo:
                 mensagem += " O valor do serviço foi mantido."
@@ -326,7 +326,7 @@ class PecaModel:
     @staticmethod
     def diferencas():
         """
-        Acerto a fazer na retirada, por serviço já pago pelo site: peças cobradas lançadas depois do
+        Acerto a fazer na retirada, por serviço pago adiantado: peças cobradas lançadas depois do
         pagamento (a receber) menos peças já pagas que foram removidas (a devolver).
         Entra no valor do serviço (e no caixa) quando a entrega é registrada.
         :return: dicionário {id do serviço: valor}. Positivo: o cliente paga a diferença.
@@ -335,9 +335,9 @@ class PecaModel:
         arg = f"""
             SELECT s.id, {DIFERENCA_SQL.format(servico="s")} - s.valor_a_devolver
             FROM servicos s
-            WHERE s.servico_solicitado = 'manutencao' AND s.pagamento = %s AND s.status_servico IN ('Aprovado', 'Concluído');
+            WHERE s.servico_solicitado = 'manutencao' AND s.pagamento IN %s AND s.status_servico IN ('Aprovado', 'Concluído');
         """
-        res = db_execute(arg, PAGAMENTO_PAGO, fetch_type="all")
+        res = db_execute(arg, PAGAMENTOS_ADIANTADOS, fetch_type="all")
         if not res[0] or not res[1]:
             return {}
         return {id_servico: valor for id_servico, valor in res[1] if valor}

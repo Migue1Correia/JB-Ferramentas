@@ -538,6 +538,12 @@ def register():
             status = "Erro ao criar a conta. Tente novamente."
             return render_template('register.html', status=status)
 
+        # Cadastro feito no balcão: quem digitou os dados e a senha foi o cliente, no aparelho do
+        # atendente (LGPD). Por isso a tela seguinte é neutra, sem dados de outros clientes;
+        # o atendente pega o aparelho de volta e o cliente já aparece na lista do balcão.
+        if pode_ver_painel():
+            return render_template('erro.html', icone="fa-circle-check", titulo="Cadastro concluído", sem_menu=True,
+                                   mensagem="Seus dados foram gravados. Feche esta janela e devolva o aparelho ao atendente.")
         flash("Cadastro realizado com sucesso! Faça o seu login.", "success")
         return redirect(url_for('login'))
 
@@ -865,7 +871,10 @@ def responder_orcamento_no_balcao(id_servico):
       302:
         description: Volta para a tela Serviços.
     """
-    sucesso, mensagem = ColaboradorModel.responder_pelo_cliente(id_servico, request.form.get('resposta'))
+    # "Pago" é o botão "Aprovou e pagou no balcão": aprovação com o valor já recebido
+    resposta = request.form.get('resposta')
+    sucesso, mensagem = ColaboradorModel.responder_pelo_cliente(
+        id_servico, 'Aprovado' if resposta == 'Pago' else resposta, pago_agora=resposta == 'Pago')
     flash(mensagem, "success" if sucesso else "danger")
     return redirect(url_for('painel_colaborador'))
 

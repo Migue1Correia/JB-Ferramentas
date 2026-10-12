@@ -1,6 +1,6 @@
 from .db import db_execute
 from .peca import PecaModel, DIFERENCA_SQL
-from .service import PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA, PAGAMENTO_RETIRADA
+from .service import PAGAMENTO_BALCAO, PAGAMENTO_PAGO_RETIRADA, PAGAMENTO_RETIRADA, PAGAMENTOS_ADIANTADOS
 
 # Dias inteiros de atraso de um aluguel (zero se ainda está no prazo). A coluna a.data_devolucao é o prazo.
 DIAS_DE_ATRASO_SQL = "GREATEST(DATEDIFF(CURDATE(), DATE(a.data_devolucao)), 0)"
@@ -81,20 +81,27 @@ class ColaboradorModel:
         return True, "Orçamento, avaliação e foto registrados com sucesso!"
 
     @staticmethod
-    def responder_pelo_cliente(id_servico, resposta):
+    def responder_pelo_cliente(id_servico, resposta, pago_agora=False):
         """
         Registra a resposta que o cliente deu pessoalmente, no balcão, a um orçamento.
-        Aprovado no balcão fica para pagar na retirada do equipamento.
+        Aprovado no balcão fica para pagar na retirada, a não ser que o cliente já pague ali
+        (pago_agora): aí o valor entra no caixa na hora.
         """
         if resposta not in ('Aprovado', 'Reprovado'):
             return False, "Resposta inválida."
+        pago_agora = pago_agora and resposta == 'Aprovado'
+        pagamento = None
+        if resposta == 'Aprovado':
+            pagamento = PAGAMENTO_BALCAO if pago_agora else PAGAMENTO_RETIRADA
         arg = """
-            UPDATE servicos SET status_servico=%s, pagamento=%s
+            UPDATE servicos SET status_servico=%s, pagamento=%s, pago_em=IF(%s, NOW(), pago_em)
             WHERE id=%s AND servico_solicitado='manutencao' AND status_servico='Aguardando Aprovação';
         """
-        res = db_execute(arg, resposta, PAGAMENTO_RETIRADA if resposta == 'Aprovado' else None, id_servico)
+        res = db_execute(arg, resposta, pagamento, 1 if pago_agora else 0, id_servico)
         if not res[0] or not res[1]:
             return False, "Esse orçamento não está aguardando resposta."
+        if pago_agora:
+            return True, "Aprovação e pagamento registrados. O valor já entrou no caixa."
         if resposta == 'Aprovado':
             return True, "Aprovação registrada. O pagamento fica para a retirada do equipamento."
         return True, "Reprovação registrada."
@@ -122,18 +129,18 @@ class ColaboradorModel:
     def entregar_servico(id_servico):
         """
         Registra que o cliente retirou o equipamento. Quem não tinha pago pelo site
-        paga na retirada, e é aí que o valor entra no caixa. Quem já tinha pago pelo site faz
+        paga na retirada, e é aí que o valor entra no caixa. Quem já tinha pago (pelo site ou no balcão) faz
         o acerto agora: peça a mais é somada ao valor do serviço, peça paga e não usada é descontada.
         """
         arg = f"""
             UPDATE servicos
-            SET valor_servico = GREATEST(valor_servico + IF(pagamento = %s, {DIFERENCA_SQL.format(servico="servicos")} - valor_a_devolver, 0), 0),
+            SET valor_servico = GREATEST(valor_servico + IF(pagamento IN %s, {DIFERENCA_SQL.format(servico="servicos")} - valor_a_devolver, 0), 0),
                 status_servico = 'Entregue',
-                pago_em = IF(pagamento = %s, pago_em, NOW()),
-                pagamento = IF(pagamento = %s, pagamento, %s)
+                pago_em = IF(pagamento IN %s, pago_em, NOW()),
+                pagamento = IF(pagamento IN %s, pagamento, %s)
             WHERE id = %s AND servico_solicitado = 'manutencao' AND status_servico = 'Concluído';
         """
-        res = db_execute(arg, PAGAMENTO_PAGO, PAGAMENTO_PAGO, PAGAMENTO_PAGO, PAGAMENTO_PAGO_RETIRADA, id_servico)
+        res = db_execute(arg, PAGAMENTOS_ADIANTADOS, PAGAMENTOS_ADIANTADOS, PAGAMENTOS_ADIANTADOS, PAGAMENTO_PAGO_RETIRADA, id_servico)
         if not res[0] or not res[1]:
             return False, "Esse serviço não está pronto para retirada."
         return True, "Entrega registrada."
@@ -154,7 +161,7 @@ class ColaboradorModel:
             return []
         return [{"id": linha[0], "cliente": linha[1], "telefone": linha[2], "descricao": linha[3],
                  "status": linha[4], "valor": linha[5], "pagamento": linha[6],
-                 "pago": linha[6] == PAGAMENTO_PAGO, "equipamento": linha[7]} for linha in res[1]]
+                 "pago": linha[6] in PAGAMENTOS_ADIANTADOS, "equipamento": linha[7]} for linha in res[1]]
 
     @staticmethod
     def fechar_servico(id_servico):
