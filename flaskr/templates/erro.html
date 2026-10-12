@@ -30,7 +30,8 @@
             </div>
             <p style="color: #cccccc; line-height: 1.6; margin-bottom: 24px;">{{ mensagem }}</p>
             {% if sem_menu %}
-            <button type="button" class="btn-save" onclick="window.close()"><i class="fas fa-xmark" aria-hidden="true"></i> Fechar esta janela</button>
+            {% include '_mensagens.html' %}
+            {% include '_destravar_balcao.html' %}
             {% else %}
             <a href="{{ url_for('ferramentas_page') }}" class="btn-save" style="display: inline-block; text-decoration: none;">
                 <i class="fas fa-home" aria-hidden="true"></i> Voltar para o início

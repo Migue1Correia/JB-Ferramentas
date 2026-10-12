@@ -116,6 +116,11 @@ def proteger_areas_restritas():
             return redirect(url_for('login'))
         session['perfil'] = perfil
 
+    # Cadastro no balcão: o aparelho está na mão do cliente, com a sessão do atendente aberta.
+    # Enquanto a trava estiver ligada só o cadastro funciona; o atendente destrava com a senha dele.
+    if session.get('balcao') and request.endpoint not in ('register', 'destravar_balcao', 'static'):
+        return redirect(url_for('register'))
+
     if request.path.startswith(('/colaborador', '/admin', '/apidocs', '/apispec', '/flasgger_static')):
         if not session.get('logged_in'):
             return redirect(url_for('login'))
@@ -481,6 +486,9 @@ def register():
       200:
         description: Status do cadastro.
     """
+    # Funcionário logado abrindo o cadastro = cadastro no balcão: liga a trava antes de entregar o aparelho
+    if pode_ver_painel():
+        session['balcao'] = True
     if request.method == "GET":
         return render_template('register.html')
     if request.method == "POST":
@@ -539,13 +547,44 @@ def register():
             return render_template('register.html', status=status)
 
         # Cadastro feito no balcão: quem digitou os dados e a senha foi o cliente, no aparelho do
-        # atendente (LGPD). Por isso a tela seguinte é neutra, sem dados de outros clientes;
-        # o atendente pega o aparelho de volta e o cliente já aparece na lista do balcão.
-        if pode_ver_painel():
+        # atendente (LGPD). A tela seguinte é neutra e a trava continua ligada até o atendente destravar.
+        if session.get('balcao'):
             return render_template('erro.html', icone="fa-circle-check", titulo="Cadastro concluído", sem_menu=True,
-                                   mensagem="Seus dados foram gravados. Feche esta janela e devolva o aparelho ao atendente.")
+                                   mensagem="Seus dados foram gravados. Devolva o aparelho ao atendente.")
         flash("Cadastro realizado com sucesso! Faça o seu login.", "success")
         return redirect(url_for('login'))
+
+
+@app.route('/balcao/destravar', methods=['POST'])
+def destravar_balcao():
+    """
+    Destravar o Balcão
+    Depois que o cliente termina o cadastro, o atendente digita a própria senha para voltar às telas dele.
+    ---
+    tags:
+      - Gestão / Colaborador
+    parameters:
+      - name: senha
+        in: formData
+        type: string
+    responses:
+      302:
+        description: Volta para a tela Serviços, ou para o cadastro se a senha estiver errada.
+    """
+    if not session.get('balcao'):
+        return redirect(url_for('ferramentas_page'))
+    usuario = session.get('user_name') or ''
+    chave = f"{usuario.lower()}|{request.remote_addr}"  # o mesmo contador de erros do login
+    if login_bloqueado(chave):
+        flash("Muitas tentativas. Aguarde 5 minutos e tente de novo.", "danger")
+    elif UserAccountModel.auth(usuario, request.form.get('senha') or ''):
+        TENTATIVAS_DE_LOGIN.pop(chave, None)
+        session.pop('balcao', None)
+        return redirect(url_for('painel_colaborador'))
+    else:
+        registrar_erro_de_login(chave)
+        flash("Senha do atendente incorreta.", "danger")
+    return redirect(url_for('register'))
 
 
 # === 8. LOGOUT ===
@@ -804,6 +843,9 @@ def painel_colaborador():
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('painel_colaborador.html', servicos=servicos_pendentes,
                            clientes=PersonModel.listar_clientes(PERFIL_CLIENTE),
+                           # Endereço do cadastro que vai no e-mail para o cliente: o público, se estiver no .env
+                           endereco_do_cadastro=(os.getenv('ENDERECO_DO_SITE') or request.url_root).rstrip('/') + url_for('register'),
+                           site_publico=bool(os.getenv('ENDERECO_DO_SITE')),
                            estoques=[p for p in PecaModel.listar() if p["quantidade"]],  # só o que tem para usar
                            pecas_usadas=PecaModel.usadas_por_servico(),
                            diferencas=PecaModel.diferencas(),

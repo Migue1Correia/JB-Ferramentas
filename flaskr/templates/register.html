@@ -35,10 +35,10 @@
         <div class="login-area" id="conteudo">
 
             <h2>Concluir Cadastro</h2>
-            {% if pode_ver_painel %}
-            {# Atendente logado abrindo o cadastro para um cliente que está na loja #}
+            {% if session.get('balcao') %}
+            {# Cadastro no balcão: o atendente abriu a tela e a trava está ligada #}
             <div role="note" style="background: #fff3cd; color: #664d03; border: 1px solid #ffecb5; border-radius: 8px; padding: 12px; margin: 12px 0; font-size: 0.9rem; line-height: 1.4;">
-                <strong>Atendimento no balcão:</strong> entregue o aparelho ao cliente. Os dados e a senha devem ser digitados por ele; o atendente não escolhe nem vê a senha (LGPD).
+                <strong>Atendimento no balcão:</strong> entregue o aparelho ao cliente. Os dados e a senha devem ser digitados por ele; o atendente não escolhe nem vê a senha (LGPD). Esta tela fica travada no cadastro até o atendente destravar.
             </div>
             {% endif %}
 
@@ -237,9 +237,13 @@
             <!-- LINKS -->
             <div class="links">
                 <div class="register">
+                    {% if session.get('balcao') %}
+                    {% include '_destravar_balcao.html' %}
+                    {% else %}
                     <a href="{{ url_for('login') }}" style="color: inherit; text-decoration: none; font-weight: bold;">
                         <i class="fas fa-arrow-left" aria-hidden="true"></i> Voltar para login
                     </a>
+                    {% endif %}
                 </div>
             </div>
 

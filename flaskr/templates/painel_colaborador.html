@@ -220,16 +220,15 @@
 {# Cliente sem cadastro: quem digita os dados e a senha é ele (LGPD). Duas saídas para o atendente. #}
             {% set cadastro_do_cliente %}
             <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
-                <a href="{{ url_for('register') }}" target="cadastro_cliente" class="btn-remover" style="text-decoration: none; font-size: 0.85rem;"
-                   onclick="window.open(this.href, 'cadastro_cliente', 'width=520,height=860'); return false;">
-                    <i class="fas fa-up-right-from-square" aria-hidden="true"></i> Abrir cadastro para o cliente digitar aqui
+                <a href="{{ url_for('register') }}" class="btn-remover" style="text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-lock" aria-hidden="true"></i> Abrir cadastro para o cliente digitar aqui
                 </a>
-                <a href="mailto:?subject={{ 'Seu cadastro na JB Ferramentas'|urlencode }}&body={{ ('Olá! Para fazer o seu cadastro na JB Ferramentas, abra este endereço e preencha os seus dados: ' ~ url_for('register', _external=True))|urlencode }}"
+                <a href="mailto:?subject={{ 'Seu cadastro na JB Ferramentas'|urlencode }}&body={{ ('Olá! Para fazer o seu cadastro na JB Ferramentas, abra este endereço e preencha os seus dados: ' ~ endereco_do_cadastro)|urlencode }}"
                    class="btn-remover" style="text-decoration: none; font-size: 0.85rem;">
                     <i class="fas fa-envelope" aria-hidden="true"></i> Enviar o link do cadastro por e-mail
                 </a>
             </div>
-            <small style="display: block; color: #aaaaaa; margin-top: 8px;">A janela de cadastro abre sem o menu do atendente: entregue o aparelho, o cliente digita os dados e a senha e fecha a janela. Depois recarregue esta tela para ele aparecer na lista.</small>
+            <small style="display: block; color: #aaaaaa; margin-top: 8px;">Ao abrir o cadastro, o aparelho fica travado nessa tela: entregue ao cliente, ele digita os dados e a senha, e você destrava com a sua senha.{% if not site_publico %} O link do e-mail usa o endereço que você está usando agora; para o cliente abrir de fora da loja, defina ENDERECO_DO_SITE no arquivo .env.{% endif %}</small>
             {% endset %}
             {% if clientes %}
             <form method="POST" action="{{ url_for('abrir_servico_no_balcao') }}">

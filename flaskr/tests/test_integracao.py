@@ -140,7 +140,7 @@ class TesteAcesso(TesteBase):
     def test_toda_tela_mostra_o_aviso_pendente(self):
         # Se alguma tela não mostrasse, o aviso ficaria guardado e apareceria atrasado em outra
         ferramenta = self.id_ferramenta(COMPRA)
-        for rota in ("/", "/login", "/register", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho",
+        for rota in ("/", "/login", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho",
                      "/perfil", "/manutencao", "/colaborador/graficos", "/colaborador/ferramentas",
                      "/colaborador/painel", "/colaborador/financeiro", "/colaborador/pecas",
                      "/admin/filiais", "/admin/perfis"):
@@ -870,7 +870,7 @@ class TesteServicoNoBalcao(TesteBase):
         self.assertNotIn("11144477735", pagina)
         self.assertNotIn("Cliente Teste · CPF/CNPJ", pagina)  # o usuário de teste é administrador
         # as duas saídas para quem não tem cadastro: janela para o cliente digitar e link por e-mail
-        self.assertIn("window.open(this.href, 'cadastro_cliente'", pagina)
+        self.assertIn("Abrir cadastro para o cliente digitar aqui", pagina)
         self.assertIn("mailto:?subject=", pagina)
         self.assertIn("http%3A//localhost/register", pagina)   # o e-mail leva o endereço completo do cadastro
 
@@ -950,18 +950,35 @@ class TesteRespostaNoBalcao(TesteBase):
         self.assertEqual(float(self.sql("SELECT valor_servico FROM servicos;")[0][0]), 119.90)
 
     def test_cliente_se_cadastra_no_aparelho_do_atendente(self):
+        self.definir_senha("senha-do-atendente")
         # o atendente abre o cadastro e vê o aviso de entregar o aparelho (quem digita a senha é o cliente)
-        self.assertIn("o atendente não escolhe nem vê a senha", self.texto(self.cliente.get("/register")))
-        self.assertNotIn("Atendimento no balcão", self.texto(app.test_client().get("/register")))  # cliente em casa não vê o aviso
+        pagina = self.texto(self.cliente.get("/register"))
+        self.assertIn("o atendente não escolhe nem vê a senha", pagina)
+        self.assertNotIn("Voltar para login", pagina)
+        visitante = self.texto(app.test_client().get("/register"))  # cliente em casa: sem aviso e sem trava
+        self.assertNotIn("Atendimento no balcão", visitante)
+        self.assertIn("Voltar para login", visitante)
+
+        # com o aparelho na mão do cliente, nenhuma outra tela abre: tudo volta para o cadastro
+        for rota in ("/colaborador/painel", "/admin/perfis", "/perfil", "/loja", "/", "/login"):
+            self.assertTrue(self.cliente.get(rota).headers["Location"].endswith("/register"), rota)
+        self.assertTrue(self.cliente.post("/logout").headers["Location"].endswith("/register"))
 
         # ao concluir, a tela é neutra: não mostra a área do colaborador nem dados de outros clientes
         resposta = self.cliente.post("/register", data=TesteCadastroELogin.DADOS)
         pagina = self.texto(resposta)
         self.assertEqual(resposta.status_code, 200)
-        self.assertIn("devolva o aparelho ao atendente", pagina)
-        self.assertIn("Fechar esta janela", pagina)
+        self.assertIn("Devolva o aparelho ao atendente", pagina)
         for nao_pode in ("Serviços e devoluções", "Voltar para o início", "/perfil", "/colaborador"):
             self.assertNotIn(nao_pode, pagina)   # nenhum caminho para as telas do atendente
+        # depois do cadastro a trava continua, e senha errada não destrava
+        self.assertTrue(self.cliente.get("/colaborador/painel").headers["Location"].endswith("/register"))
+        self.cliente.post("/balcao/destravar", data={"senha": "chute"})
+        self.assertIn("Senha do atendente incorreta", self.texto(self.cliente.get("/register")))
+        self.assertTrue(self.cliente.get("/colaborador/painel").headers["Location"].endswith("/register"))
+        # o atendente destrava com a senha dele e volta para Serviços
+        resposta = self.cliente.post("/balcao/destravar", data={"senha": "senha-do-atendente"})
+        self.assertTrue(resposta.headers["Location"].endswith("/colaborador/painel"))
         pagina = self.texto(self.cliente.get("/colaborador/painel"))
         self.assertIn("Maria Teste · CPF/CNPJ ***.***.777-35", pagina)
         # a conta criada é de Cliente, e quem cadastrou continua logado como antes
@@ -1178,7 +1195,7 @@ class TesteMovimento(TesteBase):
 
     def test_toda_tela_carrega_o_movimento_e_a_loja_adia_as_fotos(self):
         ferramenta = self.id_ferramenta(COMPRA)
-        for rota in ("/", "/login", "/register", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho", "/perfil",
+        for rota in ("/", "/login", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho", "/perfil",
                      "/manutencao", "/colaborador/painel", "/colaborador/pecas", "/colaborador/ferramentas",
                      "/colaborador/financeiro", "/colaborador/graficos", "/admin/perfis", "/admin/filiais", "/pagina-que-nao-existe"):
             pagina = self.texto(self.cliente.get(rota))
