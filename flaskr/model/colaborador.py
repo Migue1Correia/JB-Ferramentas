@@ -1,4 +1,12 @@
 from .db import db_execute
+from .peca import PecaModel, DIFERENCA_SQL
+from .service import PAGAMENTO_BALCAO, PAGAMENTO_PAGO_RETIRADA, PAGAMENTO_RETIRADA, PAGAMENTOS_ADIANTADOS
+
+# Dias inteiros de atraso de um aluguel (zero se ainda está no prazo). A coluna a.data_devolucao é o prazo.
+DIAS_DE_ATRASO_SQL = "GREATEST(DATEDIFF(CURDATE(), DATE(a.data_devolucao)), 0)"
+
+# Status que o colaborador pode dar a um orçamento
+STATUS_ORCAMENTO = ('Aguardando Aprovação', 'Concluído')
 
 
 class ColaboradorModel:
@@ -6,14 +14,15 @@ class ColaboradorModel:
     @staticmethod
     def get_servicos_pendentes():
         """
-        Busca todos os serviços que precisam de atenção do colaborador.
+        Busca os serviços abertos, que ainda precisam do orçamento do colaborador.
         Faz um JOIN com a tabela de pessoas para pegar o nome do cliente.
         """
         arg = """
-            SELECT s.id, p.nome, s.descricao_servico, s.status_servico, s.data_abertura 
+            SELECT s.id, p.nome, s.descricao_servico, s.status_servico, s.data_abertura, m.equipamento 
             FROM servicos s
-            JOIN pessoas p ON s.fk_pessoa_solicitante_id = p.id
-            WHERE s.status_servico = 'Aberto' OR s.status_servico = 'Aguardando Aprovação'
+            JOIN pessoas p ON s.id_pessoa_solicitante = p.id
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
+            WHERE s.servico_solicitado = 'manutencao' AND s.status_servico = 'Aberto'
             ORDER BY s.data_abertura ASC;
         """
         res = db_execute(arg, fetch_type="all")
@@ -29,77 +38,216 @@ class ColaboradorModel:
                 "cliente": row[1],
                 "descricao": row[2],
                 "status": row[3],
-                "data": row[4]
+                "data": row[4],
+                "equipamento": row[5]
             })
         return servicos
 
     @staticmethod
-    def atualizar_orcamento(id_servico, id_colaborador, valor, status, caminho_imagem=None, detalhes_dano=""):
+    def atualizar_orcamento(id_servico, valor, status, caminho_imagem=None, detalhes_dano=""):
         """
         O colaborador insere o valor do serviço e muda o status (ex: 'Aguardando Aprovação' ou 'Concluído').
-        Também salva a foto do equipamento danificado e cria um registro no histórico.
+        Também salva o diagnóstico e a foto do equipamento danificado.
         """
-        # Sua lógica original mantida
+        if status not in STATUS_ORCAMENTO:
+            return False, "Status inválido."
+
+        try:
+            valor = float(valor)
+        except (TypeError, ValueError):
+            valor = -1
+        if valor < 0:
+            return False, "Informe um valor válido (zero ou mais)."
+
+        # Só manutenção ainda pendente recebe orçamento (nunca uma venda ou um serviço já fechado).
+        # "Reprovado" entra na lista para o colaborador poder mandar um orçamento novo.
+        atual = db_execute("SELECT servico_solicitado, status_servico FROM servicos WHERE id=%s;", id_servico, fetch_type="one")
+        if not atual[0] or not atual[1] or atual[1][0] != 'manutencao' or atual[1][1] not in ('Aberto', 'Aguardando Aprovação', 'Reprovado'):
+            return False, "Só dá para fazer orçamento de manutenções pendentes."
+
+        # O valor digitado é a mão de obra; as peças lançadas no serviço são somadas aqui
         arg = "UPDATE servicos SET valor_servico=%s, status_servico=%s WHERE id=%s;"
-        res = db_execute(arg, valor, status, id_servico)
+        res = db_execute(arg, valor + PecaModel.total_do_servico(id_servico), status, id_servico)
 
         if not res[0]:
             return False, "Erro ao atualizar o orçamento."
 
-        # AJUSTE: Atualiza a tabela 'manutencoes' com a foto e o diagnóstico do problema
+        # Guarda o diagnóstico e a foto na tabela 'manutencoes'.
+        # COALESCE mantém a foto que já existia quando nenhuma nova é enviada.
         if caminho_imagem or detalhes_dano:
-            # Dica: Certifique-se de que a tabela 'manutencoes' possui uma coluna como 'foto_equipamento'
-            arg_manu = "UPDATE manutencoes SET diagnostico=%s, foto_equipamento=%s WHERE id_servico=%s;"
+            arg_manu = "UPDATE manutencoes SET diagnostico=%s, foto_equipamento=COALESCE(%s, foto_equipamento) WHERE id_servico=%s;"
             db_execute(arg_manu, detalhes_dano, caminho_imagem, id_servico)
-
-        # AJUSTE: Registra a ação no histórico para o cliente poder ver quem avaliou e o que foi feito
-        titulo_historico = "Avaliação e Orçamento Gerado"
-        descricao_historico = f"Status atualizado para: {status}. Valor orçado: R$ {valor}."
-        arg_hist = """
-            INSERT INTO servico_historicos (id_servico, fk_pessoa_responsavel_id, titulo, descricao_atividade) 
-            VALUES (%s, %s, %s, %s);
-        """
-        db_execute(arg_hist, id_servico, id_colaborador,
-                   titulo_historico, descricao_historico)
 
         return True, "Orçamento, avaliação e foto registrados com sucesso!"
 
-        # === MÓDULO 1: GESTÃO DE PEÇAS NA MANUTENÇÃO ===
     @staticmethod
-    def adicionar_peca_manutencao(id_servico, id_estoque_peca, quantidade):
+    def responder_pelo_cliente(id_servico, resposta, id_atendente, pago_agora=False):
         """
-        Adiciona uma peça ao orçamento da manutenção e dá baixa no estoque.
+        Registra a resposta que o cliente deu pessoalmente, no balcão, a um orçamento.
+        Fica gravado qual atendente registrou e quando (id_pessoa_resposta e respondido_em),
+        para haver como conferir depois se o cliente contestar.
+        Aprovado no balcão fica para pagar na retirada, a não ser que o cliente já pague ali
+        (pago_agora): aí o valor entra no caixa na hora.
         """
-        # 1. Pega o ID da manutenção vinculada ao serviço
-        arg_get_manu = "SELECT id FROM manutencoes WHERE id_servico=%s;"
-        res_manu = db_execute(arg_get_manu, id_servico, fetch_type="one")
+        if resposta not in ('Aprovado', 'Reprovado'):
+            return False, "Resposta inválida."
+        pago_agora = pago_agora and resposta == 'Aprovado'
+        pagamento = None
+        if resposta == 'Aprovado':
+            pagamento = PAGAMENTO_BALCAO if pago_agora else PAGAMENTO_RETIRADA
+        arg = """
+            UPDATE servicos SET status_servico=%s, pagamento=%s, pago_em=IF(%s, NOW(), pago_em),
+                                id_pessoa_resposta=%s, respondido_em=NOW()
+            WHERE id=%s AND servico_solicitado='manutencao' AND status_servico='Aguardando Aprovação';
+        """
+        res = db_execute(arg, resposta, pagamento, 1 if pago_agora else 0, id_atendente, id_servico)
+        if not res[0] or not res[1]:
+            return False, "Esse orçamento não está aguardando resposta."
+        if pago_agora:
+            return True, "Aprovação e pagamento registrados. O valor já entrou no caixa."
+        if resposta == 'Aprovado':
+            return True, "Aprovação registrada. O pagamento fica para a retirada do equipamento."
+        return True, "Reprovação registrada."
 
-        if not res_manu[0] or not res_manu[1]:
-            return False, "Registro de manutenção não encontrado."
+    # === ORÇAMENTOS QUE O CLIENTE JÁ RESPONDEU ===
+    @staticmethod
+    def get_orcamentos_respondidos():
+        """
+        Lista as manutenções com orçamento enviado: aguardando a resposta do cliente
+        ou aprovado (falta fazer o serviço).
+        """
+        return ColaboradorModel._manutencoes_com_status("('Aguardando Aprovação', 'Aprovado')")
 
-        id_manutencao = res_manu[1][0]
+    @staticmethod
+    def get_orcamentos_reprovados():
+        """Lista as manutenções que o cliente reprovou: falta mandar outro orçamento ou devolver o equipamento."""
+        return ColaboradorModel._manutencoes_com_status("('Reprovado')")
 
-        # 2. Insere na tabela manutencao_pecas
-        arg_insert = "INSERT INTO manutencao_pecas (id_manutencao, id_estoque_peca, quantidade) VALUES (%s, %s, %s);"
-        res_insert = db_execute(arg_insert, id_manutencao,
-                                id_estoque_peca, quantidade)
+    @staticmethod
+    def get_prontos_para_retirada():
+        """Lista as manutenções concluídas que o cliente ainda não veio buscar."""
+        return ColaboradorModel._manutencoes_com_status("('Concluído')")
 
-        if not res_insert[0]:
-            return False, "Erro ao adicionar peça ao serviço."
+    @staticmethod
+    def entregar_servico(id_servico):
+        """
+        Registra que o cliente retirou o equipamento. Quem não tinha pago pelo site
+        paga na retirada, e é aí que o valor entra no caixa. Quem já tinha pago (pelo site ou no balcão) faz
+        o acerto agora: peça a mais é somada ao valor do serviço, peça paga e não usada é descontada.
+        """
+        arg = f"""
+            UPDATE servicos
+            SET valor_servico = GREATEST(valor_servico + IF(pagamento IN %s, {DIFERENCA_SQL.format(servico="servicos")} - valor_a_devolver, 0), 0),
+                status_servico = 'Entregue',
+                pago_em = IF(pagamento IN %s, pago_em, NOW()),
+                pagamento = IF(pagamento IN %s, pagamento, %s)
+            WHERE id = %s AND servico_solicitado = 'manutencao' AND status_servico = 'Concluído';
+        """
+        res = db_execute(arg, PAGAMENTOS_ADIANTADOS, PAGAMENTOS_ADIANTADOS, PAGAMENTOS_ADIANTADOS, PAGAMENTO_PAGO_RETIRADA, id_servico)
+        if not res[0] or not res[1]:
+            return False, "Esse serviço não está pronto para retirada."
+        return True, "Entrega registrada."
 
-        # 3. Dá baixa na quantidade_atual da tabela estoque_pecas
-        arg_baixa = "UPDATE estoque_pecas SET quantidade_atual = quantidade_atual - %s WHERE id = %s;"
-        db_execute(arg_baixa, quantidade, id_estoque_peca)
+    @staticmethod
+    def _manutencoes_com_status(status_sql):
+        arg = f"""
+            SELECT s.id, p.nome, p.telefone, s.descricao_servico, s.status_servico, s.valor_servico, s.pagamento,
+                   m.equipamento, atendente.nome, s.respondido_em
+            FROM servicos s
+            JOIN pessoas p ON s.id_pessoa_solicitante = p.id
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
+            LEFT JOIN pessoas atendente ON atendente.id = s.id_pessoa_resposta
+            WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN {status_sql}
+            ORDER BY s.data_abertura ASC;
+        """
+        res = db_execute(arg, fetch_type="all")
+        if not res[0] or res[1] is None:
+            return []
+        return [{"id": linha[0], "cliente": linha[1], "telefone": linha[2], "descricao": linha[3],
+                 "status": linha[4], "valor": linha[5], "pagamento": linha[6],
+                 "pago": linha[6] in PAGAMENTOS_ADIANTADOS, "equipamento": linha[7],
+                 # preenchido só quando a resposta do orçamento foi registrada por um atendente, no balcão.
+                 # Orçamento que voltou a aguardar resposta (valor mudou) ainda não tem resposta para mostrar.
+                 "balcao": (f"{linha[8]}, em {linha[9].strftime('%d/%m/%Y às %H:%M')}"
+                            if linha[8] and linha[9] and linha[4] != 'Aguardando Aprovação' else None)}
+                for linha in res[1]]
 
-        return True, "Peça adicionada e estoque atualizado com sucesso!"
+    @staticmethod
+    def fechar_servico(id_servico):
+        """
+        Fecha uma manutenção já respondida pelo cliente:
+        aprovada vira 'Concluído' (pronta para retirada), reprovada vira 'Encerrado'.
+        """
+        arg = """
+            UPDATE servicos
+            SET status_servico = IF(status_servico = 'Aprovado', 'Concluído', 'Encerrado')
+            WHERE id = %s AND servico_solicitado = 'manutencao' AND status_servico IN ('Aprovado', 'Reprovado');
+        """
+        res = db_execute(arg, id_servico)
+        if not res[0] or not res[1]:
+            return False, "Esse serviço não está aguardando fechamento."
+        return True, "Serviço fechado."
+
+    # === DEVOLUÇÃO DE ALUGUEL ===
+    @staticmethod
+    def get_alugueis_em_aberto():
+        """
+        Lista os aluguéis cuja ferramenta ainda não foi devolvida, do prazo mais antigo para o mais novo.
+        A multa por atraso é uma diária por dia inteiro de atraso.
+        """
+        arg = f"""
+            SELECT a.id_servico, p.nome, f.marca, f.modelo, a.data_devolucao, a.data_devolucao < NOW(),
+                   {DIAS_DE_ATRASO_SQL}, a.valor_diario
+            FROM alugueis a
+            JOIN servicos s ON s.id = a.id_servico
+            JOIN pessoas p ON p.id = s.id_pessoa_solicitante
+            JOIN servico_ferramentas sf ON sf.id_servico = a.id_servico
+            JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
+            JOIN ferramentas f ON f.id = u.id_ferramenta
+            WHERE a.devolvido_em IS NULL
+            ORDER BY a.data_devolucao;
+        """
+        res = db_execute(arg, fetch_type="all")
+        if not res[0] or res[1] is None:
+            return []
+        return [{"id": linha[0], "cliente": linha[1], "ferramenta": f"{linha[2]} {linha[3]}",
+                 "prazo": linha[4], "atrasado": bool(linha[5]), "dias_atraso": linha[6],
+                 "multa": linha[6] * linha[7]} for linha in res[1]]
+
+    @staticmethod
+    def registrar_devolucao(id_servico):
+        """
+        Marca o aluguel como devolvido e devolve a unidade ao estoque, em um comando só.
+        Se houver atraso, a multa (uma diária por dia de atraso) é gravada em alugueis.taxa_atraso
+        e somada ao valor do serviço, para entrar no caixa.
+        """
+        arg = f"""
+            UPDATE alugueis a
+            JOIN servicos s ON s.id = a.id_servico
+            JOIN servico_ferramentas sf ON sf.id_servico = a.id_servico
+            JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
+            SET a.taxa_atraso = {DIAS_DE_ATRASO_SQL} * a.valor_diario,
+                s.valor_servico = s.valor_servico + {DIAS_DE_ATRASO_SQL} * a.valor_diario,
+                a.devolvido_em = NOW(), u.status = 'em_estoque'
+            WHERE a.id_servico = %s AND a.devolvido_em IS NULL;
+        """
+        res = db_execute(arg, id_servico)
+        if not res[0] or not res[1]:
+            return False, "Aluguel não encontrado ou já devolvido."
+
+        multa = db_execute("SELECT taxa_atraso FROM alugueis WHERE id_servico=%s;", id_servico, fetch_type="one")
+        if multa[0] and multa[1] and multa[1][0]:
+            valor = f"{float(multa[1][0]):.2f}".replace(".", ",")
+            return True, f"Devolução registrada. Multa por atraso cobrada: R$ {valor}."
+        return True, "Devolução registrada. A ferramenta voltou para o estoque."
 
     # === MÓDULO 3: REGISTRO DE CAIXA / FINANCEIRO ===
     @staticmethod
     def get_relatorio_caixa():
         """
-        Calcula o lucro obtido somando serviços aprovados/concluídos.
+        Soma o que já foi recebido (pago_em preenchido): vendas e aluguéis e manutenções pagas.
         """
-        arg = "SELECT SUM(valor_servico) FROM servicos WHERE status_servico IN ('Aprovado', 'Concluído');"
+        arg = "SELECT SUM(valor_servico) FROM servicos WHERE pago_em IS NOT NULL;"
         res = db_execute(arg, fetch_type="one")
 
         lucro_total = 0
@@ -107,7 +255,7 @@ class ColaboradorModel:
             lucro_total = res[1][0]
 
         # Busca detalhes para montar a tabela do caixa
-        arg_lista = "SELECT id, descricao_servico, status_servico, valor_servico, data_abertura FROM servicos WHERE status_servico IN ('Aprovado', 'Concluído') ORDER BY data_abertura DESC;"
+        arg_lista = "SELECT id, descricao_servico, status_servico, valor_servico, pago_em FROM servicos WHERE pago_em IS NOT NULL ORDER BY pago_em DESC;"
         res_lista = db_execute(arg_lista, fetch_type="all")
 
         servicos_caixa = []

@@ -42,6 +42,12 @@ def db_execute(arg, *parsing, fetch_type="all"):
             c.close()
             return True, inserted_id
 
+        # UPDATE e DELETE devolvem quantas linhas foram alteradas
+        if arg.strip().upper().startswith(("UPDATE", "DELETE")):
+            alteradas = c.rowcount
+            c.close()
+            return True, alteradas
+
         if fetch_type == "one":
             result = c.fetchone()
         else:

@@ -1,0 +1,10 @@
+{# Trava do cadastro no balcão: só o atendente, com a senha dele, volta para as telas do sistema #}
+<form method="POST" action="{{ url_for('destravar_balcao') }}" style="margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.2); display: flex; gap: 8px; flex-wrap: wrap; align-items: end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="flex: 1; min-width: 180px;">
+        <label for="senha_atendente" style="display: block; font-size: 0.8rem; color: #cccccc; margin-bottom: 4px;">Atendente: sua senha para destravar</label>
+        <input type="password" id="senha_atendente" name="senha" required autocomplete="off"
+               style="width: 100%; background: #141414; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 9px 10px; color: #ffffff;">
+    </div>
+    <button type="submit" style="background: #333333; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 9px 14px; cursor: pointer; font-weight: 700;">Destravar</button>
+</form>

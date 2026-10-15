@@ -1,4 +1,18 @@
-from .db import db_execute
+from .db import db_execute, jb_solucoes_db
+
+# Como o cliente escolheu pagar uma manutenção aprovada (coluna servicos.pagamento)
+PAGAMENTO_RETIRADA = "Na retirada"
+PAGAMENTO_PENDENTE = "Online (pendente)"
+PAGAMENTO_PAGO = "Pago online"
+PAGAMENTO_BALCAO = "Pago no balcão"   # cliente aprovou o orçamento na loja e já pagou ali
+# Formas em que o serviço foi pago antes da retirada: o valor já entrou no caixa, então
+# mexer nas peças depois vira acerto na retirada (diferença a receber ou valor a devolver)
+PAGAMENTOS_ADIANTADOS = (PAGAMENTO_PAGO, PAGAMENTO_BALCAO)
+PAGAMENTO_PAGO_RETIRADA = "Pago na retirada"
+# A coluna servicos.pago_em guarda quando o dinheiro entrou. É por ela que o Caixa e o
+# Painel de gráficos sabem o que já foi recebido: venda e aluguel na hora do pedido,
+# manutenção quando o cliente paga pelo site ou na retirada.
+
 
 class ServiceModel:
 
@@ -12,8 +26,10 @@ class ServiceModel:
         # Os LEFT JOIN buscam o nome da ferramenta do pedido (manutenção não tem ferramenta vinculada).
         arg = """
             SELECT s.id, s.servico_solicitado, s.valor_servico, s.data_abertura,
-                   s.titulo_servico, f.marca, f.modelo
+                   s.titulo_servico, f.marca, f.modelo, s.status_servico, s.pagamento,
+                   m.equipamento, m.diagnostico, m.foto_equipamento
             FROM servicos s
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
             LEFT JOIN servico_ferramentas sf ON sf.id_servico = s.id
             LEFT JOIN unidade_ferramentas u ON u.id = sf.id_unidade_ferramenta
             LEFT JOIN ferramentas f ON f.id = u.id_ferramenta
@@ -26,13 +42,20 @@ class ServiceModel:
             return []
 
         historico = []
-        for id_servico, tipo, valor, data, titulo, marca, modelo in res[1]:
+        for id_servico, tipo, valor, data, titulo, marca, modelo, status, pagamento, equipamento, diagnostico, foto in res[1]:
+            if equipamento:
+                titulo = f"Manutenção: {equipamento}"
             historico.append({
                 "id": id_servico,
                 "tipo": tipo,
                 "valor": valor,
                 "data": data,
                 "descricao": f"{marca} {modelo}" if marca else titulo,
+                "status": status,
+                "diagnostico": diagnostico,
+                "foto": foto,
+                "pagamento": pagamento,
+                "pagamento_pendente": pagamento == PAGAMENTO_PENDENTE,
             })
         return historico
 
@@ -47,39 +70,59 @@ class ServiceModel:
         return None
 
     @staticmethod
+    def _registrar_pedido(tipo, titulo, descricao, valor_total, user_id, tool_id, novo_status, dias=None):
+        """
+        Reserva uma unidade e grava o pedido (venda ou aluguel) em uma única transação:
+        ou grava tudo, ou não grava nada.
+        :return: True se gravou, None se não há unidade em estoque, False se deu erro.
+        """
+        conexao = jb_solucoes_db.connection
+        c = conexao.cursor()
+        try:
+            # FOR UPDATE trava a unidade: se dois clientes clicarem juntos,
+            # o segundo espera e não recebe a mesma unidade.
+            c.execute("SELECT id FROM unidade_ferramentas WHERE id_ferramenta=%s AND status='em_estoque' LIMIT 1 FOR UPDATE;", (tool_id,))
+            unidade = c.fetchone()
+            if not unidade:
+                conexao.rollback()
+                return None
+
+            c.execute("""
+                INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, valor_servico, status_servico, pago_em, id_pessoa_solicitante, id_pessoa_abertura)
+                VALUES (%s, %s, %s, %s, 'Concluído', NOW(), %s, %s);
+            """, (tipo, titulo, descricao, valor_total, user_id, user_id))
+            id_servico = c.lastrowid
+
+            if dias:
+                # valor_diario guarda a diária cobrada, mesmo que o preço da ferramenta mude depois
+                diaria = round(float(valor_total) / int(dias), 2)
+                c.execute("INSERT INTO alugueis (id_servico, data_devolucao, valor_diario) VALUES (%s, DATE_ADD(NOW(), INTERVAL %s DAY), %s);",
+                          (id_servico, dias, diaria))
+
+            c.execute("INSERT INTO servico_ferramentas (id_servico, id_unidade_ferramenta) VALUES (%s, %s);", (id_servico, unidade[0]))
+            c.execute("UPDATE unidade_ferramentas SET status=%s WHERE id=%s;", (novo_status, unidade[0]))
+            conexao.commit()
+            return True
+        except Exception as e:
+            conexao.rollback()
+            print(e)  # Para depuração no terminal
+            return False
+        finally:
+            c.close()
+
+    @staticmethod
     def create_rental(user_id, tool_id, dias, valor_total):
         """
         Registra um novo aluguel no banco de dados.
         """
-        # 1. Verifica se tem unidade física disponível
-        id_unidade = ServiceModel.get_unidade_disponivel(tool_id)
-        if not id_unidade:
+        # 'alugada' é o status de aluguel no ENUM do banco
+        resultado = ServiceModel._registrar_pedido(
+            'aluguel', 'Aluguel de Ferramenta', 'Aluguel solicitado via site',
+            valor_total, user_id, tool_id, 'alugada', dias)
+        if resultado is None:
             return False, "Desculpe, não temos unidades disponíveis desta ferramenta para aluguel no momento."
-
-        # 2. Cria o serviço base respeitando as colunas NOT NULL do seu banco
-        arg_servico = """
-            INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, valor_servico, id_pessoa_solicitante, id_pessoa_abertura) 
-            VALUES ('aluguel', 'Aluguel de Ferramenta', 'Aluguel solicitado via site', %s, %s, %s);
-        """
-        res_servico = db_execute(arg_servico, valor_total, user_id, user_id)
-
-        if not res_servico[0]:
-            print(res_servico[1]) # Para depuração no terminal
+        if not resultado:
             return False, "Erro ao processar o serviço de aluguel."
-
-        id_servico = res_servico[1]
-
-        # 3. Registra na tabela filha de alugueis
-        arg_aluguel = "INSERT INTO alugueis (id_servico, data_devolucao) VALUES (%s, DATE_ADD(NOW(), INTERVAL %s DAY));"
-        db_execute(arg_aluguel, id_servico, dias)
-
-        # 4. Módulo 2: Vincula a unidade e muda o status para 'alugada' (ENUM do banco)
-        arg_vinculo = "INSERT INTO servico_ferramentas (id_servico, id_unidade_ferramenta) VALUES (%s, %s);"
-        db_execute(arg_vinculo, id_servico, id_unidade)
-
-        arg_status = "UPDATE unidade_ferramentas SET status='alugada' WHERE id=%s;"
-        db_execute(arg_status, id_unidade)
-
         return True, "Aluguel realizado com sucesso!"
 
     @staticmethod
@@ -87,63 +130,100 @@ class ServiceModel:
         """
         Registra uma nova compra no banco de dados.
         """
-        # 1. Verifica se tem unidade física disponível
-        id_unidade = ServiceModel.get_unidade_disponivel(tool_id)
-        if not id_unidade:
+        # 'baixada' é a opção de venda no ENUM do banco
+        resultado = ServiceModel._registrar_pedido(
+            'venda', 'Compra de Ferramenta', 'Compra solicitada via site',
+            valor_total, user_id, tool_id, 'baixada')
+        if resultado is None:
             return False, "Desculpe, ferramenta esgotada em nosso estoque físico."
-
-        # 2. Cria o serviço base respeitando as colunas
-        arg_servico = """
-            INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, valor_servico, id_pessoa_solicitante, id_pessoa_abertura) 
-            VALUES ('venda', 'Compra de Ferramenta', 'Compra solicitada via site', %s, %s, %s);
-        """
-        res_servico = db_execute(arg_servico, valor_total, user_id, user_id)
-
-        if not res_servico[0]:
-            print(res_servico[1])
+        if not resultado:
             return False, "Erro ao processar a compra."
-
-        id_servico = res_servico[1]
-
-        # 3. Módulo 2: Vincula a unidade e dá baixa ('baixada' é a opção de venda no seu ENUM)
-        arg_compra = "INSERT INTO servico_ferramentas (id_servico, id_unidade_ferramenta) VALUES (%s, %s);"
-        db_execute(arg_compra, id_servico, id_unidade)
-
-        arg_status = "UPDATE unidade_ferramentas SET status='baixada' WHERE id=%s;"
-        db_execute(arg_status, id_unidade)
-
         return True, "Compra realizada com sucesso!"
-        
-    @staticmethod
-    def create_maintenance(user_id, description, tool_details):
-        """
-        Função para abrir uma nova solicitação de manutenção
-        """
-        arg_servico = """
-            INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, id_pessoa_solicitante, id_pessoa_abertura) 
-            VALUES ('manutencao', 'Manutenção de Equipamento', %s, %s, %s);
-        """
-        res_servico = db_execute(arg_servico, description, user_id, user_id)
-        
-        if not res_servico[0]:
-            print(res_servico[1])
-            return False, "Erro ao criar o serviço base."
-
-        id_servico = res_servico[1] 
-
-        # A sua tabela manutencoes pede garantia NOT NULL, adicionei 0 como padrão inicial
-        arg_manu = "INSERT INTO manutencoes (id_servico, diagnostico, garantia) VALUES (%s, %s, 0);"
-        res_manu = db_execute(arg_manu, id_servico, tool_details)
-
-        if not res_manu[0]:
-            return False, "Erro ao registrar detalhes da manutenção."
-
-        return True, "Manutenção solicitada com sucesso!"
 
     @staticmethod
-    def responder_orcamento(id_servico, id_cliente, resposta):
+    def create_maintenance(user_id, description, tool_details, aberto_por=None):
+        """
+        Função para abrir uma nova solicitação de manutenção.
+        Grava nas duas tabelas (servicos e manutencoes) em uma única transação:
+        ou grava tudo, ou não grava nada.
+        "aberto_por" é a pessoa que abriu o pedido quando não foi o próprio cliente
+        (o colaborador, no atendimento de balcão). Sem ele, quem abriu foi o cliente.
+        """
+        conexao = jb_solucoes_db.connection
+        c = conexao.cursor()
+        try:
+            c.execute("""
+                INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, id_pessoa_solicitante, id_pessoa_abertura)
+                VALUES ('manutencao', 'Manutenção de Equipamento', %s, %s, %s);
+            """, (description, user_id, aberto_por or user_id))
+            # "equipamento" é o que o cliente informou; "diagnostico" fica vazio até o colaborador avaliar.
+            # A tabela manutencoes pede garantia NOT NULL, por isso o 0.
+            c.execute("INSERT INTO manutencoes (id_servico, equipamento, diagnostico, garantia) VALUES (%s, %s, '', 0);",
+                      (c.lastrowid, tool_details))
+            conexao.commit()
+            return True, "Manutenção solicitada com sucesso!"
+        except Exception as e:
+            conexao.rollback()
+            print(e)  # Para depuração no terminal
+            return False, "Erro ao registrar a manutenção."
+        finally:
+            c.close()
+
+    @staticmethod
+    def get_resumo_manutencoes(user_id):
+        """
+        Conta as manutenções do cliente por status, para os avisos da tela de manutenção.
+        :return: Dicionário {status: quantidade}. Ex.: {"Aberto": 1, "Concluído": 2}
+        """
+        arg = """
+            SELECT status_servico, COUNT(*) FROM servicos
+            WHERE id_pessoa_solicitante = %s AND servico_solicitado = 'manutencao'
+            GROUP BY status_servico;
+        """
+        res = db_execute(arg, user_id, fetch_type="all")
+        if not res[0] or res[1] is None:
+            return {}
+        return dict(res[1])
+
+    @staticmethod
+    def get_orcamento(id_servico, id_cliente):
+        """
+        Busca uma manutenção do cliente (para a tela de pagamento e para o carrinho).
+        :return: Dicionário com id, descricao, valor, status, pagamento, equipamento,
+                 diagnostico e foto. None se não for dele.
+        """
+        arg = """
+            SELECT s.id, s.descricao_servico, s.valor_servico, s.status_servico, s.pagamento,
+                   m.equipamento, m.diagnostico, m.foto_equipamento
+            FROM servicos s
+            LEFT JOIN manutencoes m ON m.id_servico = s.id
+            WHERE s.id=%s AND s.id_pessoa_solicitante=%s AND s.servico_solicitado='manutencao';
+        """
+        res = db_execute(arg, id_servico, id_cliente, fetch_type="one")
+        if not res[0] or not res[1]:
+            return None
+        return {"id": res[1][0], "descricao": res[1][1], "valor": res[1][2], "status": res[1][3], "pagamento": res[1][4],
+                "equipamento": res[1][5], "diagnostico": res[1][6], "foto": res[1][7]}
+
+    @staticmethod
+    def pagar_manutencao(id_servico, id_cliente):
+        """
+        Marca como paga uma manutenção aprovada que o cliente escolheu pagar pelo site.
+        """
+        arg = """
+            UPDATE servicos SET pagamento=%s, pago_em=NOW()
+            WHERE id=%s AND id_pessoa_solicitante=%s AND servico_solicitado='manutencao' AND pagamento=%s;
+        """
+        res = db_execute(arg, PAGAMENTO_PAGO, id_servico, id_cliente, PAGAMENTO_PENDENTE)
+        if not res[0] or not res[1]:
+            return False, "Esse serviço não está aguardando pagamento."
+        return True, "Pagamento da manutenção registrado."
+
+    @staticmethod
+    def responder_orcamento(id_servico, id_cliente, resposta, pagamento=None):
         """
         O cliente aprova ou reprova o orçamento feito pelo colaborador.
+        Na aprovação, "pagamento" guarda como ele escolheu pagar.
         """
         if resposta not in ['Aprovado', 'Reprovado']:
             return False, "Resposta inválida."
@@ -151,12 +231,18 @@ class ServiceModel:
         # Ajuste no nome da coluna: id_pessoa_solicitante
         arg = """
             UPDATE servicos 
-            SET status_servico=%s 
+            SET status_servico=%s, pagamento=%s, id_pessoa_resposta=NULL, respondido_em=NOW() 
             WHERE id=%s AND id_pessoa_solicitante=%s AND status_servico='Aguardando Aprovação';
         """
-        res = db_execute(arg, resposta, id_servico, id_cliente)
+        res = db_execute(arg, resposta, pagamento, id_servico, id_cliente)
 
         if not res[0]:
             return False, "Erro ao processar a resposta do orçamento."
+        if not res[1]:  # nenhuma linha mudou: o pedido não é deste cliente ou já foi respondido
+            return False, "Esse orçamento não está aguardando a sua resposta."
 
+        if pagamento == PAGAMENTO_RETIRADA:
+            return True, "Orçamento aprovado! O pagamento será feito na retirada do equipamento."
+        if pagamento == PAGAMENTO_PENDENTE:
+            return True, "Orçamento aprovado! Finalize o pagamento no carrinho."
         return True, f"Orçamento {resposta.lower()} com sucesso!"

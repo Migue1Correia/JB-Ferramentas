@@ -1,0 +1,1332 @@
+"""
+Testes de integração: abrem as telas e enviam os formulários como um navegador faria,
+com rotas, models e banco funcionando juntos. Usam o banco jb_ferramentas_teste.
+"""
+import contextlib
+import io
+import os
+import threading
+import unittest
+
+import MySQLdb
+from werkzeug.datastructures import FileStorage
+
+import main
+from cadastrar_exemplos import cadastrar, FERRAMENTAS
+from model.db import db_execute
+from model.painel import PainelModel
+from model.service import ServiceModel
+
+app = main.app
+BANCO = app.config["MYSQL_DB"]
+
+COMPRA = "Furadeira Parafusadeira 3/8 21V com Kit"
+ALUGUEL = "Esmerilhadeira Angular 115 mm 710W"
+PRECOS = {modelo: preco for _, modelo, _, preco, _, _ in FERRAMENTAS}
+PRECO_COMPRA = PRECOS[COMPRA]
+DIARIA = PRECOS[ALUGUEL]
+
+
+def setUpModule():
+    """Cria o banco de teste do zero: estrutura, um cliente e as ferramentas de exemplo."""
+    assert BANCO.endswith("_teste"), "Os testes só podem rodar em um banco de teste."
+
+    conexao = MySQLdb.connect(
+        host=app.config["MYSQL_HOST"], user=app.config["MYSQL_USER"],
+        passwd=app.config["MYSQL_PASSWORD"], port=app.config["MYSQL_PORT"])
+    c = conexao.cursor()
+    c.execute(f"CREATE DATABASE IF NOT EXISTS {BANCO}")
+    c.execute(f"USE {BANCO}")
+
+    caminho = os.path.join(os.path.dirname(__file__), "..", "..", "database", "jb_ferramentas.sql")
+    with open(caminho, encoding="utf-8") as arquivo:
+        estrutura = "".join(linha for linha in arquivo if not linha.startswith("--"))
+    for comando in estrutura.split(";\n"):
+        if comando.strip():
+            c.execute(comando)
+    conexao.commit()
+    conexao.close()
+
+    with app.app_context():
+        db_execute("INSERT INTO perfis (id, perfil) VALUES (1, 'Administrador');")
+        db_execute("""
+            INSERT INTO pessoas (id, nome, tipo, codigo, endereco, email, telefone)
+            VALUES (1, 'Cliente Teste', 'pf', '52998224725', 'Rua A, 1', 'cliente@teste.com', '11999990000');
+        """)
+        with contextlib.redirect_stdout(io.StringIO()):  # esconde as mensagens do script
+            cadastrar()
+
+
+class TesteBase(unittest.TestCase):
+    """Cada teste começa com o usuário "teste" (Administrador, pessoa 1) logado e termina limpando o que gravou."""
+
+    def setUp(self):
+        app.config["WTF_CSRF_ENABLED"] = False
+        main.TENTATIVAS_DE_LOGIN.clear()
+        self.sql("INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo) VALUES ('teste', 'x', 1, 1, 1);")
+        self.cliente = app.test_client()
+        with self.cliente.session_transaction() as sessao:
+            sessao["logged_in"] = True
+            sessao["user_name"] = "teste"
+            sessao["user_code"] = 1
+            sessao["perfil"] = "Administrador"
+            sessao["marca"] = main.marca_da_senha("x")  # confere com a senha 'x' gravada acima
+
+    def tearDown(self):
+        for comando in (
+            "DELETE FROM manutencao_pecas;",
+            "DELETE FROM alugueis;", "DELETE FROM servico_ferramentas;", "DELETE FROM manutencoes;",
+            "DELETE FROM servicos;", "UPDATE unidade_ferramentas SET status='em_estoque';",
+            "DELETE FROM usuarios;", "DELETE FROM pessoas WHERE id <> 1;", "DELETE FROM perfis WHERE id <> 1;",
+            "UPDATE pessoas SET nome='Cliente Teste' WHERE id = 1;",
+            "DELETE FROM estoque_pecas;", "DELETE FROM pecas;", "UPDATE ferramentas SET ativo=1;",
+        ):
+            self.sql(comando)
+
+    def sql(self, comando, *valores):
+        with app.app_context():
+            ok, resultado = db_execute(comando, *valores)
+        self.assertTrue(ok, resultado)
+        return resultado
+
+    def definir_senha(self, senha):
+        """Grava uma senha de verdade para o usuário "teste" e mantém a sessão de teste válida."""
+        em_hash = main.jb_bcrypt.generate_password_hash(senha).decode("utf-8")
+        self.sql("UPDATE usuarios SET senha=%s WHERE nome_usuario='teste';", em_hash)
+        with self.cliente.session_transaction() as sessao:
+            sessao["marca"] = main.marca_da_senha(em_hash)
+
+    def definir_perfil(self, perfil, usuario="teste"):
+        """Troca o perfil de um usuário direto no banco (criando o perfil, se preciso)."""
+        if not self.sql("SELECT id FROM perfis WHERE perfil=%s;", perfil):
+            self.sql("INSERT INTO perfis (perfil) VALUES (%s);", perfil)
+        self.sql("UPDATE usuarios SET id_perfil=(SELECT id FROM perfis WHERE perfil=%s) WHERE nome_usuario=%s;", perfil, usuario)
+
+    def id_ferramenta(self, modelo):
+        return self.sql("SELECT id FROM ferramentas WHERE modelo=%s;", modelo)[0][0]
+
+    def deixar_so_uma_unidade(self, id_ferramenta):
+        self.sql("UPDATE unidade_ferramentas SET status='reservada' WHERE id_ferramenta=%s;", id_ferramenta)
+        self.sql("UPDATE unidade_ferramentas SET status='em_estoque' WHERE id_ferramenta=%s LIMIT 1;", id_ferramenta)
+
+    def carrinho(self):
+        with self.cliente.session_transaction() as sessao:
+            return sessao.get("carrinho", [])
+
+    def texto(self, resposta):
+        return resposta.get_data(as_text=True)
+
+
+class TesteAcesso(TesteBase):
+
+    def test_paginas_publicas_abrem(self):
+        visitante = app.test_client()
+        for rota in ("/", "/login", "/register", "/ferramentas"):
+            self.assertEqual(visitante.get(rota).status_code, 200, rota)
+
+    def test_paginas_fechadas_mandam_para_o_login(self):
+        visitante = app.test_client()
+        for rota in ("/loja", "/perfil", "/carrinho", "/manutencao", "/colaborador/graficos", "/apidocs/"):
+            resposta = visitante.get(rota)
+            self.assertEqual(resposta.status_code, 302, rota)
+            self.assertIn("/login", resposta.headers["Location"], rota)
+
+    def test_paginas_abrem_para_quem_esta_logado(self):
+        for rota in ("/loja", "/perfil", "/carrinho", "/manutencao", "/colaborador/graficos",
+                     "/colaborador/ferramentas", "/colaborador/painel", "/colaborador/financeiro",
+                     "/colaborador/pecas", "/admin/filiais", "/admin/perfis"):
+            self.assertEqual(self.cliente.get(rota).status_code, 200, rota)
+
+    def test_toda_tela_mostra_o_aviso_pendente(self):
+        # Se alguma tela não mostrasse, o aviso ficaria guardado e apareceria atrasado em outra
+        ferramenta = self.id_ferramenta(COMPRA)
+        for rota in ("/", "/login", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho",
+                     "/perfil", "/manutencao", "/colaborador/graficos", "/colaborador/ferramentas",
+                     "/colaborador/painel", "/colaborador/financeiro", "/colaborador/pecas",
+                     "/admin/filiais", "/admin/perfis"):
+            with self.cliente.session_transaction() as sessao:
+                sessao["_flashes"] = [("success", "AVISO DE TESTE")]
+            self.assertIn("AVISO DE TESTE", self.texto(self.cliente.get(rota)), rota)
+
+    def test_perfil_que_nao_esta_na_lista_e_tratado_como_cliente(self):
+        for perfil in ("Cliente", "Cliente VIP", "Gerente"):
+            self.definir_perfil(perfil)
+            self.assertEqual(self.cliente.get("/colaborador/financeiro").status_code, 302, perfil)
+        self.definir_perfil("Colaborador")
+        self.assertEqual(self.cliente.get("/colaborador/financeiro").status_code, 200)
+
+    def test_card_manutencao_leva_o_colaborador_para_servicos_e_o_cliente_para_o_pedido(self):
+        card = '<a href="{}" style="text-decoration: none; color: inherit; display: block; flex: 1;">'
+        for rota in ("/ferramentas", "/loja", "/perfil", "/manutencao"):
+            self.assertIn(card.format("/colaborador/painel"), self.texto(self.cliente.get(rota)), rota)
+        self.definir_perfil("Cliente")  # o menu muda na página seguinte, sem precisar sair
+        for rota in ("/ferramentas", "/loja", "/perfil", "/manutencao"):
+            self.assertIn(card.format("/manutencao"), self.texto(self.cliente.get(rota)), rota)
+
+    def test_quem_perde_o_perfil_perde_o_acesso_sem_precisar_sair(self):
+        self.assertEqual(self.cliente.get("/colaborador/financeiro").status_code, 200)
+        self.definir_perfil("Cliente")  # rebaixado no banco, com a sessão ainda aberta
+        self.assertEqual(self.cliente.get("/colaborador/financeiro").status_code, 302)
+        self.assertNotIn("Gráficos de vendas", self.texto(self.cliente.get("/loja")))
+
+    def test_sair_so_funciona_por_formulario(self):
+        self.assertEqual(self.cliente.get("/logout").status_code, 405)  # link ou imagem de outro site não desloga
+        self.cliente.post("/logout")
+        self.assertIn("/login", self.cliente.get("/perfil").headers["Location"])
+
+    def test_fotos_com_o_mesmo_nome_nao_se_sobrescrevem(self):
+        caminhos = [main.salvar_imagem(FileStorage(io.BytesIO(b"x"), filename="foto.png"), "teste") for _ in range(2)]
+        self.assertNotEqual(caminhos[0], caminhos[1])
+        for caminho in caminhos:
+            os.remove(os.path.join(app.static_folder, caminho))
+
+    def test_foto_maior_que_o_limite_e_recusada(self):
+        limite = app.config["MAX_CONTENT_LENGTH"]
+        self.assertEqual(limite, 5 * 1024 * 1024)
+        # limite baixado só neste teste, para não precisar enviar 5 MB de verdade
+        app.config["MAX_CONTENT_LENGTH"] = 1024
+        try:
+            resposta = self.cliente.post("/colaborador/ferramentas", content_type="multipart/form-data",
+                                         data={"imagem": (io.BytesIO(b"x" * 2048), "grande.png")})
+        finally:
+            app.config["MAX_CONTENT_LENGTH"] = limite
+        self.assertEqual(resposta.status_code, 413)
+
+    def test_colaborador_nao_entra_nas_telas_do_administrador(self):
+        self.definir_perfil("Colaborador")
+        for rota in ("/admin/perfis", "/admin/filiais"):
+            self.assertEqual(self.cliente.get(rota).status_code, 302, rota)
+        self.cliente.post("/admin/filiais", data={"codigo_filial": "XX", "nome": "Invasão", "endereco": "x"})
+        self.cliente.post("/admin/perfis", data={"perfil": "Gerente Geral"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM filiais WHERE codigo_filial='XX';")[0][0], 0)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM perfis WHERE perfil='Gerente Geral';")[0][0], 0)
+        # nem vê os cards Filiais e Perfis, nem o cadastro de unidades em estoque
+        catalogo = self.texto(self.cliente.get("/colaborador/ferramentas"))
+        for trecho in ("/admin/filiais", "/admin/perfis"):
+            self.assertNotIn(trecho, catalogo)
+
+    def test_colaborador_lanca_unidade_em_estoque(self):
+        self.definir_perfil("Colaborador")
+        self.assertIn("Cadastrar unidade em estoque", self.texto(self.cliente.get("/colaborador/ferramentas")))
+        ferramenta = self.id_ferramenta(COMPRA)
+        filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        self.cliente.post("/colaborador/unidades", data={"numero_serie": "TESTE-COLAB-1", "id_ferramenta": ferramenta, "id_filial": filial})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM unidade_ferramentas WHERE numero_serie='TESTE-COLAB-1';")[0][0], 1)
+        self.sql("DELETE FROM unidade_ferramentas WHERE numero_serie='TESTE-COLAB-1';")
+
+    def test_visitante_nao_ve_o_botao_do_carrinho_na_tela_inicial(self):
+        self.assertNotIn("Adicionar ao carrinho", self.texto(app.test_client().get("/ferramentas")))
+        self.assertIn("Adicionar ao carrinho", self.texto(self.cliente.get("/ferramentas")))
+
+    def test_conta_desativada_e_deslogada_na_pagina_seguinte(self):
+        self.assertEqual(self.cliente.get("/loja").status_code, 200)
+        self.sql("UPDATE usuarios SET ativo=0 WHERE nome_usuario='teste';")
+        resposta = self.cliente.get("/loja")
+        self.assertIn("/login", resposta.headers["Location"])
+        self.assertIn("/login", self.cliente.get("/colaborador/financeiro").headers["Location"])
+
+    def test_criar_admin_em_banco_sem_perfis(self):
+        from criar_admin import criar_admin
+        # volta o banco ao normal depois (o resto dos testes conta com o perfil 1 = Administrador)
+        self.addCleanup(self.sql, "INSERT INTO perfis (id, perfil) VALUES (1, 'Administrador');")
+        self.addCleanup(self.sql, "DELETE FROM perfis;")
+        self.sql("DELETE FROM usuarios;")
+        self.sql("DELETE FROM perfis;")
+
+        with app.app_context():
+            criar_admin("chefe", "senha-forte-1")
+        self.assertEqual({p for (p,) in self.sql("SELECT perfil FROM perfis;")}, {"Administrador", "Colaborador", "Cliente"})
+        visitante = app.test_client()
+        visitante.post("/login", data={"usuario": "chefe", "senha": "senha-forte-1"})
+        self.assertEqual(visitante.get("/admin/perfis").status_code, 200)
+
+        # usuário que já existe é promovido, com a senha nova
+        self.sql("INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo) VALUES ('joao', 'x', 1, (SELECT id FROM perfis WHERE perfil='Cliente'), 1);")
+        with app.app_context():
+            criar_admin("joao", "outra-senha-9")
+        outro = app.test_client()
+        outro.post("/login", data={"usuario": "joao", "senha": "outra-senha-9"})
+        self.assertEqual(outro.get("/admin/perfis").status_code, 200)
+
+    def test_formulario_sem_token_csrf_e_recusado(self):
+        app.config["WTF_CSRF_ENABLED"] = True
+        self.cliente.post("/perfil", data={"nome": "Invasor", "email": "x@x.com"})
+        self.assertEqual(self.sql("SELECT nome FROM pessoas WHERE id=1;")[0][0], "Cliente Teste")
+
+    def test_detalhe_de_ferramenta_que_nao_existe_da_404(self):
+        resposta = self.cliente.get("/detalhe/99999")
+        self.assertEqual(resposta.status_code, 404)
+        self.assertIn("Página não encontrada", self.texto(resposta))  # página do site, não o erro padrão em inglês
+
+    def test_upload_do_orcamento_recusa_arquivo_que_nao_e_imagem(self):
+        self.cliente.post("/colaborador/orcamento/1", content_type="multipart/form-data",
+                          data={"imagem_dano": (io.BytesIO(b"<script>"), "pagina.html")})
+        self.assertNotIn("manutencao_dano_1_pagina.html", os.listdir(app.config["UPLOAD_FOLDER"]))
+
+
+class TesteCadastroELogin(TesteBase):
+
+    DADOS = {"nome": "Maria Teste", "tipo": "pf", "code": "111.444.777-35", "endereco": "Rua B, 2",
+             "email": "maria@teste.com", "telefone": "(11) 98888-7777", "usuario": "maria", "senha": "segredo123"}
+
+    def test_cadastro_cria_a_conta_e_o_login_funciona(self):
+        visitante = app.test_client()
+        self.assertIn("Cadastro realizado com sucesso", self.texto(visitante.post("/register", data=self.DADOS, follow_redirects=True)))
+        # O CPF é guardado só com números, e a senha nunca é guardada como foi digitada
+        codigo, senha = self.sql("""
+            SELECT p.codigo, u.senha FROM pessoas p JOIN usuarios u ON u.id_pessoa = p.id
+            WHERE u.nome_usuario = 'maria';
+        """)[0]
+        self.assertEqual(codigo, "11144477735")
+        self.assertNotEqual(senha, "segredo123")
+
+        errado = visitante.post("/login", data={"usuario": "maria", "senha": "outra"})
+        self.assertIn("Usuário ou senha incorretos", self.texto(errado))
+        certo = visitante.post("/login", data={"usuario": "maria", "senha": "segredo123"})
+        self.assertEqual(certo.status_code, 302)
+        # O aviso aparece já na página para onde o login leva, e não numa tela seguinte
+        self.assertIn("Login realizado com sucesso!", self.texto(visitante.get(certo.headers["Location"])))
+        self.assertEqual(visitante.get("/perfil").status_code, 200)
+
+        # Quem se cadastra pelo site é Cliente: não entra nas telas de colaborador nem vê o card do painel
+        self.assertEqual(self.sql("""
+            SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id = u.id_perfil WHERE u.nome_usuario = 'maria';
+        """)[0][0], "Cliente")
+        for rota in ("/colaborador/graficos", "/colaborador/financeiro", "/admin/perfis", "/apidocs/"):
+            self.assertEqual(visitante.get(rota).status_code, 302, rota)
+        self.assertNotIn("Gráficos de vendas", self.texto(visitante.get("/loja")))
+
+    def test_administrador_entra_nas_telas_de_colaborador(self):
+        self.sql("INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo) VALUES ('chefe', %s, 1, 1, 1);",
+                 main.jb_bcrypt.generate_password_hash("senha-do-chefe").decode("utf-8"))
+        visitante = app.test_client()
+        visitante.post("/login", data={"usuario": "chefe", "senha": "senha-do-chefe"})
+        self.assertEqual(visitante.get("/colaborador/graficos").status_code, 200)
+        self.assertIn("Gráficos de vendas", self.texto(visitante.get("/loja")))
+
+    def test_administrador_troca_o_perfil_de_outro_usuario(self):
+        app.test_client().post("/register", data=self.DADOS)
+        maria = self.sql("SELECT id FROM usuarios WHERE nome_usuario='maria';")[0][0]
+        perfil_de = lambda usuario: self.sql("SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id=u.id_perfil WHERE u.nome_usuario=%s;", usuario)[0][0]
+
+        # Colaborador que não é Administrador não consegue (a rota /admin nem abre para ele)
+        self.definir_perfil("Colaborador")
+        self.cliente.post(f"/admin/usuarios/{maria}/perfil", data={"id_perfil": 1})
+        self.assertEqual(perfil_de("maria"), "Cliente")
+
+        # Administrador consegue
+        self.definir_perfil("Administrador")
+        self.cliente.post(f"/admin/usuarios/{maria}/perfil", data={"id_perfil": 1})
+        self.assertEqual(perfil_de("maria"), "Administrador")
+
+    def test_administrador_nao_troca_o_proprio_perfil_nem_logando_em_maiusculas(self):
+        self.sql("UPDATE usuarios SET senha=%s WHERE nome_usuario='teste';",
+                 main.jb_bcrypt.generate_password_hash("senha-de-teste").decode("utf-8"))
+        visitante = app.test_client()
+        visitante.post("/login", data={"usuario": "TESTE", "senha": "senha-de-teste"})
+        with visitante.session_transaction() as sessao:
+            self.assertEqual(sessao["user_name"], "teste")  # guardado como está no banco
+        self.definir_perfil("Cliente", usuario="ninguem")   # só garante que o perfil Cliente existe
+        cliente = self.sql("SELECT id FROM perfis WHERE perfil='Cliente';")[0][0]
+        eu = self.sql("SELECT id FROM usuarios WHERE nome_usuario='teste';")[0][0]
+        visitante.post(f"/admin/usuarios/{eu}/perfil", data={"id_perfil": cliente})
+        self.assertEqual(self.sql("SELECT id_perfil FROM usuarios WHERE id=%s;", eu)[0][0], 1)
+
+    def test_login_sem_senha_nao_quebra(self):
+        resposta = app.test_client().post("/login", data={"usuario": "teste"})
+        self.assertIn("Usuário ou senha incorretos", self.texto(resposta))
+
+    def test_erros_de_outro_computador_nao_bloqueiam_o_usuario(self):
+        self.sql("UPDATE usuarios SET senha=%s WHERE nome_usuario='teste';",
+                 main.jb_bcrypt.generate_password_hash("senha-de-teste").decode("utf-8"))
+        invasor = app.test_client()
+        for _ in range(5):
+            invasor.post("/login", data={"usuario": "teste", "senha": "errada"}, environ_base={"REMOTE_ADDR": "10.0.0.99"})
+        resposta = app.test_client().post("/login", data={"usuario": "teste", "senha": "senha-de-teste"},
+                                          environ_base={"REMOTE_ADDR": "10.0.0.1"})
+        self.assertEqual(resposta.status_code, 302)  # entrou
+
+    def test_login_bloqueia_depois_de_cinco_erros(self):
+        self.sql("UPDATE usuarios SET senha=%s WHERE nome_usuario='teste';",
+                 main.jb_bcrypt.generate_password_hash("senha-de-teste").decode("utf-8"))
+        visitante = app.test_client()
+        for _ in range(5):
+            visitante.post("/login", data={"usuario": "teste", "senha": "errada"})
+        resposta = visitante.post("/login", data={"usuario": "Teste", "senha": "senha-de-teste"})  # senha certa, mas bloqueado
+        self.assertIn("Muitas tentativas", self.texto(resposta))
+
+    def test_cliente_nao_envia_formulario_de_colaborador(self):
+        self.definir_perfil("Cliente")
+        self.cliente.post("/admin/filiais", data={"codigo_filial": "XX", "nome": "Invasão", "endereco": "x"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM filiais WHERE codigo_filial='XX';")[0][0], 0)
+
+    def test_senha_curta_e_recusada(self):
+        resposta = app.test_client().post("/register", data={**self.DADOS, "senha": "1234567"})
+        self.assertIn("pelo menos 8 caracteres", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM pessoas;")[0][0], 1)
+
+    def test_login_nao_herda_o_carrinho_de_quem_usou_antes(self):
+        app.test_client().post("/register", data=self.DADOS)
+        self.cliente.post(f"/carrinho/adicionar/{self.id_ferramenta(COMPRA)}")
+        self.assertEqual(len(self.carrinho()), 1)
+        self.cliente.post("/login", data={"usuario": "maria", "senha": "segredo123"})
+        self.assertEqual(self.carrinho(), [])
+
+    def test_cadastro_recusado_devolve_o_que_foi_digitado(self):
+        pagina = self.texto(app.test_client().post("/register", data={**self.DADOS, "code": "111.444.777-36", "tipo": "pf"}))
+        for digitado in ('value="Maria Teste"', 'value="111.444.777-36"', 'value="maria@teste.com"', 'value="maria"'):
+            self.assertIn(digitado, pagina)
+        self.assertNotIn("segredo123", pagina)  # a senha nunca volta para a tela
+
+    def test_campo_longo_demais_e_explicado(self):
+        resposta = app.test_client().post("/register", data={**self.DADOS, "endereco": "R" * 250})
+        self.assertIn("aceita no máximo 200 caracteres", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM pessoas;")[0][0], 1)
+
+    def test_cpf_invalido_nao_grava_nada(self):
+        resposta = app.test_client().post("/register", data={**self.DADOS, "code": "111.444.777-36"})
+        self.assertIn("CPF inválido", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM pessoas;")[0][0], 1)
+
+    def test_cpf_repetido_e_recusado_mesmo_sem_pontuacao(self):
+        resposta = app.test_client().post("/register", data={**self.DADOS, "code": "52998224725"})
+        self.assertIn("CPF/CNPJ já cadastrado", self.texto(resposta))
+
+    def test_usuario_repetido_nao_deixa_pessoa_sem_conta(self):
+        visitante = app.test_client()
+        visitante.post("/register", data=self.DADOS)
+        resposta = visitante.post("/register", data={**self.DADOS, "code": "11.222.333/0001-81", "tipo": "pj"})
+        self.assertIn("já está em uso", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM pessoas;")[0][0], 2)  # cliente de teste + Maria
+
+
+class TestePerfilEManutencao(TesteBase):
+
+    def test_salvar_perfil_grava_no_banco(self):
+        self.cliente.post("/perfil", data={"nome": "Nome Novo", "email": "novo@teste.com",
+                                           "telefone": "1133334444", "endereco": "Rua C, 3"})
+        self.assertEqual(self.sql("SELECT nome, email, codigo FROM pessoas WHERE id=1;")[0],
+                         ("Nome Novo", "novo@teste.com", "52998224725"))
+        self.sql("UPDATE pessoas SET email='cliente@teste.com', telefone='11999990000', endereco='Rua A, 1' WHERE id=1;")
+
+    def test_usuario_troca_a_propria_senha(self):
+        self.definir_senha("senha-antiga-1")
+        tentativas = (
+            ({"senha_atual": "errada", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"}, "senha atual não confere"),
+            ({"senha_atual": "senha-antiga-1", "nova_senha": "curta", "confirmar_senha": "curta"}, "pelo menos 8 caracteres"),
+            ({"senha_atual": "senha-antiga-1", "nova_senha": "senha-nova-22", "confirmar_senha": "outra-coisa-22"}, "confirmação não é igual"),
+            ({"senha_atual": "senha-antiga-1", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"}, "Senha alterada com sucesso"),
+        )
+        for dados, aviso in tentativas:
+            self.assertIn(aviso, self.texto(self.cliente.post("/perfil/senha", data=dados, follow_redirects=True)))
+        visitante = app.test_client()
+        self.assertIn("incorretos", self.texto(visitante.post("/login", data={"usuario": "teste", "senha": "senha-antiga-1"})))
+        self.assertEqual(visitante.post("/login", data={"usuario": "teste", "senha": "senha-nova-22"}).status_code, 302)
+
+    def test_trocar_a_senha_derruba_as_outras_sessoes(self):
+        self.definir_senha("senha-antiga-1")
+        outro_navegador = app.test_client()
+        outro_navegador.post("/login", data={"usuario": "teste", "senha": "senha-antiga-1"})
+        self.assertEqual(outro_navegador.get("/perfil").status_code, 200)
+
+        self.cliente.post("/perfil/senha", data={"senha_atual": "senha-antiga-1", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"})
+        self.assertEqual(self.cliente.get("/perfil").status_code, 200)                      # quem trocou continua logado
+        self.assertIn("/login", outro_navegador.get("/perfil").headers["Location"])          # o outro navegador cai
+
+    def test_troca_de_senha_bloqueia_depois_de_cinco_erros(self):
+        self.definir_senha("senha-antiga-1")
+        dados = {"senha_atual": "errada", "nova_senha": "senha-nova-22", "confirmar_senha": "senha-nova-22"}
+        for _ in range(5):
+            self.cliente.post("/perfil/senha", data=dados)
+        resposta = self.cliente.post("/perfil/senha", data={**dados, "senha_atual": "senha-antiga-1"}, follow_redirects=True)
+        self.assertIn("Muitas tentativas", self.texto(resposta))
+
+    def test_nome_de_equipamento_longo_demais_nao_grava_nada(self):
+        resposta = self.cliente.post("/manutencao", data={"detalhes_equipamento": "F" * 250, "descricao": "Não liga"}, follow_redirects=True)
+        self.assertIn("no máximo 200 caracteres", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+
+    def test_manutencao_nunca_fica_pela_metade(self):
+        # mesmo que a segunda gravação falhe (equipamento grande demais para a coluna), a primeira é desfeita
+        with app.app_context(), contextlib.redirect_stdout(io.StringIO()):
+            sucesso, _ = ServiceModel.create_maintenance(1, "Não liga", "F" * 250)
+        self.assertFalse(sucesso)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+
+    def test_perfil_nao_apaga_telefone_nem_endereco(self):
+        resposta = self.cliente.post("/perfil", follow_redirects=True,
+                                     data={"nome": "Nome Novo", "email": "novo@teste.com", "telefone": "", "endereco": ""})
+        self.assertIn("Preencha nome, e-mail, telefone e endereço", self.texto(resposta))
+        self.assertEqual(self.sql("SELECT nome FROM pessoas WHERE id=1;")[0][0], "Cliente Teste")
+
+    def test_manutencao_sem_o_equipamento_nao_grava_nada(self):
+        self.cliente.post("/manutencao", data={"descricao": "Não liga"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+
+    def test_pedido_de_manutencao_e_gravado(self):
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        self.assertEqual(self.sql("""
+            SELECT s.servico_solicitado, s.descricao_servico, m.equipamento
+            FROM servicos s JOIN manutencoes m ON m.id_servico = s.id;
+        """), (("manutencao", "Não liga", "Furadeira X"),))
+
+
+class TesteOrcamentoECaixa(TesteBase):
+
+    def test_manutencao_passa_pelo_orcamento_e_entra_no_caixa(self):
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        servico = self.sql("SELECT id FROM servicos;")[0][0]
+
+        # 1. O colaborador vê o pedido e manda o orçamento
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Não liga", pagina)
+        self.assertIn("<strong>Furadeira X</strong>", pagina)  # o card mostra qual é o equipamento
+        self.assertIn("1 aguardando orçamento da oficina", self.texto(self.cliente.get("/manutencao")))
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "120.50", "status_servico": "Aguardando Aprovação", "detalhes_dano": "Escova gasta"})
+        self.assertEqual(self.sql("SELECT status_servico, valor_servico FROM servicos;")[0][0], "Aguardando Aprovação")
+        # o diagnóstico do colaborador não apaga o equipamento que o cliente informou
+        self.assertEqual(self.sql("SELECT equipamento, diagnostico FROM manutencoes;")[0], ("Furadeira X", "Escova gasta"))
+        self.assertIn("Furadeira X", self.texto(self.cliente.get("/colaborador/painel")))
+        # e o cliente vê o diagnóstico antes de decidir
+        for tela in (f"/cliente/orcamento/{servico}/pagamento", "/perfil"):
+            self.assertIn("Escova gasta", self.texto(self.cliente.get(tela)), tela)
+
+        # 2. Ainda não aprovado: não conta no caixa, e o cliente vê o botão de aprovar
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Aprovar", self.texto(self.cliente.get("/perfil")))
+        self.assertIn("1 aguardando a sua aprovação", self.texto(self.cliente.get("/manutencao")))
+        # para o colaborador, sai dos cards de "fazer orçamento" e aparece na lista como esperando o cliente
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Nenhum serviço pendente", pagina)
+        self.assertIn("Esperando o cliente responder", pagina)
+
+        # 3. O cliente aprova para pagar na retirada: sai dos pendentes, mas ainda não é dinheiro no caixa
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Nenhum serviço pendente", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("1 aprovado(s), em reparo", self.texto(self.cliente.get("/manutencao")))
+
+        # 4. O colaborador conclui: pronto para retirada (para o cliente e para o colaborador), ainda sem pagamento
+        self.cliente.post(f"/colaborador/servico/{servico}/fechar")
+        pagina = self.texto(self.cliente.get("/manutencao"))
+        self.assertIn("1 equipamento(s) pronto(s)", pagina)
+        self.assertIn("Nenhum pedido em andamento", pagina)
+        self.assertIn("A receber na retirada", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
+
+        # 5. O cliente retira e paga: entra no caixa e sai das listas
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")
+        self.assertEqual(self.sql("SELECT status_servico, pagamento FROM servicos;")[0], ("Entregue", "Pago na retirada"))
+        self.assertIn(main.formatar_moeda(120.50), self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Nenhum equipamento esperando", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("Nenhum equipamento pronto", self.texto(self.cliente.get("/manutencao")))
+
+    def abrir_manutencao(self):
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        return self.sql("SELECT MAX(id) FROM servicos;")[0][0]
+
+    def test_orcamento_nao_altera_uma_venda(self):
+        self.cliente.post(f"/carrinho/adicionar/{self.id_ferramenta(COMPRA)}", data={"agora": "1"})
+        venda = self.sql("SELECT id FROM servicos;")[0][0]
+        self.cliente.post(f"/colaborador/orcamento/{venda}", data={
+            "valor_servico": "0", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        status, valor = self.sql("SELECT status_servico, valor_servico FROM servicos;")[0]
+        self.assertEqual((status, float(valor)), ("Concluído", PRECO_COMPRA))
+
+    def test_orcamento_recusa_valor_negativo(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "-100", "status_servico": "Concluído", "detalhes_dano": "x"})
+        status, valor = self.sql("SELECT status_servico, valor_servico FROM servicos;")[0]
+        self.assertEqual((status, float(valor)), ("Aberto", 0.0))
+
+    def test_colaborador_ve_a_resposta_do_cliente_e_fecha_o_servico(self):
+        for resposta, final in (("Reprovado", "Encerrado"), ("Aprovado", "Concluído")):
+            servico = self.abrir_manutencao()
+            self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+                "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+            self.cliente.post(f"/cliente/orcamento/{servico}/{resposta}", data={"pagamento": "retirada"})
+
+            # aparece para o colaborador com a resposta do cliente (o reprovado, em um card vermelho)
+            pagina = self.texto(self.cliente.get("/colaborador/painel"))
+            self.assertIn("servico-reprovado" if resposta == "Reprovado" else "<strong>Aprovado</strong>", pagina)
+
+            self.cliente.post(f"/colaborador/servico/{servico}/fechar")
+            self.assertEqual(self.sql("SELECT status_servico FROM servicos WHERE id=%s;", servico)[0][0], final)
+            self.assertIn("Nenhum orçamento aguardando", self.texto(self.cliente.get("/colaborador/painel")))
+            # fechar o serviço não é receber: nada entra no caixa aqui
+            self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
+        # o reprovado é avisado ao cliente
+        self.assertNotIn("reprovado(s): retire", self.texto(self.cliente.get("/manutencao")))  # já foi encerrado
+
+    def test_colaborador_envia_novo_orcamento_depois_de_reprovado(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "500", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
+        self.assertIn("Enviar novo orçamento", self.texto(self.cliente.get("/colaborador/painel")))
+
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "350", "status_servico": "Aguardando Aprovação", "detalhes_dano": "só a peça"})
+        status, valor = self.sql("SELECT status_servico, valor_servico FROM servicos;")[0]
+        self.assertEqual((status, float(valor)), ("Aguardando Aprovação", 350.0))
+        # some do card vermelho e o cliente pode responder de novo
+        self.assertNotIn("servico-reprovado", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("1 aguardando a sua aprovação", self.texto(self.cliente.get("/manutencao")))
+
+    def test_cliente_e_avisado_para_buscar_o_equipamento_do_orcamento_reprovado(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
+        self.assertIn("1 orçamento(s) reprovado(s): retire o equipamento na loja", self.texto(self.cliente.get("/manutencao")))
+
+    def test_orcamento_recusa_status_inventado(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "50", "status_servico": "Qualquer Coisa", "detalhes_dano": "x"})
+        self.assertEqual(self.sql("SELECT status_servico FROM servicos;")[0][0], "Aberto")
+
+    def test_orcamento_reprovado_fica_fora_do_caixa_e_do_painel(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
+        self.assertEqual(self.sql("SELECT status_servico FROM servicos;")[0][0], "Reprovado")
+        self.assertIn("Nenhum valor recebido", self.texto(self.cliente.get("/colaborador/financeiro")))
+        with app.app_context():
+            self.assertEqual(PainelModel.get_resumo_mensal()["faturamento_total"], 0)
+
+    def test_cliente_nao_responde_orcamento_de_outra_pessoa(self):
+        servico = self.abrir_manutencao()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "120", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        with self.cliente.session_transaction() as sessao:
+            sessao["user_code"] = 999
+        resposta = self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"}, follow_redirects=True)
+        self.assertEqual(self.sql("SELECT status_servico FROM servicos;")[0][0], "Aguardando Aprovação")
+        self.assertNotIn("aprovado com sucesso", self.texto(resposta))
+
+    def test_grafico_mostra_a_manutencao_no_mes_em_que_foi_paga(self):
+        servico = self.abrir_manutencao()
+        self.sql("UPDATE servicos SET data_abertura = NOW() - INTERVAL 40 DAY WHERE id=%s;", servico)  # aberta no mês passado ou antes
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Concluído", "detalhes_dano": "x"})
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")  # paga hoje, na retirada
+        with app.app_context():
+            dados = PainelModel.get_resumo_mensal()
+        manutencoes = [s for s in dados["series"] if s["chave"] == "manutencao"][0]
+        self.assertEqual(manutencoes["valores"][-1], 100.0)        # mês atual
+        self.assertEqual(sum(manutencoes["valores"][:-1]), 0.0)    # nada nos meses anteriores
+
+    def test_venda_ja_entra_no_caixa_e_nao_fica_pendente(self):
+        self.cliente.post(f"/carrinho/adicionar/{self.id_ferramenta(COMPRA)}", data={"agora": "1"})
+        self.assertIn(main.formatar_moeda(PRECO_COMPRA), self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertIn("Nenhum serviço pendente", self.texto(self.cliente.get("/colaborador/painel")))
+
+
+class TestePagamentoDoOrcamento(TesteBase):
+
+    def setUp(self):
+        super().setUp()
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        self.servico = self.sql("SELECT id FROM servicos;")[0][0]
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "250", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+
+    def situacao(self):
+        return self.sql("SELECT status_servico, pagamento FROM servicos WHERE id=%s;", self.servico)[0]
+
+    def test_aprovar_primeiro_pergunta_como_pagar(self):
+        # sem escolher o pagamento nada é aprovado: o cliente é levado para a pergunta
+        resposta = self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado")
+        self.assertIn(f"/cliente/orcamento/{self.servico}/pagamento", resposta.headers["Location"])
+        self.assertEqual(self.situacao(), ("Aguardando Aprovação", None))
+        pagina = self.texto(self.cliente.get(resposta.headers["Location"]))
+        for trecho in (main.formatar_moeda(250), "Pagar agora", "Pagar na retirada"):
+            self.assertIn(trecho, pagina)
+
+    def test_pagar_na_retirada_aprova_e_nao_vai_para_o_carrinho(self):
+        resposta = self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "retirada"})
+        self.assertIn("/perfil", resposta.headers["Location"])
+        self.assertEqual(self.situacao(), ("Aprovado", "Na retirada"))
+        self.assertEqual(self.carrinho(), [])
+        self.assertIn("Na retirada", self.texto(self.cliente.get("/colaborador/painel")))
+
+    def test_pagar_agora_vai_para_o_carrinho_e_finalizar_marca_como_pago(self):
+        resposta = self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "agora"})
+        self.assertIn("/carrinho", resposta.headers["Location"])
+        self.assertEqual(self.situacao(), ("Aprovado", "Online (pendente)"))
+        self.assertEqual(self.carrinho(), [{"servico": self.servico}])
+        pagina = self.texto(self.cliente.get("/carrinho"))
+        self.assertIn(f"Manutenção #{self.servico}", pagina)
+        self.assertIn(main.formatar_moeda(250), pagina)
+
+        self.cliente.post("/carrinho/finalizar")
+        self.assertEqual(self.situacao(), ("Aprovado", "Pago online"))
+        # pago pelo site já é dinheiro no caixa, mesmo antes do reparo terminar
+        self.assertIn(main.formatar_moeda(250), self.texto(self.cliente.get("/colaborador/financeiro")))
+        self.assertEqual(self.carrinho(), [])
+
+    def test_quem_saiu_do_carrinho_sem_pagar_consegue_pagar_depois(self):
+        self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "agora"})
+        self.cliente.post("/carrinho/remover/0")
+        self.assertIn("Pagar agora", self.texto(self.cliente.get("/perfil")))
+        self.cliente.post(f"/carrinho/pagar-servico/{self.servico}")
+        self.assertEqual(self.carrinho(), [{"servico": self.servico}])
+
+    def test_ninguem_paga_nem_ve_o_orcamento_de_outra_pessoa(self):
+        self.cliente.post(f"/cliente/orcamento/{self.servico}/Aprovado", data={"pagamento": "agora"})
+        with self.cliente.session_transaction() as sessao:
+            sessao["user_code"] = 999
+        self.assertEqual(self.texto(self.cliente.get("/carrinho")).count("btn-remover\""), 0)  # some do carrinho de quem não é o dono
+        self.cliente.post(f"/carrinho/pagar-servico/{self.servico}")
+        self.assertEqual(self.carrinho(), [])
+        self.assertIn("/perfil", self.cliente.get(f"/cliente/orcamento/{self.servico}/pagamento").headers["Location"])
+
+
+class TesteMultaPorAtraso(TesteBase):
+
+    def test_devolucao_atrasada_cobra_uma_diaria_por_dia(self):
+        ferramenta = self.id_ferramenta(ALUGUEL)
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}", data={"agora": "1", "dias_aluguel": "2"})
+        servico = self.sql("SELECT id FROM servicos;")[0][0]
+        self.sql("UPDATE alugueis SET data_devolucao = NOW() - INTERVAL 3 DAY;")  # prazo venceu há 3 dias
+
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("3 dia(s) · multa de " + main.formatar_moeda(DIARIA * 3), pagina)
+
+        resposta = self.cliente.post(f"/colaborador/devolucao/{servico}", follow_redirects=True)
+        self.assertIn("Multa por atraso cobrada", self.texto(resposta))
+        taxa, valor = self.sql("SELECT a.taxa_atraso, s.valor_servico FROM alugueis a JOIN servicos s ON s.id = a.id_servico;")[0]
+        self.assertEqual(float(taxa), DIARIA * 3)
+        self.assertEqual(float(valor), DIARIA * 2 + DIARIA * 3)  # aluguel de 2 dias + multa de 3 dias
+        self.assertIn(main.formatar_moeda(DIARIA * 5), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+
+class TesteCatalogoDoColaborador(TesteBase):
+
+    def tearDown(self):
+        self.sql("DELETE FROM ferramentas WHERE modelo='Serra Circular de Teste';")
+        super().tearDown()
+
+    def test_cadastrar_exemplos_nao_desfaz_preco_corrigido(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        self.sql("UPDATE ferramentas SET preco=999 WHERE id=%s;", ferramenta)
+        with app.app_context(), contextlib.redirect_stdout(io.StringIO()):
+            cadastrar()
+        self.assertEqual(float(self.sql("SELECT preco FROM ferramentas WHERE id=%s;", ferramenta)[0][0]), 999.0)
+        self.sql("UPDATE ferramentas SET preco=%s WHERE id=%s;", PRECO_COMPRA, ferramenta)
+
+    def test_ferramenta_nova_aparece_na_loja_com_o_preco_cadastrado(self):
+        tipo = self.sql("SELECT id FROM ferramenta_tipos LIMIT 1;")[0][0]
+        self.cliente.post("/colaborador/ferramentas", data={
+            "marca": "Marca", "modelo": "Serra Circular de Teste", "descricao": "d",
+            "tipo_ferramenta": tipo, "preco": "1999.90", "tipo_oferta": "Alugar"})
+        loja = self.texto(self.cliente.get("/loja"))
+        self.assertIn("Serra Circular de Teste", loja)
+        self.assertIn(main.formatar_moeda(1999.90) + "/dia", loja)
+
+
+class TesteDevolucao(TesteBase):
+
+    def test_aluguel_e_devolvido_e_a_unidade_volta_ao_estoque(self):
+        ferramenta = self.id_ferramenta(ALUGUEL)
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}", data={"agora": "1", "dias_aluguel": "2"})
+        servico = self.sql("SELECT id FROM servicos;")[0][0]
+        # a diária cobrada fica guardada no aluguel
+        self.assertEqual(float(self.sql("SELECT valor_diario FROM alugueis;")[0][0]), DIARIA)
+        self.assertIn(ALUGUEL, self.texto(self.cliente.get("/colaborador/painel")))
+
+        self.cliente.post(f"/colaborador/devolucao/{servico}")
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM unidade_ferramentas WHERE status <> 'em_estoque';")[0][0], 0)
+        self.assertIsNotNone(self.sql("SELECT devolvido_em FROM alugueis;")[0][0])
+        self.assertIn("Nenhuma ferramenta alugada", self.texto(self.cliente.get("/colaborador/painel")))
+
+        self.assertEqual(float(self.sql("SELECT taxa_atraso FROM alugueis;")[0][0]), 0.0)  # no prazo, sem multa
+
+        # devolver de novo não faz nada
+        resposta = self.cliente.post(f"/colaborador/devolucao/{servico}", follow_redirects=True)
+        self.assertIn("já devolvido", self.texto(resposta))
+
+
+class TesteFerramentasPecasEUsuarios(TesteBase):
+
+    def test_editar_ferramenta_muda_o_preco_na_loja(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        self.assertIn(COMPRA, self.texto(self.cliente.get(f"/colaborador/ferramentas/{ferramenta}/editar")))
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "JB Pro", "modelo": COMPRA, "descricao": "nova descrição", "preco": "777.70", "tipo_oferta": "Comprar"})
+        self.assertIn(main.formatar_moeda(777.70), self.texto(self.cliente.get("/loja")))
+        # preço inválido não grava
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "JB Pro", "modelo": COMPRA, "preco": "-1", "tipo_oferta": "Comprar"})
+        self.assertEqual(float(self.sql("SELECT preco FROM ferramentas WHERE id=%s;", ferramenta)[0][0]), 777.70)
+        self.sql("UPDATE ferramentas SET preco=%s WHERE id=%s;", PRECO_COMPRA, ferramenta)
+
+    def test_item_do_carrinho_some_se_a_oferta_da_ferramenta_mudar(self):
+        ferramenta = self.id_ferramenta(ALUGUEL)
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}", data={"dias_aluguel": "3"})
+        # o colaborador troca de aluguel para venda: o aluguel de 3 dias não pode virar 3 x o preço de venda
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "JB Pro", "modelo": ALUGUEL, "preco": "400", "tipo_oferta": "Comprar"})
+        self.cliente.post("/carrinho/finalizar")
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+        self.assertEqual(self.carrinho(), [])
+        # nome só com espaços não é aceito
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "   ", "modelo": ALUGUEL, "preco": "400", "tipo_oferta": "Comprar"})
+        self.assertEqual(self.sql("SELECT marca FROM ferramentas WHERE id=%s;", ferramenta)[0][0], "JB Pro")
+        # e os espaços nas pontas não são gravados
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/editar", data={
+            "marca": "  JB Pro  ", "modelo": ALUGUEL, "preco": "400", "tipo_oferta": "Comprar"})
+        self.assertEqual(self.sql("SELECT marca FROM ferramentas WHERE id=%s;", ferramenta)[0][0], "JB Pro")
+        self.sql("UPDATE ferramentas SET preco=%s, tipo_oferta='Alugar' WHERE id=%s;", DIARIA, ferramenta)
+
+    def test_administrador_exclui_so_perfil_criado_e_sem_uso(self):
+        self.cliente.post("/admin/perfis", data={"perfil": "Estagiário"})
+        novo = self.sql("SELECT id FROM perfis WHERE perfil='Estagiário';")[0][0]
+        self.assertIn("Excluir o perfil Estagiário", self.texto(self.cliente.get("/admin/perfis")))
+
+        # em uso: não apaga
+        self.sql("INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo) VALUES ('joao', 'x', 1, %s, 1);", novo)
+        self.assertIn("está em uso", self.texto(self.cliente.post(f"/admin/perfis/{novo}/excluir", follow_redirects=True)))
+        self.sql("DELETE FROM usuarios WHERE nome_usuario='joao';")
+        self.cliente.post(f"/admin/perfis/{novo}/excluir")
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM perfis WHERE id=%s;", novo)[0][0], 0)
+
+        # perfil do sistema: não apaga
+        self.assertIn("faz parte do sistema", self.texto(self.cliente.post("/admin/perfis/1/excluir", follow_redirects=True)))
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM perfis WHERE id=1;")[0][0], 1)
+
+    def test_ferramenta_desativada_sai_da_loja_e_do_carrinho(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}")
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/ativo", data={"ativo": "0"})
+
+        # procura o link do produto, porque o nome ainda aparece no aviso "foi para o carrinho"
+        self.assertNotIn(f"/detalhe/{ferramenta}", self.texto(self.cliente.get("/loja")))
+        self.assertEqual(self.cliente.get(f"/detalhe/{ferramenta}").status_code, 404)
+        self.cliente.get("/carrinho")
+        self.assertEqual(self.carrinho(), [])  # o item some do carrinho
+        self.cliente.post(f"/carrinho/adicionar/{ferramenta}", data={"agora": "1"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)  # e não dá para comprar
+        # continua no Catálogo, para poder reativar
+        self.assertIn("Desativada", self.texto(self.cliente.get("/colaborador/ferramentas")))
+
+        self.cliente.post(f"/colaborador/ferramentas/{ferramenta}/ativo", data={"ativo": "1"})
+        self.assertIn(f"/detalhe/{ferramenta}", self.texto(self.cliente.get("/loja")))
+
+    def test_administrador_desativa_e_reativa_um_usuario(self):
+        app.test_client().post("/register", data=TesteCadastroELogin.DADOS)
+        maria = self.sql("SELECT id FROM usuarios WHERE nome_usuario='maria';")[0][0]
+        entrar = lambda: app.test_client().post("/login", data={"usuario": "maria", "senha": "segredo123"}).status_code
+
+        self.cliente.post(f"/admin/usuarios/{maria}/ativo", data={"ativo": "0"})
+        self.assertEqual(entrar(), 200)   # ficou na tela de login, com "usuário ou senha incorretos"
+        self.cliente.post(f"/admin/usuarios/{maria}/ativo", data={"ativo": "1"})
+        self.assertEqual(entrar(), 302)   # entrou
+
+        # ninguém desativa a própria conta
+        eu = self.sql("SELECT id FROM usuarios WHERE nome_usuario='teste';")[0][0]
+        self.cliente.post(f"/admin/usuarios/{eu}/ativo", data={"ativo": "0"})
+        self.assertEqual(self.sql("SELECT ativo FROM usuarios WHERE id=%s;", eu)[0][0], 1)
+
+    def test_cadastro_de_pecas_e_estoque(self):
+        filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        dados = {"codigo_barras": "789000111", "nome": "Escova de carvão", "fabricante": "Bosch", "custo": "8.50",
+                 "preco_venda": "19.90", "id_filial": filial, "quantidade": "2", "minimo": "5"}
+        resposta = self.cliente.post("/colaborador/pecas", data=dados, follow_redirects=True)
+        pagina = self.texto(resposta)
+        for trecho in ("Peça cadastrada com sucesso", "Escova de carvão", main.formatar_moeda(19.90), "Repor (mínimo 5)"):
+            self.assertIn(trecho, pagina)
+
+        # código de barras repetido não grava a peça pela metade
+        self.assertIn("código de barras já existe", self.texto(self.cliente.post("/colaborador/pecas", data=dados, follow_redirects=True)))
+        # texto maior que a coluna e filial que não existe recebem o aviso certo
+        longo = dict(dados, codigo_barras="1", nome="x" * 101)
+        self.assertIn("até 100", self.texto(self.cliente.post("/colaborador/pecas", data=longo, follow_redirects=True)))
+        sem_filial = dict(dados, codigo_barras="2", id_filial="999999")
+        self.assertIn("Confira a filial", self.texto(self.cliente.post("/colaborador/pecas", data=sem_filial, follow_redirects=True)))
+        self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (1, 1))
+
+        # ajustar o estoque para acima do mínimo tira o aviso de repor
+        estoque = self.sql("SELECT id FROM estoque_pecas;")[0][0]
+        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{estoque}", data={"quantidade": "12", "minimo": "5", "quantidade_vista": "2"}, follow_redirects=True))
+        self.assertEqual(self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0], 12)
+        self.assertNotIn("Repor (mínimo", pagina)
+
+
+class TesteServicoNoBalcao(TesteBase):
+
+    def test_colaborador_abre_servico_para_cliente_que_veio_a_loja(self):
+        app.test_client().post("/register", data=TesteCadastroELogin.DADOS)
+        maria = self.sql("SELECT id_pessoa FROM usuarios WHERE nome_usuario='maria';")[0][0]
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Abrir serviço no balcão", pagina)
+        # a lista mostra só clientes, com o CPF mascarado (o número inteiro não aparece)
+        self.assertIn("Maria Teste · CPF/CNPJ ***.***.777-35", pagina)
+        self.assertNotIn("11144477735", pagina)
+        self.assertNotIn("Cliente Teste · CPF/CNPJ", pagina)  # o usuário de teste é administrador
+        # as duas saídas para quem não tem cadastro: janela para o cliente digitar e link por e-mail
+        self.assertIn("Abrir cadastro para o cliente digitar aqui", pagina)
+        self.assertIn("mailto:?subject=", pagina)
+        self.assertIn("http%3A//localhost/register", pagina)   # o e-mail leva o endereço completo do cadastro
+
+        dados = {"id_cliente": maria, "detalhes_equipamento": "Serra circular Makita", "descricao": "Disco travando"}
+        pagina = self.texto(self.cliente.post("/colaborador/servico/novo", data=dados, follow_redirects=True))
+        self.assertIn("Serviço aberto para", pagina)
+        self.assertIn("Serra circular Makita", pagina)  # já aparece nos pedidos aguardando orçamento
+        # o pedido é da cliente; quem abriu foi o colaborador (o usuário de teste é a pessoa 1)
+        self.assertEqual(self.sql("SELECT id_pessoa_solicitante, id_pessoa_abertura, status_servico FROM servicos;")[0], (maria, 1, "Aberto"))
+
+        # sem cliente, com cliente que não existe ou sem a ferramenta: não abre
+        for errado in ({**dados, "id_cliente": ""}, {**dados, "id_cliente": "999999"}, {**dados, "detalhes_equipamento": " "}):
+            self.cliente.post("/colaborador/servico/novo", data=errado)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 1)
+
+        # funcionário não pode ser escolhido como cliente, nem enviando o id direto
+        self.cliente.post("/colaborador/servico/novo", data={**dados, "id_cliente": "1"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 1)
+
+        # a cliente vê o pedido no perfil dela, como se tivesse aberto pelo site
+        visitante = app.test_client()
+        visitante.post("/login", data={"usuario": "maria", "senha": "segredo123"})
+        self.assertIn("Serra circular Makita", self.texto(visitante.get("/perfil")))
+
+
+class TesteRespostaNoBalcao(TesteBase):
+
+    def setUp(self):
+        super().setUp()
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        self.servico = self.sql("SELECT id FROM servicos;")[0][0]
+        self.situacao = lambda: self.sql("SELECT status_servico, pagamento FROM servicos;")[0]
+
+    def responder(self, resposta):
+        return self.texto(self.cliente.post(f"/colaborador/servico/{self.servico}/resposta", data={"resposta": resposta}, follow_redirects=True))
+
+    def test_colaborador_registra_a_aprovacao_do_cliente_que_esta_na_loja(self):
+        # sem orçamento enviado ainda não há o que responder
+        self.assertIn("não está aguardando resposta", self.responder("Aprovado"))
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.assertIn("Aprovou no balcão", self.texto(self.cliente.get("/colaborador/painel")))
+
+        self.assertIn("Resposta inválida", self.responder("Entregue"))
+        self.assertEqual(self.situacao(), ("Aguardando Aprovação", None))
+
+        pagina = self.responder("Aprovado")
+        self.assertIn("pagamento fica para a retirada", pagina)
+        self.assertEqual(self.situacao(), ("Aprovado", "Na retirada"))
+        # fica gravado e aparece na tela qual atendente registrou a resposta (o usuário de teste é a pessoa 1)
+        quem, quando = self.sql("SELECT id_pessoa_resposta, respondido_em FROM servicos;")[0]
+        self.assertEqual(quem, 1)
+        self.assertIsNotNone(quando)
+        self.assertIn("Resposta registrada no balcão por Cliente Teste, em " + quando.strftime("%d/%m/%Y"), pagina)
+        # se o orçamento volta a aguardar resposta (valor mudou), a frase da resposta antiga some
+        self.sql("UPDATE servicos SET status_servico='Aguardando Aprovação', pagamento=NULL;")
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Esperando o cliente responder", pagina)
+        self.assertNotIn("Resposta registrada no balcão", pagina)
+        self.assertIn("pagamento fica para a retirada", self.responder("Aprovado"))
+        # segue o fluxo normal: conclui, entrega e entra no caixa
+        self.cliente.post(f"/colaborador/servico/{self.servico}/fechar")
+        self.cliente.post(f"/colaborador/servico/{self.servico}/entregar")
+        self.assertEqual(self.situacao(), ("Entregue", "Pago na retirada"))
+        self.assertIn(main.formatar_moeda(100), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+    def test_cliente_aprova_e_paga_no_balcao(self):
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.assertIn("Aprovou e pagou no balcão", self.texto(self.cliente.get("/colaborador/painel")))
+        self.assertIn("já entrou no caixa", self.responder("Pago"))
+        self.assertEqual(self.situacao(), ("Aprovado", "Pago no balcão"))
+        self.assertIn(main.formatar_moeda(100), self.texto(self.cliente.get("/colaborador/financeiro")))  # recebido na hora
+
+        # como já está pago, peça a mais vira diferença a receber na retirada (o orçamento não reabre)
+        filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        self.cliente.post("/colaborador/pecas", data={
+            "codigo_barras": "789", "nome": "Escova de carvão", "fabricante": "Bosch", "custo": "8.50",
+            "preco_venda": "19.90", "id_filial": filial, "quantidade": "5", "minimo": "1"})
+        estoque = self.sql("SELECT id FROM estoque_pecas;")[0][0]
+        pagina = self.texto(self.cliente.post(f"/colaborador/servico/{self.servico}/peca", follow_redirects=True,
+                                              data={"id_estoque": estoque, "quantidade": "1", "valor": "avisar"}))
+        self.assertIn("Diferença a receber na retirada: " + main.formatar_moeda(19.90), pagina)
+        self.assertEqual(self.situacao(), ("Aprovado", "Pago no balcão"))
+
+        self.cliente.post(f"/colaborador/servico/{self.servico}/fechar")
+        self.cliente.post(f"/colaborador/servico/{self.servico}/entregar")
+        self.assertEqual(self.situacao(), ("Entregue", "Pago no balcão"))
+        self.assertEqual(float(self.sql("SELECT valor_servico FROM servicos;")[0][0]), 119.90)
+
+    def test_cliente_se_cadastra_no_aparelho_do_atendente(self):
+        self.definir_senha("senha-do-atendente")
+        # o atendente abre o cadastro e vê o aviso de entregar o aparelho (quem digita a senha é o cliente)
+        pagina = self.texto(self.cliente.get("/register"))
+        self.assertIn("o atendente não escolhe nem vê a senha", pagina)
+        self.assertNotIn("Voltar para login", pagina)
+        # o QR code leva o endereço do cadastro, para o cliente fazer no celular dele
+        self.assertIn('id="qr_cadastro" data-endereco="http://localhost/register"', pagina)
+        visitante = self.texto(app.test_client().get("/register"))  # cliente em casa: sem aviso e sem trava
+        self.assertNotIn("Atendimento no balcão", visitante)
+        self.assertNotIn("qr_cadastro", visitante)
+        self.assertIn("Voltar para login", visitante)
+
+        # se o cliente erra um campo, a tela volta com o erro e o QR code continua com o endereço
+        pagina = self.texto(self.cliente.post("/register", data={**TesteCadastroELogin.DADOS, "code": "111.111.111-11"}))
+        self.assertIn("CPF inválido", pagina)
+        self.assertIn('id="qr_cadastro" data-endereco="http://localhost/register"', pagina)
+
+        # com o aparelho na mão do cliente, nenhuma outra tela abre: tudo volta para o cadastro
+        for rota in ("/colaborador/painel", "/admin/perfis", "/perfil", "/loja", "/", "/login"):
+            self.assertTrue(self.cliente.get(rota).headers["Location"].endswith("/register"), rota)
+        self.assertTrue(self.cliente.post("/logout").headers["Location"].endswith("/register"))
+
+        # ao concluir, a tela é neutra: não mostra a área do colaborador nem dados de outros clientes
+        resposta = self.cliente.post("/register", data=TesteCadastroELogin.DADOS)
+        pagina = self.texto(resposta)
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn("Devolva o aparelho ao atendente", pagina)
+        for nao_pode in ("Serviços e devoluções", "Voltar para o início", "/perfil", "/colaborador"):
+            self.assertNotIn(nao_pode, pagina)   # nenhum caminho para as telas do atendente
+        # depois do cadastro a trava continua, e senha errada não destrava
+        self.assertTrue(self.cliente.get("/colaborador/painel").headers["Location"].endswith("/register"))
+        self.cliente.post("/balcao/destravar", data={"senha": "chute"})
+        self.assertIn("Senha do atendente incorreta", self.texto(self.cliente.get("/register")))
+        self.assertTrue(self.cliente.get("/colaborador/painel").headers["Location"].endswith("/register"))
+        # errar a senha de destravar várias vezes trava só o destravar, não o login do atendente
+        for _ in range(6):
+            self.cliente.post("/balcao/destravar", data={"senha": "chute"})
+        self.assertFalse(main.login_bloqueado("teste|127.0.0.1"))
+        main.TENTATIVAS_DE_LOGIN.clear()
+        # o atendente destrava com a senha dele e volta para Serviços
+        resposta = self.cliente.post("/balcao/destravar", data={"senha": "senha-do-atendente"})
+        self.assertTrue(resposta.headers["Location"].endswith("/colaborador/painel"))
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        self.assertIn("Maria Teste · CPF/CNPJ ***.***.777-35", pagina)
+        # a conta criada é de Cliente, e quem cadastrou continua logado como antes
+        self.assertEqual(self.sql("SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id=u.id_perfil WHERE u.nome_usuario='maria';")[0][0], "Cliente")
+        self.assertEqual(self.cliente.get("/colaborador/painel").status_code, 200)
+
+    def test_colaborador_registra_a_reprovacao_no_balcao(self):
+        self.cliente.post(f"/colaborador/orcamento/{self.servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "x"})
+        self.assertIn("Reprovação registrada", self.responder("Reprovado"))
+        self.assertEqual(self.situacao(), ("Reprovado", None))
+        self.assertIn("servico-reprovado", self.texto(self.cliente.get("/colaborador/painel")))  # cai no card vermelho
+
+
+class TestePecasNaManutencao(TesteBase):
+
+    def setUp(self):
+        super().setUp()
+        self.filial = self.sql("SELECT id FROM filiais LIMIT 1;")[0][0]
+        self.cliente.post("/colaborador/pecas", data={
+            "codigo_barras": "789", "nome": "Escova de carvão", "fabricante": "Bosch", "custo": "8.50",
+            "preco_venda": "19.90", "id_filial": self.filial, "quantidade": "5", "minimo": "1"})
+        self.peca, self.estoque = self.sql("SELECT id_peca, id FROM estoque_pecas;")[0]
+
+    def test_editar_peca_e_colocar_em_outra_filial(self):
+        self.assertIn("Escova de carvão", self.texto(self.cliente.get(f"/colaborador/pecas/{self.peca}/editar")))
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/editar", data={
+            "codigo_barras": "789", "nome": "Escova nova", "fabricante": "Bosch", "custo": "9", "preco_venda": "25"})
+        self.assertEqual(self.sql("SELECT nome, preco_venda FROM pecas;")[0][0], "Escova nova")
+
+        # a mesma filial não recebe a peça duas vezes; outra filial recebe
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/filial", data={"id_filial": self.filial, "quantidade": "1", "minimo": "0"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM estoque_pecas;")[0][0], 1)
+        self.sql("INSERT INTO filiais (codigo_filial, nome, endereco) VALUES ('T99', 'Filial de teste', 'Rua X');")
+        self.addCleanup(self.sql, "DELETE FROM filiais WHERE codigo_filial='T99';")
+        self.addCleanup(self.sql, "DELETE FROM estoque_pecas;")
+        outra = self.sql("SELECT id FROM filiais WHERE codigo_filial='T99';")[0][0]
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/filial", data={"id_filial": outra, "quantidade": "3", "minimo": "0"})
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM estoque_pecas;")[0][0], 2)
+        self.assertIn("Filial de teste", self.texto(self.cliente.get("/colaborador/pecas")))
+
+    def abrir_servico(self):
+        self.cliente.post("/manutencao", data={"detalhes_equipamento": "Furadeira X", "descricao": "Não liga"})
+        return self.sql("SELECT id FROM servicos;")[0][0]
+
+    def usar(self, servico, quantidade):
+        return self.texto(self.cliente.post(f"/colaborador/servico/{servico}/peca",
+                                            data={"id_estoque": self.estoque, "quantidade": quantidade}, follow_redirects=True))
+
+    def em_estoque(self):
+        return self.sql("SELECT quantidade_atual FROM estoque_pecas;")[0][0]
+
+    def test_peca_entra_no_orcamento_baixa_o_estoque_e_pode_ser_removida(self):
+        servico = self.abrir_servico()
+        self.assertIn("Peça usada: 2 x Escova de carvão", self.usar(servico, "2"))
+        self.assertEqual(self.em_estoque(), 3)
+        self.assertIn("Não há essa quantidade", self.usar(servico, "4"))  # só restam 3
+        self.assertEqual(self.em_estoque(), 3)
+
+        # o orçamento é a mão de obra digitada + as peças lançadas (2 x 19,90)
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.assertEqual(float(self.sql("SELECT valor_servico FROM servicos;")[0][0]), 139.80)
+
+        # enquanto o cliente analisa, ninguém mexe nas peças
+        uso = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+        self.assertIn("enquanto o cliente analisa", self.usar(servico, "1"))
+        self.cliente.post(f"/colaborador/servico/peca/{uso}/remover")
+        self.assertEqual((self.em_estoque(), self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0]), (3, 1))
+
+        # peça usada em manutenção não pode ser excluída (e o estoque dela continua lá)
+        self.assertIn("já foi usada", self.texto(self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir", follow_redirects=True)))
+        self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (1, 1))
+
+        # aprovado: dá para desfazer um lançamento errado, e a peça volta para o estoque.
+        # Como o valor muda, o orçamento volta para o cliente aprovar de novo.
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        self.cliente.post(f"/colaborador/servico/peca/{uso}/remover")
+        self.assertEqual((self.em_estoque(), self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0]), (5, 0))
+        situacao = lambda: [(s, float(v), p) for s, v, p in self.sql("SELECT status_servico, valor_servico, pagamento FROM servicos;")][0]
+        self.assertEqual(situacao(), ("Aguardando Aprovação", 100.0, None))
+
+        # peça a mais depois de aprovado: soma no valor e pede nova aprovação
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
+        self.assertIn("voltou para o cliente aprovar", self.usar(servico, "1"))
+        self.assertEqual(situacao(), ("Aguardando Aprovação", 119.90, None))
+        self.cliente.post("/carrinho/finalizar")  # o pagamento que estava no carrinho não vale mais
+        self.assertIsNone(self.sql("SELECT pago_em FROM servicos;")[0][0])
+
+        # o lançamento guarda o preço do dia: mudar o preço da peça não muda o orçamento
+        self.sql("UPDATE pecas SET preco_venda = 50;")
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.assertEqual(situacao()[1], 119.90)
+
+        # depois de pago pelo site, o valor não muda mais
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
+        self.cliente.post("/carrinho/finalizar")
+        peca_ja_paga = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+
+        # peça a mais avisando o cliente: o serviço continua pago e a peça vira diferença a receber na retirada
+        pagina = self.usar(servico, "1")
+        self.assertIn("diferença a receber na retirada", pagina)
+        self.assertIn("Diferença a receber na retirada: " + main.formatar_moeda(50), pagina)
+        self.assertEqual((self.em_estoque(), situacao()), (3, ("Aprovado", 119.90, "Pago online")))
+        self.assertIn("Diferença a pagar na retirada", self.texto(self.cliente.get("/perfil")))
+
+        # peça a mais mantendo o valor: baixa o estoque e não cobra nada
+        pagina = self.texto(self.cliente.post(f"/colaborador/servico/{servico}/peca", follow_redirects=True,
+                                              data={"id_estoque": self.estoque, "quantidade": "1", "valor": "manter"}))
+        self.assertIn("O valor do serviço foi mantido", pagina)
+        self.assertIn("sem custo para o cliente", pagina)
+        self.assertEqual((self.em_estoque(), situacao()), (2, ("Aprovado", 119.90, "Pago online")))
+
+        # peça que o cliente já pagou (1 x 19,90) e não vai ser usada: volta ao estoque e o valor fica para devolver
+        resposta = self.cliente.post(f"/colaborador/servico/peca/{peca_ja_paga}/remover", data={"valor": "avisar"}, follow_redirects=True)
+        self.assertIn("ficam para devolver na retirada", self.texto(resposta))
+        self.assertEqual((self.em_estoque(), float(self.sql("SELECT valor_a_devolver FROM servicos;")[0][0])), (3, 19.90))
+
+        # na retirada o acerto é um só: 50,00 a receber - 19,90 a devolver = 30,10; entra no valor do serviço e no caixa
+        self.cliente.post(f"/colaborador/servico/{servico}/fechar")
+        self.assertIn("Entregue e recebida a diferença de " + main.formatar_moeda(30.10), self.texto(self.cliente.get("/colaborador/painel")))
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")
+        self.assertEqual(situacao(), ("Entregue", 150.0, "Pago online"))
+        self.assertIn(main.formatar_moeda(150), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+    def test_peca_paga_e_nao_usada_e_devolvida_na_retirada(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "2")  # 2 x 19,90
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "agora"})
+        self.cliente.post("/carrinho/finalizar")  # cliente pagou 139,80 pelo site
+
+        uso = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+        pagina = self.texto(self.cliente.post(f"/colaborador/servico/peca/{uso}/remover", data={"valor": "avisar"}, follow_redirects=True))
+        self.assertIn("Devolver ao cliente na retirada: " + main.formatar_moeda(39.80), pagina)
+        self.assertEqual(self.em_estoque(), 5)
+        self.assertIn("Você recebe de volta na retirada", self.texto(self.cliente.get("/perfil")))
+        # até a entrega, o caixa continua com o que foi recebido de verdade
+        self.assertIn(main.formatar_moeda(139.80), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+        self.cliente.post(f"/colaborador/servico/{servico}/fechar")
+        self.assertIn("Entregue e devolvidos " + main.formatar_moeda(39.80), self.texto(self.cliente.get("/colaborador/painel")))
+        self.cliente.post(f"/colaborador/servico/{servico}/entregar")
+        self.assertEqual(float(self.sql("SELECT valor_servico FROM servicos;")[0][0]), 100.0)
+        self.assertIn(main.formatar_moeda(100), self.texto(self.cliente.get("/colaborador/financeiro")))
+
+    def test_em_servico_aprovado_o_colaborador_escolhe_manter_o_valor_ou_avisar(self):
+        servico = self.abrir_servico()
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        situacao = lambda: [(s, float(v)) for s, v in self.sql("SELECT status_servico, valor_servico FROM servicos;")][0]
+        pagina = self.texto(self.cliente.get("/colaborador/painel"))
+        for opcao in ("Manter o valor combinado", "Avisar o cliente do novo valor"):
+            self.assertIn(opcao, pagina)
+
+        # manter o valor: a peça entra, o estoque baixa e nada muda para o cliente
+        self.cliente.post(f"/colaborador/servico/{servico}/peca", data={"id_estoque": self.estoque, "quantidade": "2", "valor": "manter"})
+        self.assertEqual((self.em_estoque(), situacao()), (3, ("Aprovado", 100.0)))
+        # tirar essa mesma peça avisando o cliente não desconta o que nunca foi cobrado
+        uso = self.sql("SELECT id FROM manutencao_pecas;")[0][0]
+        self.cliente.post(f"/colaborador/servico/peca/{uso}/remover", data={"valor": "avisar"})
+        self.assertEqual((self.em_estoque(), situacao()), (5, ("Aguardando Aprovação", 100.0)))
+
+        # avisar o cliente: soma a peça e o orçamento volta para ele aprovar
+        self.cliente.post(f"/cliente/orcamento/{servico}/Aprovado", data={"pagamento": "retirada"})
+        self.cliente.post(f"/colaborador/servico/{servico}/peca", data={"id_estoque": self.estoque, "quantidade": "1", "valor": "avisar"})
+        self.assertEqual((self.em_estoque(), situacao()), (4, ("Aguardando Aprovação", 119.90)))
+
+    def test_servico_encerrado_sem_conserto_devolve_as_pecas(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "1")
+        self.usar(servico, "2")  # a mesma peça lançada duas vezes
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.cliente.post(f"/cliente/orcamento/{servico}/Reprovado")
+        self.assertEqual(self.em_estoque(), 2)
+        resposta = self.cliente.post(f"/colaborador/servico/{servico}/fechar", follow_redirects=True)
+        self.assertIn("voltaram para o estoque", self.texto(resposta))
+        self.assertEqual((self.em_estoque(), self.sql("SELECT COUNT(*) FROM manutencao_pecas;")[0][0]), (5, 0))
+
+    def test_estoque_minimo_pode_ser_alterado(self):
+        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{self.estoque}",
+                                              data={"quantidade": "5", "minimo": "9", "quantidade_vista": "5"}, follow_redirects=True))
+        self.assertIn("Repor (mínimo 9)", pagina)
+        self.assertEqual(self.sql("SELECT quantidade_atual, quantidade_minima FROM estoque_pecas;")[0], (5, 9))
+
+    def test_tela_velha_nao_desfaz_a_baixa_do_estoque(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "2")  # o estoque foi de 5 para 3 depois que a tela de peças foi aberta
+        pagina = self.texto(self.cliente.post(f"/colaborador/pecas/estoque/{self.estoque}",
+                                              data={"quantidade": "5", "minimo": "4", "quantidade_vista": "5"}, follow_redirects=True))
+        self.assertIn("mudou enquanto a página estava aberta", pagina)
+        self.assertEqual(self.sql("SELECT quantidade_atual, quantidade_minima FROM estoque_pecas;")[0], (3, 1))
+
+    def test_cliente_ve_as_pecas_do_orcamento(self):
+        servico = self.abrir_servico()
+        self.usar(servico, "2")
+        self.cliente.post(f"/colaborador/orcamento/{servico}", data={
+            "valor_servico": "100", "status_servico": "Aguardando Aprovação", "detalhes_dano": "escova gasta"})
+        self.assertIn("Peça: 2 x Escova de carvão", self.texto(self.cliente.get("/perfil")))
+        pagina = self.texto(self.cliente.get(f"/cliente/orcamento/{servico}/pagamento"))
+        for trecho in ("Peças incluídas no valor", "Mão de obra: " + main.formatar_moeda(100), main.formatar_moeda(139.80)):
+            self.assertIn(trecho, pagina)
+
+    def test_excluir_peca_sem_uso_apaga_o_estoque_junto(self):
+        self.cliente.post(f"/colaborador/pecas/{self.peca}/excluir")
+        self.assertEqual(self.sql("SELECT (SELECT COUNT(*) FROM pecas), (SELECT COUNT(*) FROM estoque_pecas);")[0], (0, 0))
+
+
+class TesteMovimento(TesteBase):
+
+    def test_toda_tela_carrega_o_movimento_e_a_loja_adia_as_fotos(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        for rota in ("/", "/login", "/ferramentas", "/loja", f"/detalhe/{ferramenta}", "/carrinho", "/perfil",
+                     "/manutencao", "/colaborador/painel", "/colaborador/pecas", "/colaborador/ferramentas",
+                     "/colaborador/financeiro", "/colaborador/graficos", "/admin/perfis", "/admin/filiais", "/pagina-que-nao-existe"):
+            pagina = self.texto(self.cliente.get(rota))
+            self.assertIn("css/movimento.css", pagina, rota)
+            self.assertIn("js/movimento.js", pagina, rota)
+        loja = self.texto(self.cliente.get("/loja"))
+        self.assertIn('loading="lazy"', loja)
+        # o nome de leitura do botão começa igual ao texto que aparece (WCAG 2.5.3)
+        self.assertIn(f'aria-label="Adicionar ao carrinho: JB Pro {COMPRA}"', loja)
+        self.assertIn(f'aria-label="Adicionar ao carrinho (1 dia): JB Pro {ALUGUEL}"', loja)
+        self.assertIn('<meta name="description"', loja)
+
+
+class TesteCarrinho(TesteBase):
+
+    def setUp(self):
+        super().setUp()
+        self.compra = self.id_ferramenta(COMPRA)
+        self.aluguel = self.id_ferramenta(ALUGUEL)
+
+    def test_total_e_calculado_no_servidor(self):
+        self.cliente.post(f"/carrinho/adicionar/{self.compra}")
+        # valor_total falso é ignorado; 999 dias vira o máximo de 30
+        self.cliente.post(f"/carrinho/adicionar/{self.aluguel}", data={"dias_aluguel": "999", "valor_total": "0.01"})
+        pagina = self.texto(self.cliente.get("/carrinho"))
+        self.assertIn(main.formatar_moeda(PRECO_COMPRA + DIARIA * 30), pagina)
+
+    def test_remover_item(self):
+        self.cliente.post(f"/carrinho/adicionar/{self.compra}")
+        self.cliente.post(f"/carrinho/adicionar/{self.aluguel}", data={"dias_aluguel": "2"})
+        self.cliente.post("/carrinho/remover/0")
+        self.cliente.post("/carrinho/remover/99")  # posição que não existe: não faz nada
+        self.assertEqual(self.carrinho(), [{"id": self.aluguel, "dias": 2}])
+
+    def test_finalizar_grava_os_pedidos_e_da_baixa_no_estoque(self):
+        self.cliente.post(f"/carrinho/adicionar/{self.compra}")
+        self.cliente.post(f"/carrinho/adicionar/{self.aluguel}", data={"dias_aluguel": "3"})
+        resposta = self.cliente.post("/carrinho/finalizar")
+
+        self.assertIn("/perfil", resposta.headers["Location"])
+        self.assertEqual(self.carrinho(), [])
+        pedidos = self.sql("SELECT servico_solicitado, valor_servico FROM servicos ORDER BY id;")
+        self.assertEqual([(tipo, float(valor)) for tipo, valor in pedidos],
+                         [("venda", PRECO_COMPRA), ("aluguel", DIARIA * 3)])
+        self.assertEqual(self.sql("SELECT status FROM unidade_ferramentas WHERE status <> 'em_estoque' ORDER BY status;"),
+                         (("alugada",), ("baixada",)))
+        self.assertEqual(self.sql("SELECT DATEDIFF(data_devolucao, NOW()) FROM alugueis;")[0][0], 3)
+        # O pedido aparece no histórico do perfil e nos números do painel
+        self.assertIn(COMPRA, self.texto(self.cliente.get("/perfil")))
+        with app.app_context():
+            self.assertEqual(PainelModel.get_resumo_mensal()["faturamento_total"], PRECO_COMPRA + DIARIA * 3)
+
+    def test_item_esgotado_continua_no_carrinho(self):
+        self.deixar_so_uma_unidade(self.compra)
+        self.cliente.post(f"/carrinho/adicionar/{self.compra}")
+        self.cliente.post(f"/carrinho/adicionar/{self.compra}")
+        resposta = self.cliente.post("/carrinho/finalizar")
+
+        self.assertIn("/carrinho", resposta.headers["Location"])
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 1)
+        self.assertEqual(len(self.carrinho()), 1)
+
+    def test_comprar_agora_nao_mexe_no_carrinho(self):
+        self.cliente.post(f"/carrinho/adicionar/{self.aluguel}", data={"dias_aluguel": "2"})
+        self.cliente.post(f"/carrinho/adicionar/{self.compra}", data={"agora": "1"})
+        self.assertEqual(self.sql("SELECT servico_solicitado FROM servicos;"), (("venda",),))
+        self.assertEqual(len(self.carrinho()), 1)
+
+    def test_produto_esgotado_nao_mostra_botao_de_compra(self):
+        self.sql("UPDATE unidade_ferramentas SET status='baixada' WHERE id_ferramenta=%s;", self.compra)
+        pagina = self.texto(self.cliente.get(f"/detalhe/{self.compra}"))
+        self.assertIn("Esgotado no momento", pagina)
+        self.assertNotIn("Comprar agora", pagina)
+
+
+class TesteEstoque(TesteBase):
+
+    def test_duas_compras_ao_mesmo_tempo_nao_levam_a_mesma_unidade(self):
+        ferramenta = self.id_ferramenta(COMPRA)
+        self.deixar_so_uma_unidade(ferramenta)
+        resultados = []
+
+        def comprar():
+            with app.app_context():
+                resultados.append(ServiceModel.create_purchase(1, ferramenta, PRECO_COMPRA))
+
+        compradores = [threading.Thread(target=comprar) for _ in range(2)]
+        for comprador in compradores:
+            comprador.start()
+        for comprador in compradores:
+            comprador.join()
+
+        # Um compra; o outro recebe o aviso de esgotado (e não um erro do banco)
+        self.assertEqual(sorted(mensagem for _, mensagem in resultados),
+                         ["Compra realizada com sucesso!", "Desculpe, ferramenta esgotada em nosso estoque físico."])
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 1)
+
+    def test_erro_no_meio_do_pedido_nao_grava_nada(self):
+        ferramenta = self.id_ferramenta(ALUGUEL)
+        with app.app_context(), contextlib.redirect_stdout(io.StringIO()):
+            # dias="abc" faz o INSERT em alugueis falhar depois do INSERT em servicos
+            resultado = ServiceModel._registrar_pedido("aluguel", "t", "t", 10, 1, ferramenta, "alugada", dias="abc")
+        self.assertFalse(resultado)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM servicos;")[0][0], 0)
+        self.assertEqual(self.sql("SELECT COUNT(*) FROM unidade_ferramentas WHERE status <> 'em_estoque';")[0][0], 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

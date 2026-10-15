@@ -1,88 +1,139 @@
 from .db import db_execute
 
+# Colunas na mesma ordem em que o montar_item lê a linha
+COLUNAS = "id, marca, modelo, descricao, preco, tipo_oferta, imagem, ativo"
 
-# Preço, tipo de oferta e foto dos produtos de exemplo (cadastrados pelo cadastrar_exemplos.py).
-# A tabela "ferramentas" ainda não tem colunas para isso, então por enquanto esses dados
-# ficam aqui, ligados pelo modelo da ferramenta. Quando o banco ganhar essas colunas,
-# este dicionário pode ser apagado.
-CATALOGO_EXEMPLOS = {
-    "Parafusadeira e Furadeira a Bateria 20V": {"preco": 459.90, "tipo": "Comprar", "imagem": "img/produto2.png"},
-    "Parafusadeira e Furadeira 12V": {"preco": 329.90, "tipo": "Comprar", "imagem": "img/produto3.png"},
-    "Furadeira de Impacto 750W": {"preco": 35.00, "tipo": "Alugar", "imagem": "img/produto.png"},
-}
+# Foto usada quando a ferramenta não tem imagem cadastrada
+IMAGEM_PADRAO = "img/produto.png"
 
-# Usado para as ferramentas que não estão no catálogo de exemplos
-OFERTA_PADRAO = {"preco": 150.00, "tipo": "Comprar/Alugar", "imagem": "img/produto.png"}
+TIPOS_OFERTA = ("Comprar", "Alugar")
 
 
 class ToolModel:
 
     @staticmethod
-    def montar_item(tool_id, marca, modelo, descricao=None):
+    def montar_item(linha):
         """
-        Junta os dados da ferramenta (vindos do banco) com preço, tipo de oferta e foto,
-        no formato que as telas da loja usam.
+        Transforma uma linha da tabela ferramentas no formato que as telas usam.
+        No aluguel, "preco" é o valor da diária.
         """
-        oferta = CATALOGO_EXEMPLOS.get(modelo, OFERTA_PADRAO)
+        tool_id, marca, modelo, descricao, preco, tipo, imagem, ativo = linha
         return {
             "id": tool_id,
+            "marca": marca,
+            "modelo": modelo,
             "nome": f"{marca} {modelo}",
             "descricao": descricao,
-            "preco": oferta["preco"],
-            "tipo": oferta["tipo"],
-            "imagem": oferta["imagem"],
+            "preco": float(preco),
+            "tipo": tipo,
+            "imagem": imagem or IMAGEM_PADRAO,
+            "ativo": bool(ativo),
         }
 
     @staticmethod
-    def get_all(limit=None):
-        arg = "SELECT * FROM ferramentas"
+    def get_all(limit=None, apenas_ativas=True):
+        """
+        Lista as ferramentas. A loja usa só as ativas; o Catálogo do colaborador
+        pede todas (apenas_ativas=False), para poder reativar.
+        """
+        arg = f"SELECT {COLUNAS} FROM ferramentas"
+        if apenas_ativas:
+            arg += " WHERE ativo=1"
+        arg += " ORDER BY id"
         if limit:
-            arg += f" LIMIT {limit}"
+            arg += f" LIMIT {int(limit)}"
 
         res = db_execute(arg, fetch_type="all")
         if not res[0]:
             print(res[1])
-            return None
-        return res[1]
+            return []
+        return [ToolModel.montar_item(linha) for linha in res[1]]
 
     @staticmethod
-    def get_by_id(tool_id):
+    def get_by_id(tool_id, apenas_ativa=True):
+        """
+        Busca uma ferramenta. Por padrão ignora as desativadas, para a loja, os detalhes
+        e o carrinho não venderem o que saiu de linha.
+        """
         if not tool_id:
             return None
 
-        arg = "SELECT * FROM ferramentas WHERE id=%s"
+        arg = f"SELECT {COLUNAS} FROM ferramentas WHERE id=%s"
+        if apenas_ativa:
+            arg += " AND ativo=1"
         res = db_execute(arg, tool_id, fetch_type="one")
 
         if not res[0] or res[1] is None:
             print(res[1])
             return None
 
-        return {
-            "id": res[1][0],
-            "marca": res[1][1],
-            "modelo": res[1][2],
-            "descricao": res[1][3],
-            "fk_ferramenta_tipo_id": res[1][4],
-            "criando_em": res[1][5],
-            "atualizado_em": res[1][6]
-        }
+        return ToolModel.montar_item(res[1])
 
     @staticmethod
-    def create(marca, modelo, descricao, id_tipo):
-        if not marca or not modelo or not id_tipo:
+    def _validar(marca, modelo, preco, tipo_oferta):
+        """Confere os campos da ferramenta. Devolve (preço como número, mensagem de erro ou None)."""
+        if not marca or not modelo:
+            return None, "Preencha os campos obrigatórios (Marca e Modelo)."
+
+        try:
+            preco = float(preco)
+        except (TypeError, ValueError):
+            preco = -1
+        if preco < 0:
+            return None, "Informe um preço válido."
+
+        if tipo_oferta not in TIPOS_OFERTA:
+            return None, "Escolha se a ferramenta é para comprar ou alugar."
+        return preco, None
+
+    @staticmethod
+    def create(marca, modelo, descricao, id_tipo, preco, tipo_oferta, imagem=None):
+        if not id_tipo:
             return False, "Preencha os campos obrigatórios (Marca, Modelo e Tipo)."
+        marca, modelo = (marca or "").strip(), (modelo or "").strip()
+        preco, erro = ToolModel._validar(marca, modelo, preco, tipo_oferta)
+        if erro:
+            return False, erro
 
         arg = """
-            INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo) 
-            VALUES (%s, %s, %s, %s);
+            INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo, preco, tipo_oferta, imagem)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
         """
-        res = db_execute(arg, marca, modelo, descricao, id_tipo)
+        res = db_execute(arg, marca, modelo, descricao, id_tipo, preco, tipo_oferta, imagem)
 
         if not res[0]:
             print(res[1])
             return False, "Erro ao cadastrar a ferramenta no banco de dados."
 
         return True, "Ferramenta cadastrada com sucesso!"
+
+    @staticmethod
+    def update(tool_id, marca, modelo, descricao, preco, tipo_oferta, imagem=None):
+        """Altera os dados de uma ferramenta. Sem foto nova, a foto atual é mantida."""
+        marca, modelo = (marca or "").strip(), (modelo or "").strip()
+        preco, erro = ToolModel._validar(marca, modelo, preco, tipo_oferta)
+        if erro:
+            return False, erro
+
+        arg = """
+            UPDATE ferramentas
+            SET marca=%s, modelo=%s, descricao=%s, preco=%s, tipo_oferta=%s, imagem=COALESCE(%s, imagem)
+            WHERE id=%s;
+        """
+        res = db_execute(arg, marca, modelo, descricao, preco, tipo_oferta, imagem, tool_id)
+        if not res[0]:
+            print(res[1])
+            return False, "Erro ao alterar a ferramenta no banco de dados."
+        return True, "Ferramenta alterada com sucesso!"
+
+    @staticmethod
+    def definir_ativo(tool_id, ativo):
+        """Desativa (some da loja, mas o histórico de pedidos fica) ou reativa uma ferramenta."""
+        res = db_execute("UPDATE ferramentas SET ativo=%s WHERE id=%s;", 1 if ativo else 0, tool_id)
+        if not res[0]:
+            print(res[1])
+            return False
+        return True
 
     @staticmethod
     def get_tipos():

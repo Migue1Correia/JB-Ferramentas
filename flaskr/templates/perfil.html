@@ -3,41 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JB Ferramentas: venda, aluguel e manutenção de ferramentas, com atendimento na matriz e nas filiais.">
     <title>JB Ferramentas - Perfil do Usuário</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/movimento.css') }}?v=1.0">
+    <script src="{{ url_for('static', filename='js/movimento.js') }}?v=1.0" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body class="dashboard-body">
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
     <div class="bg-container-perfil"></div>
 
     <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left"></i>Voltar
-            </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" style="color: inherit;"><i class="fas fa-user-circle"></i></a>
-            </div>
-        </div>
-
-       <section class="logo-section">
-    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-        <div class="logo-wrapper">
-            <div class="logo-box">
-                <h1>JB</h1>
-            </div>
-            <h2 class="company-subname">FERRAMENTAS</h2>
-            <div class="tool-icons-row">
-                <i class="fas fa-screwdriver"></i>
-                <i class="fas fa-wrench"></i>
-                <i class="fas fa-hammer"></i>
-            </div>
-        </div>
-    </a>
-</section>
+        {% include '_topo.html' %}
     </header>
 
-    <main class="profile-container">
+    <main id="conteudo" class="profile-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% for category, message in messages %}
             <div role="status" style="{% if category == 'danger' %}background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% else %}background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% endif %} padding: 12px; margin-bottom: 20px; border-radius: 4px; text-align: center; font-weight: bold;">
@@ -50,54 +32,55 @@
     <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-home">
             <div class="card-info">
-                <i class="fas fa-home icon-main"></i>
+                <i class="fas fa-home icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Início</h3>
                     <p>Voltar para a página principal.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
-    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+    <a href="{{ link_manutencao }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-orange">
             <div class="card-info">
-                <i class="fas fa-tools icon-main"></i>
+                <i class="fas fa-tools icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Manutenção</h3>
                     <p>Serviço especializado para reparo de ferramentas.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
     <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-glass">
             <div class="card-info">
-                <i class="fas fa-shopping-cart icon-main"></i>
+                <i class="fas fa-shopping-cart icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Compra ou Aluguel</h3>
                     <p>Ferramentas para comprar ou alugar de forma prática.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
+    {% include '_card_carrinho.html' %}
     {% include '_card_painel.html' %}
 </section>
 
         <section class="profile-card">
             <div class="card-header">
-                <i class="fas fa-id-card-alt"></i>
+                <i class="fas fa-id-card-alt" aria-hidden="true"></i>
                 <h2>Meus Dados Cadastrais</h2>
             </div>
             
             {% if status %}
             <div style="background-color: #d4edda; color: #155724; padding: 12px; margin-bottom: 20px; border-radius: 4px; text-align: center; border: 1px solid #c3e6cb; font-weight: bold;">
-                <i class="fas fa-check-circle"></i> {{ status }}
+                <i class="fas fa-check-circle" aria-hidden="true"></i> {{ status }}
             </div>
             {% endif %}
 
@@ -107,7 +90,7 @@
                     <div class="input-group">
                         <label for="nome">Nome Completo</label>
                         <div class="input-wrapper">
-                            <i class="fas fa-user"></i>
+                            <i class="fas fa-user" aria-hidden="true"></i>
                             <input type="text" id="nome" name="nome" value="{{ user_infos.nome if user_infos.nome else '' }}" required>
                         </div>
                     </div>
@@ -115,7 +98,7 @@
                     <div class="input-group">
                         <label for="cpf">CPF / Código de Identificação</label>
                         <div class="input-wrapper disabled-wrapper" style="background-color: #f1f3f5; opacity: 0.8;">
-                            <i class="fas fa-id-card"></i>
+                            <i class="fas fa-id-card" aria-hidden="true"></i>
                             <input type="text" id="cpf" name="cpf" value="{{ user_infos.codigo if user_infos.codigo else (user_infos.cpf if user_infos.cpf else '') }}" readonly>
                         </div>
                     </div>
@@ -123,7 +106,7 @@
                     <div class="input-group">
                         <label for="email">E-mail</label>
                         <div class="input-wrapper">
-                            <i class="fas fa-envelope"></i>
+                            <i class="fas fa-envelope" aria-hidden="true"></i>
                             <input type="email" id="email" name="email" value="{{ user_infos.email if user_infos.email else '' }}" required>
                         </div>
                     </div>
@@ -131,34 +114,61 @@
                     <div class="input-group">
                         <label for="telefone">Telefone / Celular</label>
                         <div class="input-wrapper">
-                            <i class="fas fa-phone"></i>
-                            <input type="text" id="telefone" name="telefone" value="{{ user_infos.telefone if user_infos.telefone else '' }}">
+                            <i class="fas fa-phone" aria-hidden="true"></i>
+                            <input type="text" id="telefone" name="telefone" value="{{ user_infos.telefone if user_infos.telefone else '' }}" required>
                         </div>
                     </div>
 
                     <div class="input-group full-width">
                         <label for="endereco">Endereço Residencial</label>
                         <div class="input-wrapper">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <input type="text" id="endereco" name="endereco" value="{{ user_infos.endereco if user_infos.endereco else '' }}">
+                            <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
+                            <input type="text" id="endereco" name="endereco" value="{{ user_infos.endereco if user_infos.endereco else '' }}" required>
                         </div>
                     </div>
                 </div>
 
                 <div class="form-actions">
                     <button type="submit" class="btn-save">
-                        <i class="fas fa-save"></i> Salvar Alterações
+                        <i class="fas fa-save" aria-hidden="true"></i> Salvar Alterações
                     </button>
-                    <a href="{{ url_for('logout') }}" class="btn-logout" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; background-color: #dc3545; color: #fff; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-left: 10px;">
-                        <i class="fas fa-sign-out-alt"></i> Sair da Conta
-                    </a>
+                    <button type="submit" formaction="{{ url_for('logout') }}" formnovalidate class="btn-logout" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; background-color: #dc3545; color: #fff; padding: 10px 20px; border-radius: 4px; font-weight: bold; margin-left: 10px; border: none; cursor: pointer; font-size: inherit;">
+                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sair da Conta
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-key" aria-hidden="true"></i>
+                <h2>Alterar senha</h2>
+            </div>
+            <form method="POST" action="{{ url_for('alterar_senha') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group full-width">
+                        <label for="senha_atual">Senha atual</label>
+                        <input type="password" id="senha_atual" name="senha_atual" autocomplete="current-password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="nova_senha">Nova senha (pelo menos 8 caracteres)</label>
+                        <input type="password" id="nova_senha" name="nova_senha" minlength="8" autocomplete="new-password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="confirmar_senha">Repita a nova senha</label>
+                        <input type="password" id="confirmar_senha" name="confirmar_senha" minlength="8" autocomplete="new-password" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-key" aria-hidden="true"></i> Alterar senha</button>
                 </div>
             </form>
         </section>
 
         <section class="profile-card text-center">
             <div class="card-header">
-                <i class="fas fa-history"></i>
+                <i class="fas fa-history" aria-hidden="true"></i>
                 <h2>Histórico de Pedidos</h2>
             </div>
             <div class="history-content">
@@ -167,18 +177,27 @@
                     <table class="history-table">
                         <thead>
                             <tr>
-                                <th>Cód. Pedido</th>
-                                <th>Descrição</th>
-                                <th>Data</th>
-                                <th>Operação</th>
-                                <th>Valor</th>
+                                <th scope="col">Cód. Pedido</th>
+                                <th scope="col">Descrição</th>
+                                <th scope="col">Data</th>
+                                <th scope="col">Operação</th>
+                                <th scope="col">Valor</th>
+                                <th scope="col">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for pedido in historico %}
                             <tr>
                                 <td>#{{ pedido.id }}</td>
-                                <td><strong>{{ pedido.descricao }}</strong></td>
+                                <td>
+                                    <strong>{{ pedido.descricao }}</strong>
+                                    {% if pedido.diagnostico %}<br><small style="color: #aaaaaa;">Diagnóstico: {{ pedido.diagnostico }}</small>{% endif %}
+                                    {% if pedido.foto %}<br><a href="{{ url_for('static', filename=pedido.foto) }}" style="color: #ff6600;">Ver foto do equipamento</a>{% endif %}
+                                    {% for item in pecas_usadas.get(pedido.id, {}).get('itens', []) %}<br><small style="color: #aaaaaa;">Peça: {{ item.texto }} · {{ item.valor|moeda if item.valor else 'sem custo' }}</small>{% endfor %}
+                                    {% set acerto = diferencas.get(pedido.id, 0) %}
+                                    {% if acerto > 0 %}<br><strong style="color: #ffcc66;">Diferença a pagar na retirada (peças a mais): {{ acerto|moeda }}</strong>
+                                    {% elif acerto < 0 %}<br><strong style="color: #ffcc66;">Você recebe de volta na retirada (peça não usada): {{ (-acerto)|moeda }}</strong>{% endif %}
+                                </td>
                                 <td>{{ pedido.data.strftime('%d/%m/%Y') }}</td>
                                 <td>
                                     {% if pedido.tipo == 'venda' %}
@@ -190,6 +209,22 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ pedido.valor|moeda }}</td>
+                                <td>
+                                    {{ pedido.status }}{% if pedido.pagamento %} · {{ pedido.pagamento }}{% endif %}
+                                    {% if pedido.pagamento_pendente %}
+                                    <form method="POST" action="{{ url_for('carrinho_pagar_servico', id_servico=pedido.id) }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn-remover">Pagar agora</button>
+                                    </form>
+                                    {% endif %}
+                                    {% if pedido.status == 'Aguardando Aprovação' %}
+                                    <a href="{{ url_for('escolher_pagamento', id_servico=pedido.id) }}" class="btn-remover" style="display: inline-block; text-decoration: none; font-size: 0.83rem;">Aprovar</a>
+                                    <form method="POST" action="{{ url_for('responder_orcamento', id_servico=pedido.id, resposta='Reprovado') }}" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn-remover">Reprovar</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>

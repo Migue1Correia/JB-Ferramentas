@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JB Ferramentas: venda, aluguel e manutenção de ferramentas, com atendimento na matriz e nas filiais.">
     <title>JB Ferramentas - Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.7">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/movimento.css') }}?v=1.0">
+    <script src="{{ url_for('static', filename='js/movimento.js') }}?v=1.0" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
     <div class="bg-container-tela-inicial"></div>
     
     <div class="main-wrapper">
@@ -18,7 +23,7 @@
             <p>FERRAMENTAS</p>
         </section>
 
-        <section class="form-card">
+        <section class="form-card" id="conteudo">
             <h2>Bem-vindo(a)</h2>
             
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -57,7 +62,6 @@
             </form>
 
             <div class="footer-links">
-                <a href="#">Esqueceu sua senha?</a><br><br>
                 <p>Primeiro acesso? 
                     <a href="{{ url_for('register') }}" class="link-amarelo">Cadastro.</a>
                 </p>

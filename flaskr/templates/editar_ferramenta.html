@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JB Ferramentas: venda, aluguel e manutenção de ferramentas, com atendimento na matriz e nas filiais.">
+    <title>JB Ferramentas - Editar ferramenta</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/movimento.css') }}?v=1.0">
+    <script src="{{ url_for('static', filename='js/movimento.js') }}?v=1.0" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+</head>
+<body class="dashboard-body">
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+{% include '_topo_colaborador.html' %}
+
+    <main id="conteudo" class="dashboard-content">
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-pen" aria-hidden="true"></i>
+                <h1 style="font-size: 1.3rem;">Editar {{ ferramenta.nome }}</h1>
+            </div>
+            <form method="POST" action="{{ url_for('editar_ferramenta', ferramenta_id=ferramenta.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="marca">Marca</label>
+                        <input type="text" id="marca" name="marca" maxlength="50" value="{{ ferramenta.marca }}" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="modelo">Modelo</label>
+                        <input type="text" id="modelo" name="modelo" maxlength="50" value="{{ ferramenta.modelo }}" required>
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="descricao">Descrição</label>
+                        <input type="text" id="descricao" name="descricao" maxlength="255" value="{{ ferramenta.descricao or '' }}">
+                    </div>
+                    <div class="input-group">
+                        <label for="tipo_oferta">Oferta</label>
+                        <select id="tipo_oferta" name="tipo_oferta" required>
+                            <option value="Comprar" {% if ferramenta.tipo == 'Comprar' %}selected{% endif %}>Para comprar</option>
+                            <option value="Alugar" {% if ferramenta.tipo == 'Alugar' %}selected{% endif %}>Para alugar</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="preco">Preço em R$ (no aluguel, valor da diária)</label>
+                        <input type="number" id="preco" name="preco" min="0" step="0.01" value="{{ '%.2f'|format(ferramenta.preco) }}" required>
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="imagem">Trocar a foto (PNG, JPG ou WEBP; deixe vazio para manter a atual)</label>
+                        <input type="file" id="imagem" name="imagem" accept=".png,.jpg,.jpeg,.webp">
+                    </div>
+                </div>
+                <p style="margin-top: 16px;">
+                    <img src="{{ url_for('static', filename=ferramenta.imagem) }}" alt="Foto atual de {{ ferramenta.nome }}" style="max-width: 160px; border-radius: 8px;">
+                </p>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Salvar alterações</button>
+                    <a href="{{ url_for('gerenciar_ferramentas') }}" class="btn-save" style="background: #333333; text-decoration: none;">Cancelar</a>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

@@ -3,81 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JB Ferramentas: venda, aluguel e manutenção de ferramentas, com atendimento na matriz e nas filiais.">
     <title>Detalhes do Produto - JB Ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/movimento.css') }}?v=1.0">
+    <script src="{{ url_for('static', filename='js/movimento.js') }}?v=1.0" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body class="dashboard-body">
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
     <div class="bg-container-detalhes"></div>
 
     <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left"></i>Voltar
-            </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
-            </div>
-        </div>
-
-        <section class="logo-section">
-    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-        <div class="logo-wrapper">
-            <div class="logo-box">
-                <h1>JB</h1>
-            </div>
-            <h2 class="company-subname">FERRAMENTAS</h2>
-            <div class="tool-icons-row">
-                <i class="fas fa-screwdriver"></i>
-                <i class="fas fa-wrench"></i>
-                <i class="fas fa-hammer"></i>
-            </div>
-        </div>
-    </a>
-</section>
+        {% include '_topo.html' %}
     </header>
 
-    <main class="dashboard-content">
+    <main id="conteudo" class="dashboard-content">
+        {% include '_mensagens.html' %}
         <section class="service-cards" style="margin-bottom: 30px;">
     <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-home">
             <div class="card-info">
-                <i class="fas fa-home icon-main"></i>
+                <i class="fas fa-home icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Início</h3>
                     <p>Voltar para a página principal.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
-    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
+    <a href="{{ link_manutencao }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-orange">
             <div class="card-info">
-                <i class="fas fa-tools icon-main"></i>
+                <i class="fas fa-tools icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Manutenção</h3>
                     <p>Serviço especializado para reparo de ferramentas.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
     <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
         <div class="card-item card-glass">
             <div class="card-info">
-                <i class="fas fa-shopping-cart icon-main"></i>
+                <i class="fas fa-shopping-cart icon-main" aria-hidden="true"></i>
                 <div>
                     <h3>Compra ou Aluguel</h3>
                     <p>Ferramentas para comprar ou alugar de forma prática.</p>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            <i class="fas fa-chevron-right arrow" aria-hidden="true"></i>
         </div>
     </a>
 
+    {% include '_card_carrinho.html' %}
     {% include '_card_painel.html' %}
 </section>
 
@@ -85,56 +69,46 @@
 
             <div class="product-image-section">
                 <div class="product-image-container" style="flex: 1; min-width: 280px; max-width: 350px; background: #111111; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; height: 350px;">
-                <img src="{{ url_for('static', filename=ferramenta.imagem if ferramenta else 'img/produto.png') }}" alt="{{ ferramenta.nome if ferramenta else 'Ferramenta' }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                <img src="{{ url_for('static', filename=ferramenta.imagem) }}" alt="{{ ferramenta.nome }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
                 </div>
             </div>
 
             <div class="product-info-section">
-                <span class="category-tag">Categoria: Elétricas</span>
-                <h1>{{ ferramenta.nome if ferramenta else 'Furadeira de Impacto Bosch' }}</h1>
-                <p class="product-description">
-                    {{ ferramenta.descricao if ferramenta else 'Potência e precisão para os seus projetos. Esta ferramenta conta com motor de alto desempenho, ideal para perfurações em concreto, madeira and metal. Design ergonômico para maior conforto.' }}
-                </p>
-
-                <div class="specs-grid">
-                    <div class="spec-item">
-                        <i class="fa-solid fa-bolt"></i>
-                        <span>750W</span>
-                    </div>
-                    <div class="spec-item">
-                        <i class="fa-solid fa-weight-hanging"></i>
-                        <span>2.5kg</span>
-                    </div>
-                    <div class="spec-item">
-                        <i class="fa-solid fa-microchip"></i>
-                        <span>Velocidade Variável</span>
-                    </div>
-                </div>
+                <h1>{{ ferramenta.nome }}</h1>
+                <p class="product-description">{{ ferramenta.descricao or '' }}</p>
 
                 <div class="price-label">
                     <span>Valor do {% if ferramenta.tipo|lower == 'alugar' %}aluguel (diária){% else %}investimento{% endif %}</span>
                     <h2>{{ ferramenta.preco|moeda }}{% if ferramenta.tipo|lower == 'alugar' %}/dia{% endif %}</h2>
                 </div>
 
-                {% if ferramenta and ferramenta.tipo|lower == 'alugar' %}
-                <form method="POST" action="{{ url_for('alugar_ferramenta', ferramenta_id=ferramenta.id) }}">
+                {% if not em_estoque %}
+                <p class="stock-status" style="color: #ff6b6b;">
+                    <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> Esgotado no momento
+                </p>
+                {% elif ferramenta.tipo|lower == 'alugar' %}
+                <form method="POST" action="{{ url_for('carrinho_adicionar', ferramenta_id=ferramenta.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="input-group">
                         <label for="dias_aluguel">Quantos dias?</label>
                         <input type="number" id="dias_aluguel" name="dias_aluguel" value="1" min="1" max="30" required>
                     </div>
-                    <button type="submit" class="btn-main-action btn-buy">Reservar para Alugar</button>
+                    <button type="submit" class="btn-main-action btn-buy"><i class="fas fa-cart-plus" aria-hidden="true"></i> Adicionar ao carrinho (aluguel)</button>
+                    <button type="submit" name="agora" value="1" class="btn-main-action btn-dark" style="margin-top: 10px;" onclick="return confirm('Fechar o aluguel agora, sem passar pelo carrinho? O pedido é registrado na hora.')">Alugar agora</button>
                 </form>
-                {% elif ferramenta %}
-                <form method="POST" action="{{ url_for('comprar_ferramenta', ferramenta_id=ferramenta.id) }}">
+                {% else %}
+                <form method="POST" action="{{ url_for('carrinho_adicionar', ferramenta_id=ferramenta.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn-main-action btn-dark">Confirmar Compra</button>
+                    <button type="submit" class="btn-main-action btn-dark"><i class="fas fa-cart-plus" aria-hidden="true"></i> Adicionar ao carrinho</button>
+                    <button type="submit" name="agora" value="1" class="btn-main-action btn-buy" style="margin-top: 10px;" onclick="return confirm('Fechar a compra agora, sem passar pelo carrinho? O pedido é registrado na hora.')">Comprar agora</button>
                 </form>
                 {% endif %}
 
-                <p class="stock-status">
-                    <i class="fa-solid fa-check-circle"></i> Disponível em estoque (Filial Caieiras)
+                {% if em_estoque %}
+                <p class="stock-status" style="margin-top: 12px;">
+                    <i class="fa-solid fa-check-circle" aria-hidden="true"></i> Disponível em estoque
                 </p>
+                {% endif %}
             </div>
         </div>
     </main>

@@ -37,7 +37,7 @@ Monique Jesus               Ronaldo Alves de Souza
 > [!IMPORTANT]
 > Antes de começar a desenvolver, faça as seguintes checagens:
 > - Verifique se o MySQL está ativo e rodando em sua máquina
-> - Verifique se o banco `jb_ferramentas` já está criado
+> - Crie o banco `jb_ferramentas` (passo 3 abaixo)
 > - Configure o arquivo `.env` com os dados do seu banco (passo 2 abaixo)
 
 ## Executar projeto
@@ -56,12 +56,49 @@ copy .env.example .env         # Windows
 # cp .env.example .env         # Linux/Mac
 ```
 
-**3. Rodar:**
+**3. Criar o banco** (só na primeira vez). O arquivo `database/jb_ferramentas.sql` tem a estrutura das tabelas, sem dados:
+```
+mysql -u root -p -e "CREATE DATABASE jb_ferramentas"
+mysql -u root -p jb_ferramentas < database/jb_ferramentas.sql
+cd flaskr
+python criar_admin.py          # cria o primeiro administrador (pede usuário e senha)
+python cadastrar_exemplos.py   # opcional: ferramentas de exemplo na loja
+```
+
+**Já tinha o banco criado?** Não precisa recriar. Rode só os comandos abaixo, uma vez, para criar as colunas novas
+(sem elas a loja e o Catálogo aparecem vazios e a tela Serviços dá erro):
+```
+mysql -u root -p jb_ferramentas -e "ALTER TABLE ferramentas ADD COLUMN ativo TINYINT(1) NOT NULL DEFAULT 1 AFTER imagem"
+mysql -u root -p jb_ferramentas -e "ALTER TABLE manutencao_pecas ADD COLUMN preco_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER quantidade"
+mysql -u root -p jb_ferramentas -e "ALTER TABLE servicos ADD COLUMN valor_a_devolver DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER valor_servico"
+mysql -u root -p jb_ferramentas -e "ALTER TABLE manutencao_pecas ADD COLUMN cobrar_na_retirada TINYINT(1) NOT NULL DEFAULT 0 AFTER preco_unitario"
+mysql -u root -p jb_ferramentas -e "ALTER TABLE servicos ADD COLUMN id_pessoa_resposta INT UNSIGNED NULL, ADD COLUMN respondido_em DATETIME NULL, ADD CONSTRAINT servicos_resposta_fk FOREIGN KEY (id_pessoa_resposta) REFERENCES pessoas (id)"
+```
+Se algum deles responder "Duplicate column name", a coluna já existe: é só seguir.
+
+**4. Rodar:**
 ```
 cd flaskr
 flask --app main run
 ```
 e logo em seguida clique na _URL_ gerada para acessar o site. A documentação da API (Swagger) fica em `/apidocs`.
+
+## Rodar em produção (nuvem)
+
+O comando `flask run` é só para desenvolver. No servidor, use o Waitress (já está no `requirements.txt`):
+```
+cd flaskr
+waitress-serve --port=8000 main:app
+```
+No `.env` do servidor, preencha também `ENDERECO_DO_SITE` com o endereço público do site (ex.: `https://jbferramentas.com.br`). É ele que vai no link e no QR code de cadastro que o atendente passa ao cliente no balcão; em branco, o link só funciona dentro da loja.
+
+## Testes
+
+```
+cd flaskr
+python -m unittest -v
+```
+Os testes de integração criam sozinhos um banco separado (`jb_ferramentas_teste`) a partir de `database/jb_ferramentas.sql`. O banco de verdade não é tocado.
 
 ## Estrutura inicial de arquivos do projeto (Modelo do Flask)
 

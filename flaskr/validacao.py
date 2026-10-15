@@ -5,6 +5,19 @@ mas isso pode ser burlado, então o servidor confere de novo antes de gravar.
 import re
 
 
+def mascarar_documento(codigo):
+    """
+    Esconde o começo do CPF ou CNPJ, deixando só o final para conferir a pessoa.
+    Ex.: '12345678909' -> '***.***.789-09'
+    """
+    numeros = re.sub(r"\D", "", codigo or "")
+    if len(numeros) == 11:
+        return f"***.***.{numeros[6:9]}-{numeros[9:]}"
+    if len(numeros) == 14:
+        return f"**.***.***/{numeros[8:12]}-{numeros[12:]}"
+    return "***"
+
+
 def somente_numeros(texto):
     """Tira pontos, traços e barras. Ex.: '123.456.789-09' -> '12345678909'"""
     return re.sub(r"\D", "", texto or "")

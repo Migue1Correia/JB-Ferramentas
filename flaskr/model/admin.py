@@ -12,6 +12,14 @@ class AdminModel:
         return (True, "Perfil cadastrado com sucesso!") if res[0] else (False, "Erro ao cadastrar perfil.")
 
     @staticmethod
+    def delete_perfil(id_perfil):
+        # O banco recusa apagar um perfil que algum usuário ainda usa (chave estrangeira)
+        res = db_execute("DELETE FROM perfis WHERE id=%s;", id_perfil)
+        if not res[0]:
+            return False, "Esse perfil está em uso. Troque o perfil dos usuários antes de excluir."
+        return True, "Perfil excluído."
+
+    @staticmethod
     def get_perfis():
         res = db_execute("SELECT id, perfil, descricao, ativo FROM perfis;", fetch_type="all")
         return res[1] if res[0] else []
@@ -29,21 +37,6 @@ class AdminModel:
     def get_filiais():
         res = db_execute("SELECT id, codigo_filial, nome, endereco FROM filiais;", fetch_type="all")
         return res[1] if res[0] else []
-
-    # ==========================
-    # GESTÃO DE PEÇAS E ESTOQUE
-    # ==========================
-    @staticmethod
-    def create_peca(codigo_barras, nome, fabricante, custo, preco_venda):
-        arg = "INSERT INTO pecas (codigo_barras, nome, fabricante, custo, preco_venda) VALUES (%s, %s, %s, %s, %s);"
-        res = db_execute(arg, codigo_barras, nome, fabricante, custo, preco_venda)
-        return (True, "Peça cadastrada no catálogo!") if res[0] else (False, "Erro ao cadastrar peça.")
-
-    @staticmethod
-    def add_estoque_peca(id_peca, id_filial, qtd_atual, qtd_minima):
-        arg = "INSERT INTO estoque_pecas (id_peca, id_filial, quantidade_atual, quantidade_minima) VALUES (%s, %s, %s, %s);"
-        res = db_execute(arg, id_peca, id_filial, qtd_atual, qtd_minima)
-        return (True, "Estoque de peça atualizado!") if res[0] else (False, "Erro ao lançar estoque.")
 
     # ==========================
     # GESTÃO DE UNIDADES FÍSICAS (FERRAMENTAS)

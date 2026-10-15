@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JB Ferramentas: venda, aluguel e manutenção de ferramentas, com atendimento na matriz e nas filiais.">
+    <title>JB Ferramentas - Serviços e devoluções</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=4.7">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/acessibilidade.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/movimento.css') }}?v=1.0">
+    <script src="{{ url_for('static', filename='js/movimento.js') }}?v=1.0" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+</head>
+<body class="dashboard-body">
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+{% include '_topo_colaborador.html' %}
+
+    <main id="conteudo" class="dashboard-content">
+        <section class="welcome-box">
+            <h1>Serviços e devoluções</h1>
+            <p>Devolução de aluguéis, orçamentos enviados, equipamentos prontos para retirada e pedidos aguardando orçamento.</p>
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                <h2>Aluguéis para devolver</h2>
+            </div>
+            {% if alugueis %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cód.</th>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Ferramenta</th>
+                            <th scope="col">Devolver até</th>
+                            <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for aluguel in alugueis %}
+                        <tr>
+                            <td>#{{ aluguel.id }}</td>
+                            <td>{{ aluguel.cliente }}</td>
+                            <td><strong>{{ aluguel.ferramenta }}</strong></td>
+                            <td>{{ aluguel.prazo.strftime('%d/%m/%Y') }}{% if aluguel.atrasado %} <span class="type-tag tag-alugar">Atrasado</span>{% endif %}{% if aluguel.multa %}<br><small style="color: #aaaaaa;">{{ aluguel.dias_atraso }} dia(s) · multa de {{ aluguel.multa|moeda }}</small>{% endif %}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('registrar_devolucao', id_servico=aluguel.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-remover" aria-label="Registrar devolução de {{ aluguel.ferramenta }}">Registrar devolução{% if aluguel.multa %} e cobrar {{ aluguel.multa|moeda }}{% endif %}</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhuma ferramenta alugada no momento.</p>
+            {% endif %}
+        </section>
+
+        {% if reprovados %}
+        <section aria-labelledby="titulo-reprovados" style="margin-bottom: 30px;">
+            <h2 id="titulo-reprovados" class="section-title"><i class="fas fa-triangle-exclamation" aria-hidden="true" style="color: #ff6b6b;"></i> Orçamentos reprovados pelo cliente ({{ reprovados|length }})</h2>
+            <div class="servicos-grid">
+                {% for servico in reprovados %}
+                <article class="servico-card servico-reprovado">
+                    <h3>#{{ servico.id }} · {{ servico.cliente }}</h3>
+                    <p class="servico-data">Telefone: {{ servico.telefone }}</p>
+                    {% if servico.equipamento %}<p class="servico-problema"><strong>{{ servico.equipamento }}</strong></p>{% endif %}
+                    <p class="servico-problema">{{ servico.descricao }}</p>
+                    <p class="servico-problema"><strong>Reprovado pelo cliente:</strong> {{ servico.valor|moeda }}{% if servico.balcao %}<br><small style="color: #aaaaaa;">Resposta registrada no balcão por {{ servico.balcao }}</small>{% endif %}</p>
+                    <p class="servico-data">O cliente já vê o aviso para retirar o equipamento na loja.</p>
+                    {% include '_pecas_do_servico.html' %}
+
+                    <details>
+                        <summary>Enviar novo orçamento</summary>
+                        <form method="POST" action="{{ url_for('atualizar_orcamento', id_servico=servico.id) }}" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="status_servico" value="Aguardando Aprovação">
+                            <div class="input-group">
+                                <label for="novo_valor_{{ servico.id }}">Nova mão de obra (R$) - as peças lançadas são somadas</label>
+                                <input type="number" id="novo_valor_{{ servico.id }}" name="valor_servico" min="0" step="0.01" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="novo_dano_{{ servico.id }}">Diagnóstico</label>
+                                <input type="text" id="novo_dano_{{ servico.id }}" name="detalhes_dano" required>
+                            </div>
+                            <button type="submit" class="btn-save"><i class="fas fa-paper-plane" aria-hidden="true"></i> Enviar ao cliente</button>
+                        </form>
+                    </details>
+
+                    <form method="POST" action="{{ url_for('fechar_servico', id_servico=servico.id) }}" style="margin-top: 12px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-remover">Cliente retirou o equipamento (encerrar)</button>
+                    </form>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-reply" aria-hidden="true"></i>
+                <h2>Orçamentos enviados aos clientes</h2>
+            </div>
+            {% if respondidos %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cód.</th>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Equipamento e problema</th>
+                            <th scope="col">Valor</th>
+                            <th scope="col">Situação</th>
+                            <th scope="col">Pagamento</th>
+                            <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for servico in respondidos %}
+                        <tr>
+                            <td>#{{ servico.id }}</td>
+                            <td>{{ servico.cliente }}<br><small style="color: #aaaaaa;">{{ servico.telefone }}</small></td>
+                            <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}
+                                {% include '_pecas_do_servico.html' %}</td>
+                            <td>{{ servico.valor|moeda }}</td>
+                            <td><strong>{{ servico.status }}</strong>{% if servico.balcao %}<br><small style="color: #aaaaaa;">Resposta registrada no balcão por {{ servico.balcao }}</small>{% endif %}</td>
+                            <td>{{ servico.pagamento or '-' }}</td>
+                            <td>
+                                {% if servico.status == 'Aguardando Aprovação' %}
+                                <span style="color: #aaaaaa;">Esperando o cliente responder</span>
+                                {# Cliente que está na loja responde na hora: o colaborador registra por ele #}
+                                <form method="POST" action="{{ url_for('responder_orcamento_no_balcao', id_servico=servico.id) }}" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" name="resposta" value="Aprovado" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
+                                            onclick="return confirm('Registrar que o cliente APROVOU o orçamento no balcão? O pagamento fica para a retirada.')"
+                                            aria-label="Aprovou no balcão: serviço {{ servico.id }}">Aprovou no balcão</button>
+                                    <button type="submit" name="resposta" value="Pago" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
+                                            onclick="return confirm('Registrar que o cliente APROVOU e JÁ PAGOU {{ servico.valor|moeda }} no balcão? O valor entra no caixa agora.')"
+                                            aria-label="Aprovou e pagou no balcão: serviço {{ servico.id }}">Aprovou e pagou no balcão</button>
+                                    <button type="submit" name="resposta" value="Reprovado" class="btn-remover" style="font-size: 0.78rem; padding: 4px 8px;"
+                                            onclick="return confirm('Registrar que o cliente REPROVOU o orçamento no balcão?')"
+                                            aria-label="Reprovou no balcão: serviço {{ servico.id }}">Reprovou no balcão</button>
+                                </form>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('fechar_servico', id_servico=servico.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-remover">Marcar como concluído</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhum orçamento aguardando resposta ou fechamento.</p>
+            {% endif %}
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-box-open" aria-hidden="true"></i>
+                <h2>Prontos para retirada</h2>
+            </div>
+            {% if prontos %}
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cód.</th>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Equipamento e problema</th>
+                            <th scope="col">Valor</th>
+                            <th scope="col">Pagamento</th>
+                            <th scope="col"><span style="position: absolute; left: -9999px;">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for servico in prontos %}
+                        <tr>
+                            <td>#{{ servico.id }}</td>
+                            <td>{{ servico.cliente }}<br><small style="color: #aaaaaa;">{{ servico.telefone }}</small></td>
+                            <td>{% if servico.equipamento %}<strong>{{ servico.equipamento }}</strong><br>{% endif %}{{ servico.descricao }}</td>
+                            <td>{{ servico.valor|moeda }}</td>
+                            <td>{% if servico.pago %}{{ servico.pagamento }}{% else %}<strong>A receber na retirada</strong>{% endif %}{% if servico.balcao %}<br><small style="color: #aaaaaa;">Resposta registrada no balcão por {{ servico.balcao }}</small>{% endif %}
+                                {% set acerto = diferencas.get(servico.id, 0) %}
+                                {% if acerto > 0 %}<br><strong style="color: #ffcc66;">+ {{ acerto|moeda }} de diferença a receber (peças a mais)</strong>
+                                {% elif acerto < 0 %}<br><strong style="color: #ffcc66;">Devolver {{ (-acerto)|moeda }} ao cliente (peça paga e não usada)</strong>{% endif %}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('entregar_servico', id_servico=servico.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-remover">
+                                        {% if acerto > 0 %}Entregue e recebida a diferença de {{ acerto|moeda }}{% elif acerto < 0 %}Entregue e devolvidos {{ (-acerto)|moeda }}{% elif servico.pago %}Entregue ao cliente{% else %}Entregue e pago{% endif %}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhum equipamento esperando o cliente buscar.</p>
+            {% endif %}
+        </section>
+
+        <section class="profile-card">
+            <div class="card-header">
+                <i class="fas fa-user-plus" aria-hidden="true"></i>
+                <h2>Abrir serviço no balcão</h2>
+            </div>
+            <p style="color: #aaaaaa; margin-bottom: 16px;">Para o cliente que veio à loja pessoalmente. O pedido entra em "Pedidos aguardando orçamento" e aparece no perfil dele.</p>
+{# Cliente sem cadastro: quem digita os dados e a senha é ele (LGPD). Duas saídas para o atendente. #}
+            {% set cadastro_do_cliente %}
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                <a href="{{ url_for('register') }}" class="btn-remover" style="text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-lock" aria-hidden="true"></i> Abrir cadastro para o cliente digitar aqui
+                </a>
+                <a href="mailto:?subject={{ 'Seu cadastro na JB Ferramentas'|urlencode }}&body={{ ('Olá! Para fazer o seu cadastro na JB Ferramentas, abra este endereço e preencha os seus dados: ' ~ endereco_do_cadastro)|urlencode }}"
+                   class="btn-remover" style="text-decoration: none; font-size: 0.85rem;">
+                    <i class="fas fa-envelope" aria-hidden="true"></i> Enviar o link do cadastro por e-mail
+                </a>
+            </div>
+            <small style="display: block; color: #aaaaaa; margin-top: 8px;">Ao abrir o cadastro, o aparelho fica travado nessa tela: entregue ao cliente, ele digita os dados e a senha, e você destrava com a sua senha.{% if not site_publico %} O link do e-mail usa o endereço que você está usando agora; para o cliente abrir de fora da loja, defina ENDERECO_DO_SITE no arquivo .env.{% endif %}</small>
+            {% endset %}
+            {% if clientes %}
+            <form method="POST" action="{{ url_for('abrir_servico_no_balcao') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                    <div class="input-group full-width">
+                        <label for="balcao_cliente">Cliente</label>
+                        <select id="balcao_cliente" name="id_cliente" required>
+                            <option value="">Escolha o cliente</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nome }} · CPF/CNPJ {{ cliente.documento }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="balcao_equipamento">Ferramenta (marca e modelo)</label>
+                        <input type="text" id="balcao_equipamento" name="detalhes_equipamento" maxlength="200" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="balcao_descricao">Problema informado pelo cliente</label>
+                        <input type="text" id="balcao_descricao" name="descricao" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Abrir serviço</button>
+                </div>
+            </form>
+            <p style="color: #aaaaaa; margin-top: 12px;">Cliente sem cadastro?</p>
+            {{ cadastro_do_cliente }}
+            {% else %}
+            <p style="color: #aaaaaa;">Nenhum cliente cadastrado ainda.</p>
+            {{ cadastro_do_cliente }}
+            {% endif %}
+        </section>
+
+        <section aria-labelledby="titulo-pendentes">
+            <h2 id="titulo-pendentes" class="section-title"><i class="fas fa-screwdriver-wrench" aria-hidden="true" style="color: #ff6600;"></i> Pedidos aguardando orçamento ({{ servicos|length }})</h2>
+            {% if servicos %}
+            <div class="servicos-grid">
+                {% for servico in servicos %}
+                <article class="servico-card">
+                    <h3>#{{ servico.id }} · {{ servico.cliente }}</h3>
+                    <p class="servico-data">Aberto em {{ servico.data.strftime('%d/%m/%Y') }}</p>
+                    {% if servico.equipamento %}<p class="servico-problema"><strong>{{ servico.equipamento }}</strong></p>{% endif %}
+                    <p class="servico-problema">{{ servico.descricao }}</p>
+                    {% include '_pecas_do_servico.html' %}
+
+                    <details>
+                        <summary>Fazer orçamento</summary>
+                        <form method="POST" action="{{ url_for('atualizar_orcamento', id_servico=servico.id) }}" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="input-group">
+                                <label for="valor_{{ servico.id }}">Mão de obra (R$) - as peças lançadas são somadas</label>
+                                <input type="number" id="valor_{{ servico.id }}" name="valor_servico" min="0" step="0.01" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="status_{{ servico.id }}">Novo status</label>
+                                <select id="status_{{ servico.id }}" name="status_servico" required>
+                                    <option value="Aguardando Aprovação">Aguardando Aprovação (cliente decide)</option>
+                                    <option value="Concluído">Concluído</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="dano_{{ servico.id }}">Diagnóstico</label>
+                                <input type="text" id="dano_{{ servico.id }}" name="detalhes_dano" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="foto_{{ servico.id }}">Foto (PNG, JPG ou WEBP, opcional)</label>
+                                <input type="file" id="foto_{{ servico.id }}" name="imagem_dano" accept=".png,.jpg,.jpeg,.webp">
+                            </div>
+                            <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Salvar orçamento</button>
+                        </form>
+                    </details>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="painel-aviso">
+                <i class="fas fa-circle-info" aria-hidden="true"></i>
+                Nenhum serviço pendente no momento.
+            </div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

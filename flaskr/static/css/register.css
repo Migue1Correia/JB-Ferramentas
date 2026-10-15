@@ -170,7 +170,7 @@ body{
     padding: 12px;
     border: none;
     border-radius: 30px;
-    background: linear-gradient(to bottom, #ff1a1a, #cc0000);
+    background: linear-gradient(to bottom, #d90000, #b80000);
     color: white;
     font-size: 13px;
     font-weight: bold;
@@ -286,7 +286,7 @@ body{
     display: inline-block;
     padding: 12px 30px;
     border-radius: 30px;
-    background: linear-gradient(to bottom, #ff1a1a, #cc0000);
+    background: linear-gradient(to bottom, #d90000, #b80000);
     color: white;
     text-decoration: none;
     font-size: 13px;

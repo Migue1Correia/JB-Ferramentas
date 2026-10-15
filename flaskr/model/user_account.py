@@ -10,7 +10,7 @@ class UserAccountModel:
         :param password: Senha
         :return: True, se autenticação estiver certo. False se autenticação estiver errado.
         """
-        if user == "" or password == "":
+        if not user or not password:
             return False
 
         arg = f"SELECT senha FROM usuarios where nome_usuario=%s and ativo='1';"
@@ -54,36 +54,109 @@ class UserAccountModel:
         return True
 
     @staticmethod
-    def update(current_username, username="", password="", id_perfil="", active=True):
+    def listar():
         """
-        Função para atualização dos dados de usuário
-        :param current_username: nome do usuário em que os dados serão atualizados
-        :param username: nome de usuário. Padrão como "".
-        :param password: Senha em formato de Hash. Padrão como "".
-        :param id_perfil: Id do perfil. Padrão como "".
-        :param active: Se conta está ativo. Padrão como True.
-        :return: True, se dados foram atualizados. False se ocorreu um erro no meio do processo.
+        Função para listar todos os usuários com o perfil de cada um
+        :return: Lista de dicionários (id, usuario, nome, id_perfil, ativo). Lista vazia se ocorrer um erro.
         """
-        if (current_username is None) or (current_username == ""):
-            return False
+        arg = """
+            SELECT u.id, u.nome_usuario, p.nome, u.id_perfil, u.ativo
+            FROM usuarios u JOIN pessoas p ON p.id = u.id_pessoa
+            ORDER BY u.nome_usuario;
+        """
+        res = db_execute(arg, fetch_type="all")
+        if not res[0]:
+            print(res[1])
+            return []
+        return [{"id": linha[0], "usuario": linha[1], "nome": linha[2], "id_perfil": linha[3],
+                 "ativo": bool(linha[4])} for linha in res[1]]
 
-        user_infos = UserAccountModel.get(current_username)
-        if user_infos is None:
-            return False
-
-        if username == "":
-            username    = user_infos["username"]
-        if password == "":
-            password    = user_infos["password"]
-        if id_perfil == "":
-            id_perfil   = user_infos["id_perfil"]
-
-        arg = "UPDATE usuarios SET nome_usuario=%s, senha=%s, id_perfil=%s, ativo=%s WHERE nome_usuario=%s;"
-        res = db_execute(arg, username, password, id_perfil, active, current_username, fetch_type="all")
+    @staticmethod
+    def definir_ativo(id_usuario, ativo):
+        """
+        Função para desativar ou reativar uma conta. Conta desativada não faz login
+        e é deslogada na página seguinte.
+        :param id_usuario: Id do usuário
+        :param ativo: True para ativar, False para desativar
+        :return: True, se a conta foi alterada. False, se ocorreu um erro no meio do processo.
+        """
+        res = db_execute("UPDATE usuarios SET ativo=%s WHERE id=%s;", 1 if ativo else 0, id_usuario)
         if not res[0]:
             print(res[1])
             return False
         return True
+
+    @staticmethod
+    def mudar_senha(username, password):
+        """
+        Função para trocar a senha de um usuário
+        :param username: Nome do usuário
+        :param password: Nova senha, já em formato de Hash
+        :return: True, se a senha foi trocada. False, se ocorreu um erro no meio do processo.
+        """
+        res = db_execute("UPDATE usuarios SET senha=%s WHERE nome_usuario=%s;", password, username)
+        if not res[0]:
+            print(res[1])
+            return False
+        return True
+
+    @staticmethod
+    def mudar_perfil(id_usuario, id_perfil):
+        """
+        Função para trocar o perfil de um usuário
+        :param id_usuario: Id do usuário
+        :param id_perfil: Id do novo perfil
+        :return: True, se o perfil foi trocado. False, se ocorreu um erro (ex.: perfil que não existe).
+        """
+        res = db_execute("UPDATE usuarios SET id_perfil=%s WHERE id=%s;", id_perfil, id_usuario)
+        if not res[0]:
+            print(res[1])
+            return False
+        return True
+
+    @staticmethod
+    def get_perfil_e_senha(username):
+        """
+        Função usada a cada página para conferir se a sessão ainda vale
+        :param username: Nome do usuário
+        :return: (perfil, senha em Hash) da conta ativa. (None, None) se não existir ou estiver desativada.
+        """
+        arg = "SELECT p.perfil, u.senha FROM usuarios u JOIN perfis p ON p.id = u.id_perfil WHERE u.nome_usuario=%s AND u.ativo=1"
+        res = db_execute(arg, username, fetch_type="one")
+        if not res[0] or res[1] is None:
+            return None, None
+        return res[1]
+
+    @staticmethod
+    def get_perfil(username):
+        """
+        Função para saber o perfil de um usuário
+        :param username: Nome do usuário
+        :return: O nome do perfil (ex.: "Cliente", "Administrador"). None se não encontrar
+                 ou se a conta estiver desativada.
+        """
+        arg = "SELECT p.perfil FROM usuarios u JOIN perfis p ON p.id = u.id_perfil WHERE u.nome_usuario=%s AND u.ativo=1"
+        res = db_execute(arg, username, fetch_type="one")
+        if not res[0] or res[1] is None:
+            return None
+        return res[1][0]
+
+    @staticmethod
+    def id_do_perfil(perfil):
+        """
+        Função para achar o id de um perfil pelo nome. Se o perfil ainda não existir, ele é criado.
+        :param perfil: Nome do perfil (ex.: "Cliente")
+        :return: O id do perfil. None se ocorrer um erro no meio do processo.
+        """
+        res = db_execute("SELECT id FROM perfis WHERE perfil=%s", perfil, fetch_type="one")
+        if not res[0]:
+            print(res[1])
+            return None
+        if res[1]:
+            return res[1][0]
+
+        res = db_execute("INSERT INTO perfis (perfil) VALUES (%s)", perfil)
+        return res[1] if res[0] else None
 
     @staticmethod
     def get(username):
