@@ -1,0 +1,112 @@
+/* ==========================================================
+   ESTILOS DA TELA DE SERVIÇOS & DASHBOARD - JB FERRAMENTAS
+   ========================================================== */
+:root {
+  --jb-primary: #0056b3;
+  --jb-orange: #ff2b2b;
+  --jb-dark: #121820;
+  --jb-light: #f8f9fa;
+}
+
+body.dashboard-body {
+  background-color: #ffffff !important;
+  color: #333333 !important;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Conteúdo Principal */
+.dashboard-content {
+  flex: 1;
+}
+
+/* ==========================================================
+   CARDS DE SERVIÇOS COM ANIMAÇÃO AO PASSAR O MOUSE
+   ========================================================== */
+
+.service-card-item {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Card de Manutenção - Animação e Borda em Vermelho */
+.service-card-manutencao {
+  border-left: 6px solid #ff2b2b;
+}
+.service-card-manutencao:hover {
+  transform: translateY(-6px);
+  border-color: #ff2b2b;
+  box-shadow: 0 12px 25px rgba(255, 43, 43, 0.15);
+}
+.service-card-manutencao:hover .icon-manutencao {
+  color: #ff2b2b !important;
+  transform: scale(1.1);
+  transition: transform 0.3s ease;
+}
+
+/* Card de Compra ou Aluguel - Animação e Borda em Azul */
+.service-card-loja {
+  border-left: 6px solid #0056b3;
+}
+.service-card-loja:hover {
+  transform: translateY(-6px);
+  border-color: #0056b3;
+  box-shadow: 0 12px 25px rgba(0, 86, 179, 0.15);
+}
+.service-card-loja:hover .icon-loja {
+  color: #0056b3 !important;
+  transform: scale(1.1);
+  transition: transform 0.3s ease;
+}
+
+/* Transição suave para os ícones */
+.service-card-item i {
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+/* ==========================================================
+   ANIMAÇÃO DOS CARDS DE DESTAQUES DA SEMANA & PRODUTOS
+   ========================================================== */
+
+.product-card-custom {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.product-card-custom:hover {
+  transform: translateY(-6px); /* Efeito de saltar/elevar */
+  border-color: #cbd5e1;       /* Contorno cinza suave */
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.08); /* Sombra elegante */
+}
+
+/* ==========================================================
+   Painel de visualização 
+   ========================================================== */
+.service-card-painel {
+  border-left: 6px solid #d1d5db !important;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.service-card-painel:hover {
+  transform: translateY(-6px);
+  border-color: #cbd5e1 !important;
+  border-left-color: #FBC02D !important;
+  box-shadow: 0 12px 25px rgba(251, 192, 45, 0.25) !important;
+}
+
+.service-card-painel:hover .icon-painel {
+  color: #FBC02D !important;
+}

@@ -4,102 +4,107 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Serviços</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
+    <!-- CSS Separado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ferramentas.css') }}?v=1.3">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
-    <div class="bg-container-ferramentas"></div>
 
-<header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left"></i>Voltar
+    {% include '_header.html' %}
+
+    <!-- 3. Conteúdo Principal da Tela (Fundo Branco) -->
+    <main class="dashboard-content container py-5" style="background-color: #ffffff; min-height: 70vh;">
+        
+        <!-- Botão Voltar discreto no topo do conteúdo -->
+        <div class="mb-3">
+            <a href="javascript:history.back()" class="text-secondary text-decoration-none fw-bold d-inline-flex align-items-center gap-2">
+                <i class="fas fa-arrow-left"></i> Voltar à página anterior
             </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
-            </div>
         </div>
 
-<section class="logo-section">
-    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-        <div class="logo-wrapper">
-            <div class="logo-box">
-                <h1>JB</h1>
+        <!-- Seção de Boas-Vindas -->
+        <section class="welcome-section mb-4">
+            <div class="welcome-container" style="text-align: left;">
+                {% if usuario_logado %}
+                    <h1 class="welcome-text text-dark" style="font-size: 2.3rem; font-weight: 800; margin-bottom: 5px;">
+                        Olá, {{ usuario_logado }}!
+                    </h1>
+                    <p class="welcome-subtext text-muted" style="font-size: 1.05rem;">
+                        Selecione um serviço para continuar
+                    </p>
+                {% else %}
+                    <h1 class="welcome-text text-dark" style="font-size: 2.3rem; font-weight: 800; margin-bottom: 5px;">
+                        Olá!
+                    </h1>
+                    <p class="welcome-subtext text-muted" style="font-size: 1.1rem;">
+                        Para continuar, <a href="{{ url_for('login') }}" style="color: #ff2b2b; text-decoration: underline; font-weight: bold;">faça seu login</a>
+                    </p>
+                {% endif %}
             </div>
-            <h2 class="company-subname">FERRAMENTAS</h2>
-            <div class="tool-icons-row">
-                <i class="fas fa-screwdriver"></i>
-                <i class="fas fa-wrench"></i>
-                <i class="fas fa-hammer"></i>
-            </div>
-        </div>
-    </a>
-</section>
-    </header>
-
-    <main class="dashboard-content">
-        <section class="logo-section">
-                       
-<div class="welcome-container" style="margin-top: 25px; text-align: left;">
-    {% if usuario_logado %}
-        <h1 class="welcome-text" style="font-size: 2.5rem; font-weight: bold; margin-bottom: 5px; color: #ffffff;">
-            Olá, {{ usuario_logado }}!
-        </h1>
-        <p class="welcome-subtext" style="color: #888888; font-size: 1rem;">
-            Selecione um serviço para continuar
-        </p>
-    {% else %}
-        <h1 class="welcome-text" style="font-size: 2.5rem; font-weight: bold; margin-bottom: 5px; color: #ffffff;">
-            Olá!
-        </h1>
-        <p class="welcome-subtext" style="font-size: 1.1rem; color: #ffffff;">
-            Para continuar, <a href="{{ url_for('login') }}" style="color: #ff0000; text-decoration: underline; font-weight: bold;">faça seu login</a>
-        </p>
-    {% endif %}
-</div>
         </section>
 
-        <section class="service-cards">
-            <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-                <div class="card-item card-orange">
-                    <div class="card-info">
-                        <i class="fas fa-tools icon-main"></i>
-                        <div>
-                            <h3>Manutenção</h3>
-                            <p>Serviço especializado para reparo de ferramentas.</p>
+        <!-- Cards de Serviços (Manutenção e Compra/Aluguel) -->
+        <section class="service-cards mb-5">
+            <div class="row g-4">
+                <!-- Card de Manutenção -->
+                <div class="col-md-6">
+                    <a href="{{ url_for('manutencao_page') }}" class="text-decoration-none">
+                        <div class="service-card-item service-card-manutencao h-100">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-3">
+                                    <i class="fas fa-tools fs-1 text-secondary icon-manutencao"></i>
+                                    <div>
+                                        <h3 class="h5 fw-bold mb-1 text-dark">Manutenção</h3>
+                                        <p class="text-muted small mb-0">Serviço especializado para reparo de ferramentas.</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-secondary"></i>
+                            </div>
                         </div>
-                    </div>
-                    <i class="fas fa-chevron-right arrow"></i>
+                    </a>
                 </div>
-            </a>
 
-            <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-                <div class="card-item card-glass">
-                    <div class="card-info">
-                        <i class="fas fa-shopping-cart icon-main"></i>
-                        <div>
-                            <h3>Compra ou Aluguel</h3>
-                            <p>Ferramentas para comprar ou alugar de forma prática.</p>
+                <!-- Card de Compra ou Aluguel -->
+                <div class="col-md-6">
+                    <a href="{{ url_for('loja_page') }}" class="text-decoration-none">
+                        <div class="service-card-item service-card-loja h-100">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-3">
+                                    <i class="fas fa-shopping-cart fs-1 text-secondary icon-loja"></i>
+                                    <div>
+                                        <h3 class="h5 fw-bold mb-1 text-dark">Compra ou Aluguel</h3>
+                                        <p class="text-muted small mb-0">Ferramentas para comprar ou alugar de forma prática.</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-secondary"></i>
+                            </div>
                         </div>
-                    </div>
-                    <i class="fas fa-chevron-right arrow"></i>
+                    </a>
                 </div>
-            </a>
+            </div>
 
-    {% include '_card_painel.html' %}
+            <!-- Inclusão de painel adicional se houver -->
+            {% include '_card_painel.html' %}
+            
         </section>
-
-        <section class="showcase-section">
-            <h2 class="section-title">Destaques da semana</h2>
-            <div class="products-grid">
+        
+        <!-- Seção de Destaques da Semana -->
+        <section class="showcase-section mt-5">
+            <h2 class="section-title h4 fw-bold mb-4 text-dark border-bottom pb-2 border-light">Destaques da semana</h2>
+            <div class="row g-4">
                 {% for item in ferramentas %}
-                <div class="product-card">
-                    <img src="{{ url_for('static', filename=item.imagem) }}" alt="{{ item.nome }}">
-                    <div class="prod-details">
-                        <h3>{{ item.nome }}</h3>
-                        <p class="price">{{ item.preco|moeda }}{% if item.tipo == 'Alugar' %}/dia{% endif %}</p>
-                        <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
-                            <button class="{% if item.tipo == 'Alugar' %}btn-buy{% else %}btn-dark{% endif %}">
+                <div class="col-md-4">
+                    <div class="product-card-custom p-3 h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <img src="{{ url_for('static', filename=item.imagem) }}" class="card-img-top rounded mb-3" alt="{{ item.nome }}" style="height: 180px; object-fit: cover;">
+                            <h3 class="h6 fw-bold mb-2 text-dark">{{ item.nome }}</h3>
+                            <p class="price text-danger fw-bold fs-5">{{ item.preco|moeda }}{% if item.tipo == 'Alugar' %}/dia{% endif %}</p>
+                        </div>
+                        <a href="{{ url_for('detalhe_produto', id=item.id) }}" class="text-decoration-none w-100 mt-3">
+                            <button class="btn w-100 {% if item.tipo == 'Alugar' %}btn-danger{% else %}btn-dark{% endif %} fw-bold">
                                 {{ item.tipo }}
                             </button>
                         </a>
@@ -108,6 +113,59 @@
                 {% endfor %}
             </div>
         </section>
+
     </main>
+
+    <!-- 4. Rodapé Completo da Landing Page -->
+    <footer style="background-color: #121820; color: #9ca3af; padding: 0; margin-top: auto;">
+        <!-- Faixa Vermelha e Chamada de Ação -->
+        <div style="border-top: 3px solid #ff2b2b; background-color: #121820; padding: 60px 20px; text-align: center;">
+            <div class="container">
+                <h2 style="color: #fff; font-weight: 700; margin-bottom: 15px;">Pronto para otimizar a sua obra?</h2>
+                <p style="color: #9ca3af; margin-bottom: 25px; font-size: 1.05rem;">Aceda ao sistema agora para alugar ferramentas ou solicitar uma ordem de serviço de manutenção.</p>
+                <a href="{{ url_for('loja_page') }}" class="btn btn-danger px-5 py-3 fw-bold" style="background-color: #ff2b2b; border: none; border-radius: 6px;">
+                    Aceder à Loja
+                </a>
+            </div>
+        </div>
+
+        <!-- Conteúdo do Rodapé (Logo e Links) -->
+        <div style="background-color: #0b0f14; padding: 50px 0 20px; border-top: 1px solid #1f2937;">
+            <div class="container">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" height="38" style="mix-blend-mode: screen; background: transparent;">
+                            <div class="brand-text">
+                                <span class="brand-title text-danger fs-6">FERRAMENTAS</span>
+                                <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
+                            </div>
+                        </div>
+                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp[cite: 3].</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Links Rápidos</h5>
+                        <ul class="list-unstyled small">
+                            <li class="mb-2"><a href="{{ url_for('main_page') }}" style="color: #9ca3af; text-decoration: none;">Início</a></li>
+                            <li class="mb-2"><a href="{{ url_for('loja_page') }}" style="color: #9ca3af; text-decoration: none;">Catálogo</a></li>
+                            <li class="mb-2"><a href="{{ url_for('manutencao_page') }}" style="color: #9ca3af; text-decoration: none;">Manutenção</a></li>
+                            <li class="mb-2"><a href="{{ url_for('login') }}" style="color: #9ca3af; text-decoration: none;">Entrar no Sistema</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Contato & Suporte</h5>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-phone me-2 text-danger"></i> (11) 2362-5394</p>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-envelope me-2 text-danger"></i> contato@jbferramentas.com.br</p>
+                    </div>
+                </div>
+                <hr style="border-color: #374151;">
+                <div class="text-center small py-2">
+                    <p class="mb-0 text-light opacity-75">&copy; JB-Ferramentas - Todos os direitos reservados.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

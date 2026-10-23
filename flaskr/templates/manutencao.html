@@ -3,126 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manutenção - JB Ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
+    <title>JB Ferramentas - Manutenção de Equipamentos</title>
+    <!-- CSS Separado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ferramentas.css') }}?v=2.1">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="dashboard-body">
-    <div class="bg-container-manutencao"></div>
+<body>
 
-    <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left"></i> Voltar
+    {% include '_header.html' %}
+
+    <!-- 3. Conteúdo Principal da Tela (Fundo Branco Limpo) -->
+    <main class="container py-5 my-auto" style="flex: 1; background-color: #ffffff;">
+        
+        <!-- Botão Voltar -->
+        <div class="mb-4">
+            <a href="javascript:history.back()" class="text-secondary text-decoration-none fw-bold d-inline-flex align-items-center gap-2">
+                <i class="fas fa-arrow-left"></i> Voltar à página anterior
             </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
-            </div>
         </div>
 
-        <section class="logo-section">
-    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-        <div class="logo-wrapper">
-            <div class="logo-box">
-                <h1>JB</h1>
-            </div>
-            <h2 class="company-subname">FERRAMENTAS</h2>
-            <div class="tool-icons-row">
-                <i class="fas fa-screwdriver"></i>
-                <i class="fas fa-wrench"></i>
-                <i class="fas fa-hammer"></i>
-            </div>
-        </div>
-    </a>
-</section>
-    </header>
+        <!-- Exibição de mensagens flash se houver -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm mb-4" role="alert">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    <main class="oficina-main-content">
-       <section class="service-cards" style="margin-bottom: 30px;">
-    <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-        <div class="card-item card-home">
-            <div class="card-info">
-                <i class="fas fa-home icon-main"></i>
-                <div>
-                    <h3>Início</h3>
-                    <p>Voltar para a página principal.</p>
+        <!-- Seção de Status dos Equipamentos -->
+        <div class="row g-4 mb-5" style="max-width: 900px; margin: 0 auto;">
+            <div class="col-md-6">
+                <div class="card p-3 border-0 shadow-sm bg-light rounded-4 h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-success text-white p-3 rounded-3 fs-4">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div>
+                            <span class="text-muted small d-block">Pronto para Retirada</span>
+                            <h3 class="h6 fw-bold text-dark mb-0">Nenhum equipamento pronto</h3>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <i class="fas fa-chevron-right arrow"></i>
-        </div>
-    </a>
-
-    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-        <div class="card-item card-orange">
-            <div class="card-info">
-                <i class="fas fa-tools icon-main"></i>
-                <div>
-                    <h3>Manutenção</h3>
-                    <p>Serviço especializado para reparo de ferramentas.</p>
-                </div>
-            </div>
-            <i class="fas fa-chevron-right arrow"></i>
-        </div>
-    </a>
-
-    <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-        <div class="card-item card-glass">
-            <div class="card-info">
-                <i class="fas fa-shopping-cart icon-main"></i>
-                <div>
-                    <h3>Compra ou Aluguel</h3>
-                    <p>Ferramentas para comprar ou alugar de forma prática.</p>
-                </div>
-            </div>
-            <i class="fas fa-chevron-right arrow"></i>
-        </div>
-    </a>
-
-    {% include '_card_painel.html' %}
-</section>
-
-        <div class="status-overview-row">
-            <div class="card-status status-concluido">
-                <div class="status-icon-wrapper">
-                    <i class="fa-solid fa-circle-check"></i>
-                </div>
-                <div class="status-info">
-                    <span>Pronto para Retirada</span>
-                    <p>Nenhum equipamento pronto</p>
-                </div>
-            </div>
-
-            <div class="card-status status-reparo">
-                <div class="status-icon-wrapper">
-                    <i class="fa-solid fa-gears"></i>
-                </div>
-                <div class="status-info">
-                    <span>Em manutenção</span>
-                    <p>01 Equipamento - teste</p>
+            <div class="col-md-6">
+                <div class="card p-3 border-0 shadow-sm bg-light rounded-4 h-100">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-warning text-dark p-3 rounded-3 fs-4">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <div>
+                            <span class="text-muted small d-block">Em manutenção</span>
+                            <h3 class="h6 fw-bold text-dark mb-0">01 Equipamento - teste</h3>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="form-container">
-            <h3><i class="fa-solid fa-file-signature"></i> Solicitar Novo Reparo</h3>
-            
-            <form action="/manutencao" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="input-group">
-                    <label for="id_ferramenta">ID ou Nome da Ferramenta</label>
-                    <input type="text" id="id_ferramenta" name="detalhes_equipamento" placeholder="Ex: FUR-001 ou Furadeira Bosch" required>
-                </div>
-                
-                <div class="input-group">
-                    <label for="diagnostico">Descrição do Problema (Diagnóstico)</label>
-                    <textarea id="diagnostico" name="descricao" rows="4" placeholder="Descreva detalhadamente o que está acontecendo com o equipamento..." required></textarea>
+        <!-- Bloco: Solicitar Novo Reparo -->
+        <div class="card shadow-lg p-4 p-md-5 border-0 rounded-4 bg-white" style="max-width: 900px; margin: 0 auto;">
+            <div class="d-flex align-items-center gap-2 mb-4 border-bottom pb-3">
+                <i class="fas fa-wrench text-danger fs-4"></i>
+                <h2 class="h4 fw-bold text-dark mb-0">Solicitar Novo Reparo</h2>
+            </div>
+
+            <form action="{{ url_for('manutencao_page') }}" method="POST">
+                <!-- Token CSRF de Segurança -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">ID OU NOME DA FERRAMENTA</label>
+                    <input type="text" name="ferramenta" class="form-control bg-light shadow-none" placeholder="Ex: FUR-001 ou Furadeira Bosch" required>
                 </div>
 
-                <button type="submit" class="btn-submit-oficina">
-                    <i class="fa-solid fa-paper-plane"></i> Enviar para Oficina
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-secondary">DESCRIÇÃO DO PROBLEMA (DIAGNÓSTICO)</label>
+                    <textarea name="descricao" rows="4" class="form-control bg-light shadow-none" placeholder="Descreva detalhadamente o que está acontecendo com o equipamento..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-danger w-100 py-3 fw-bold shadow-sm" style="background-color: #ff2b2b; border: none; border-radius: 8px;">
+                    <i class="fas fa-paper-plane me-2"></i> Enviar para Oficina
                 </button>
             </form>
         </div>
+
     </main>
+
+    <!-- 4. Rodapé Oficial Completo da Landing Page -->
+    <footer style="background-color: #121820; color: #9ca3af; padding: 0; margin-top: auto;">
+        <!-- Faixa Vermelha e Chamada de Ação -->
+        <div style="border-top: 3px solid #ff2b2b; background-color: #121820; padding: 60px 20px; text-align: center;">
+            <div class="container">
+                <h2 style="color: #fff; font-weight: 700; margin-bottom: 15px;">Pronto para otimizar a sua obra?</h2>
+                <p style="color: #9ca3af; margin-bottom: 25px; font-size: 1.05rem;">Aceda ao sistema agora para alugar ferramentas ou solicitar uma ordem de serviço de manutenção.</p>
+                <a href="{{ url_for('loja_page') }}" class="btn btn-danger px-5 py-3 fw-bold" style="background-color: #ff2b2b; border: none; border-radius: 6px;">
+                    Aceder à Loja
+                </a>
+            </div>
+        </div>
+
+        <!-- Conteúdo do Rodapé (Logo e Links) -->
+        <div style="background-color: #0b0f14; padding: 50px 0 20px; border-top: 1px solid #1f2937;">
+            <div class="container">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" height="38" style="mix-blend-mode: screen; background: transparent;">
+                            <div class="brand-text">
+                                <span class="brand-title text-danger fs-6">FERRAMENTAS</span>
+                                <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
+                            </div>
+                        </div>
+                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp[cite: 3].</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Links Rápidos</h5>
+                        <ul class="list-unstyled small">
+                            <li class="mb-2"><a href="{{ url_for('main_page') }}" style="color: #9ca3af; text-decoration: none;">Início</a></li>
+                            <li class="mb-2"><a href="{{ url_for('loja_page') }}" style="color: #9ca3af; text-decoration: none;">Catálogo</a></li>
+                            <li class="mb-2"><a href="{{ url_for('manutencao_page') }}" style="color: #9ca3af; text-decoration: none;">Manutenção</a></li>
+                            <li class="mb-2"><a href="{{ url_for('login') }}" style="color: #9ca3af; text-decoration: none;">Entrar no Sistema</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Contato & Suporte</h5>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-phone me-2 text-danger"></i> (11) 2362-5394</p>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-envelope me-2 text-danger"></i> contato@jbferramentas.com.br</p>
+                    </div>
+                </div>
+                <hr style="border-color: #374151;">
+                <div class="text-center small py-2">
+                    <p class="mb-0 text-light opacity-75">&copy; JB-Ferramentas - Todos os direitos reservados.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

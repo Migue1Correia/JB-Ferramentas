@@ -3,144 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catálogo JB - Compra e Aluguel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
+    <title>JB Ferramentas - Catálogo da Loja</title>
+    <!-- CSS Separado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ferramentas.css') }}?v=1.8">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="dashboard-body">
-    <div class="bg-container-loja"></div>
-    
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div role="status" style="{% if category == 'danger' %}background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;{% else %}background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;{% endif %} padding: 15px; margin: 20px auto; max-width: 1200px; border-radius: 4px; text-align: center; font-weight: bold; font-family: sans-serif;">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+<body>
 
-    <header class="dashboard-header">
-        <div class="header-top-bar">
-            <a href="javascript:history.back()" style="color: inherit; text-decoration: none; font-weight: bold;">
-                <i class="fas fa-arrow-left"></i> Voltar
+    <!-- Cabeçalho / Navegação Completo e Padrão -->
+    {% include '_header.html' %}
+
+    <!-- 3. Conteúdo Principal da Loja (Fundo Branco Limpo) -->
+    <main class="dashboard-content container py-5" style="background-color: #ffffff; min-height: 70vh;">
+        
+        <!-- Botão Voltar -->
+        <div class="mb-4">
+            <a href="javascript:history.back()" class="text-secondary text-decoration-none fw-bold d-inline-flex align-items-center gap-2">
+                <i class="fas fa-arrow-left"></i> Voltar à página anterior
             </a>
-            <div class="user-icon-top">
-                <a href="{{ url_for('perfil_page') }}" class="back-link"> <i class="fas fa-user-circle"></i> </a>
-            </div>
         </div>
 
-        <section class="logo-section">
-    <a href="{{ url_for('main_page') }}" style="text-decoration: none; color: inherit;">
-        <div class="logo-wrapper">
-            <div class="logo-box">
-                <h1>JB</h1>
-            </div>
-            <h2 class="company-subname">FERRAMENTAS</h2>
-            <div class="tool-icons-row">
-                <i class="fas fa-screwdriver"></i>
-                <i class="fas fa-wrench"></i>
-                <i class="fas fa-hammer"></i>
-            </div>
-        </div>
-    </a>
-</section>
+        <!-- Exibição de mensagens flash se houver -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm mb-4" role="alert">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-        <div class="category-filters-container">
-            <button class="filter-btn active">TODOS</button>
-            <button class="filter-btn"><i class="fas fa-shopping-basket"></i> COMPRAR</button>
-            <button class="filter-btn"><i class="fas fa-clock"></i> ALUGAR</button>
+        <!-- Título da Seção -->
+        <div class="mb-5">
+            <h1 class="fw-bold text-dark mb-2">Catálogo Completo da Loja</h1>
+            <p class="text-muted">Explore todas as ferramentas disponíveis para compra ou aluguer.</p>
         </div>
-    </header>
 
-    <main class="oficina-main-content">
-       <section class="service-cards" style="margin-bottom: 30px;">
-    <a href="{{ url_for('ferramentas_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-        <div class="card-item card-home">
-            <div class="card-info">
-                <i class="fas fa-home icon-main"></i>
-                <div>
-                    <h3>Início</h3>
-                    <p>Voltar para a página principal.</p>
+        <!-- Grelha de Produtos da Loja -->
+        <div class="row g-4">
+            {% if ferramentas %}
+                {% for item in ferramentas %}
+                <div class="col-md-4">
+                    <div class="product-card-custom p-3 h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <img src="{{ url_for('static', filename=item.imagem) }}" class="card-img-top rounded mb-3" alt="{{ item.nome }}" style="height: 180px; object-fit: cover;">
+                            <h3 class="h6 fw-bold mb-2 text-dark">{{ item.nome }}</h3>
+                            <p class="price text-danger fw-bold fs-5">{{ item.preco|moeda }}{% if item.tipo == 'Alugar' %}/dia{% endif %}</p>
+                        </div>
+                        <a href="{{ url_for('detalhe_produto', id=item.id) }}" class="text-decoration-none w-100 mt-3">
+                            <button class="btn w-100 {% if item.tipo == 'Alugar' %}btn-danger{% else %}btn-dark{% endif %} fw-bold">
+                                Ver Detalhes / {{ item.tipo }}
+                            </button>
+                        </a>
+                    </div>
                 </div>
-            </div>
-            <i class="fas fa-chevron-right arrow"></i>
-        </div>
-    </a>
-
-    <a href="{{ url_for('manutencao_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-        <div class="card-item card-orange">
-            <div class="card-info">
-                <i class="fas fa-tools icon-main"></i>
-                <div>
-                    <h3>Manutenção</h3>
-                    <p>Serviço especializado para reparo de ferramentas.</p>
+                {% endfor %}
+            {% else %}
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted fs-5">Nenhuma ferramenta encontrada no catálogo de momento.</p>
                 </div>
-            </div>
-            <i class="fas fa-chevron-right arrow"></i>
+            {% endif %}
         </div>
-    </a>
 
-    <a href="{{ url_for('loja_page') }}" style="text-decoration: none; color: inherit; display: block; flex: 1;">
-        <div class="card-item card-glass">
-            <div class="card-info">
-                <i class="fas fa-shopping-cart icon-main"></i>
-                <div>
-                    <h3>Compra ou Aluguel</h3>
-                    <p>Ferramentas para comprar ou alugar de forma prática.</p>
-                </div>
-            </div>
-            <i class="fas fa-chevron-right arrow"></i>
-        </div>
-    </a>
-
-    {% include '_card_painel.html' %}
-</section>
-
-        <div class="products-grid-layout">
-            {% for item in ferramentas %}
-            <div class="product-card" data-tipo="{{ item.tipo|lower }}">
-                <div class="prod-image-box">
-                    <img src="{{ url_for('static', filename=item.imagem) }}" alt="{{ item.nome }}">
-                </div>
-                <div class="prod-details">
-                    <h3>{{ item.nome }}</h3>
-                    <p class="price">{{ item.preco|moeda }}{% if item.tipo|lower == 'alugar' %}/dia{% endif %}</p>
-                    <a href="{{ url_for('detalhe_produto', id=item.id) }}" style="text-decoration: none; width: 100%;">
-                        <button class="{% if item.tipo|lower == 'alugar' %}btn-buy{% else %}btn-dark{% endif %}">
-                            {{ item.tipo }}
-                        </button>
-                    </a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
     </main>
 
-    <script>
-        const filters = document.querySelectorAll('.filter-btn');
-        const cards = document.querySelectorAll('.product-card');
+    <!-- 4. Rodapé Oficial Completo da Landing Page -->
+    <footer style="background-color: #121820; color: #9ca3af; padding: 0; margin-top: auto;">
+        <!-- Faixa Vermelha e Chamada de Ação -->
+        <div style="border-top: 3px solid #ff2b2b; background-color: #121820; padding: 60px 20px; text-align: center;">
+            <div class="container">
+                <h2 style="color: #fff; font-weight: 700; margin-bottom: 15px;">Pronto para otimizar a sua obra?</h2>
+                <p style="color: #9ca3af; margin-bottom: 25px; font-size: 1.05rem;">Aceda ao sistema agora para alugar ferramentas ou solicitar uma ordem de serviço de manutenção.</p>
+                <a href="{{ url_for('loja_page') }}" class="btn btn-danger px-5 py-3 fw-bold" style="background-color: #ff2b2b; border: none; border-radius: 6px;">
+                    Aceder à Loja
+                </a>
+            </div>
+        </div>
 
-        filters.forEach(filter => {
-            filter.addEventListener('click', () => {
-                filters.forEach(btn => btn.classList.remove('active'));
-                filter.classList.add('active');
+        <!-- Conteúdo do Rodapé (Logo e Links) -->
+        <div style="background-color: #0b0f14; padding: 50px 0 20px; border-top: 1px solid #1f2937;">
+            <div class="container">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" height="38" style="mix-blend-mode: screen; background: transparent;">
+                            <div class="brand-text">
+                                <span class="brand-title text-danger fs-6">FERRAMENTAS</span>
+                                <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
+                            </div>
+                        </div>
+                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp[cite: 3].</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Links Rápidos</h5>
+                        <ul class="list-unstyled small">
+                            <li class="mb-2"><a href="{{ url_for('main_page') }}" style="color: #9ca3af; text-decoration: none;">Início</a></li>
+                            <li class="mb-2"><a href="{{ url_for('loja_page') }}" style="color: #9ca3af; text-decoration: none;">Catálogo</a></li>
+                            <li class="mb-2"><a href="{{ url_for('manutencao_page') }}" style="color: #9ca3af; text-decoration: none;">Manutenção</a></li>
+                            <li class="mb-2"><a href="{{ url_for('login') }}" style="color: #9ca3af; text-decoration: none;">Entrar no Sistema</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Contato & Suporte</h5>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-phone me-2 text-danger"></i> (11) 2362-5394</p>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-envelope me-2 text-danger"></i> contato@jbferramentas.com.br</p>
+                    </div>
+                </div>
+                <hr style="border-color: #374151;">
+                <div class="text-center small py-2">
+                    <p class="mb-0 text-light opacity-75">&copy; JB-Ferramentas - Todos os direitos reservados.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-                const categoria = filter.textContent.toLowerCase();
-
-                cards.forEach(card => {
-                    const cardTipo = card.getAttribute('data-tipo');
-                    
-                    if (categoria === 'todos' || 
-                       (categoria.includes('comprar') && cardTipo !== 'alugar') || 
-                       (categoria.includes('alugar') && cardTipo === 'alugar')) {
-                        card.style.display = 'flex';
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
-            });
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

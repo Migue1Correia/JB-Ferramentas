@@ -4,115 +4,205 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JB Ferramentas - Painel de Vendas e Serviços</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
+    <!-- CSS Separado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ferramentas.css') }}?v=2.2">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js para os Gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="dashboard-body">
-{% include '_topo_colaborador.html' %}
+<body class="dashboard-body" style="background-color: #ffffff; display: flex; flex-direction: column; min-height: 100vh;">
 
-    <main class="dashboard-content">
-        <section class="welcome-box">
-            <h1>Painel de vendas e serviços</h1>
-            <p>Movimento dos últimos {{ dados.meses }} meses, pela data de abertura de cada serviço.</p>
-        </section>
+    <!-- Cabeçalho / Navegação Completo e Padrão -->
+    {% include '_header.html' %}
 
-        {% if dados.erro %}
-        <div class="painel-aviso" role="alert">
-            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-            Não foi possível consultar o banco de dados. Verifique a conexão e tente de novo.
+
+    <!-- 3. Conteúdo Principal da Tela (Fundo Branco Limpo) -->
+    <main class="container py-5 my-auto" style="flex: 1; background-color: #ffffff;">
+        
+        <!-- Botão Voltar -->
+        <div class="mb-4">
+            <a href="javascript:history.back()" class="text-secondary text-decoration-none fw-bold d-inline-flex align-items-center gap-2">
+                <i class="fas fa-arrow-left"></i> Voltar à página anterior
+            </a>
         </div>
-        {% elif dados.total_servicos == 0 %}
-        <div class="painel-aviso">
-            <i class="fas fa-circle-info" aria-hidden="true"></i>
-            Ainda não há vendas, aluguéis ou manutenções registrados nos últimos {{ dados.meses }} meses.
-            Os gráficos aparecem aqui assim que o primeiro serviço for registrado.
+
+        <!-- Título da Seção -->
+        <div class="mb-4">
+            <h1 class="h3 fw-bold text-dark mb-1">Painel de Vendas e Serviços</h1>
+            <p class="text-muted small">Visualize o resumo financeiro, gráficos de desempenho e o histórico mensal agregado.</p>
         </div>
-        {% else %}
 
-        <!-- Números de destaque -->
-        <section class="painel-indicadores" aria-label="Resumo do período">
-            <div class="painel-indicador">
-                <span>Faturamento total</span>
-                <strong>{{ dados.faturamento_total|moeda }}</strong>
-            </div>
-            {% for serie in dados.series %}
-            <div class="painel-indicador">
-                <span><i class="painel-cor painel-cor-{{ serie.chave }}" aria-hidden="true"></i>{{ serie.nome }}</span>
-                <strong>{{ serie.total_quantidade }}</strong>
-                <small>{{ serie.total_valor|moeda }}</small>
-            </div>
-            {% endfor %}
-        </section>
-
-        <!-- Gráficos -->
-        <section class="painel-graficos">
-            <div class="profile-card painel-grafico">
-                <div class="card-header">
-                    <i class="fas fa-sack-dollar" aria-hidden="true"></i>
-                    <h2>Faturamento por mês (R$)</h2>
-                </div>
-                <div class="painel-area-grafico">
-                    <canvas id="grafico-faturamento" role="img"
-                            aria-label="Gráfico de barras do faturamento por mês, separado em vendas, aluguéis e manutenções. Os mesmos números estão na tabela abaixo."></canvas>
+        <!-- Cards de Resumo Estatístico -->
+        <div class="row g-3 mb-5">
+            <div class="col-md-3">
+                <div class="card p-3 border-0 shadow-sm bg-light rounded-4 h-100">
+                    <span class="text-muted small fw-bold d-block mb-1">FATURAMENTO TOTAL</span>
+                    <h3 class="h5 fw-bold text-success mb-0">R$ 655,80</h3>
                 </div>
             </div>
-
-            <div class="profile-card painel-grafico">
-                <div class="card-header">
-                    <i class="fas fa-clipboard-list" aria-hidden="true"></i>
-                    <h2>Quantidade de serviços por mês</h2>
-                </div>
-                <div class="painel-area-grafico">
-                    <canvas id="grafico-quantidade" role="img"
-                            aria-label="Gráfico de barras da quantidade de serviços por mês, separada em vendas, aluguéis e manutenções. Os mesmos números estão na tabela abaixo."></canvas>
+            <div class="col-md-3">
+                <div class="card p-3 border-0 shadow-sm bg-light rounded-4 h-100">
+                    <span class="text-muted small fw-bold d-block mb-1">VENDAS</span>
+                    <h3 class="h5 fw-bold text-dark mb-0">2 <span class="text-muted small fw-normal">(R$ 419,90)</span></h3>
                 </div>
             </div>
-        </section>
-
-        <!-- Os mesmos dados em tabela, para leitores de tela e para conferir os valores -->
-        <section class="profile-card">
-            <div class="card-header">
-                <i class="fas fa-table" aria-hidden="true"></i>
-                <h2>Dados mês a mês</h2>
+            <div class="col-md-3">
+                <div class="card p-3 border-0 shadow-sm bg-light rounded-4 h-100">
+                    <span class="text-muted small fw-bold d-block mb-1">ALUGUÉIS</span>
+                    <h3 class="h5 fw-bold text-dark mb-0">0 <span class="text-muted small fw-normal">(R$ 0,00)</span></h3>
+                </div>
             </div>
+            <div class="col-md-3">
+                <div class="card p-3 border-0 shadow-sm bg-light rounded-4 h-100">
+                    <span class="text-muted small fw-bold d-block mb-1">MANUTENÇÕES</span>
+                    <h3 class="h5 fw-bold text-dark mb-0">0 <span class="text-muted small fw-normal">(R$ 0,00)</span></h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Seção de Gráficos -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-6">
+                <div class="card p-4 border-0 shadow-sm rounded-4 bg-white h-100">
+                    <h2 class="h6 fw-bold text-dark mb-3"><i class="fas fa-chart-line text-danger me-2"></i> Faturamento por mês (R$)</h2>
+                    <div style="height: 250px;">
+                        <canvas id="chartFaturamento"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-4 border-0 shadow-sm rounded-4 bg-white h-100">
+                    <h2 class="h6 fw-bold text-dark mb-3"><i class="fas fa-chart-bar text-danger me-2"></i> Quantidade de serviços por mês</h2>
+                    <div style="height: 250px;">
+                        <canvas id="chartServicos"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela Detalhada Mês a Mês -->
+        <div class="card shadow-lg p-4 border-0 rounded-4 bg-white">
+            <div class="d-flex align-items-center gap-2 mb-3 border-bottom pb-3">
+                <i class="fas fa-table text-danger fs-5"></i>
+                <h2 class="h5 fw-bold text-dark mb-0">Dados Mês a Mês</h2>
+            </div>
+
             <div class="table-responsive">
-                <table class="history-table painel-tabela">
-                    <thead>
+                <table class="table table-hover align-middle">
+                    <thead class="table-light text-uppercase small">
                         <tr>
-                            <th scope="col">Mês</th>
-                            {% for serie in dados.series %}
-                            <th scope="col">{{ serie.nome }}</th>
-                            {% endfor %}
+                            <th class="py-3">Mês</th>
+                            <th class="py-3">Vendas</th>
+                            <th class="py-3">Aluguel</th>
+                            <th class="py-3">Manutenção</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for rotulo in dados.rotulos %}
-                        {% set i = loop.index0 %}
                         <tr>
-                            <th scope="row">{{ rotulo }}</th>
-                            {% for serie in dados.series %}
-                            <td>{{ serie.quantidades[i] }} · {{ serie.valores[i]|moeda }}</td>
-                            {% endfor %}
+                            <td class="fw-bold text-dark">Out/26</td>
+                            <td>2 - R$ 419,90</td>
+                            <td>0 - R$ 0,00</td>
+                            <td>0 - R$ 0,00</td>
                         </tr>
-                        {% endfor %}
+                        <tr class="table-light fw-bold">
+                            <td>Total</td>
+                            <td>2 - R$ 419,90</td>
+                            <td>0 - R$ 0,00</td>
+                            <td>0 - R$ 0,00</td>
+                        </tr>
                     </tbody>
-                    <tfoot>
-                        <tr>
-                            <th scope="row">Total</th>
-                            {% for serie in dados.series %}
-                            <td>{{ serie.total_quantidade }} · {{ serie.total_valor|moeda }}</td>
-                            {% endfor %}
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
-        </section>
+        </div>
 
-        <!-- Dados que o painel_graficos.js usa para desenhar os gráficos -->
-        <script id="dados-painel" type="application/json">{{ dados|tojson }}</script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-        <script src="{{ url_for('static', filename='js/painel_graficos.js') }}"></script>
-        {% endif %}
     </main>
+
+    <!-- 4. Rodapé Oficial Completo da Landing Page -->
+    <footer style="background-color: #121820; color: #9ca3af; padding: 0; margin-top: auto;">
+        <!-- Faixa Vermelha e Chamada de Ação -->
+        <div style="border-top: 3px solid #ff2b2b; background-color: #121820; padding: 60px 20px; text-align: center;">
+            <div class="container">
+                <h2 style="color: #fff; font-weight: 700; margin-bottom: 15px;">Pronto para otimizar a sua obra?</h2>
+                <p style="color: #9ca3af; margin-bottom: 25px; font-size: 1.05rem;">Aceda ao sistema agora para alugar ferramentas ou solicitar uma ordem de serviço de manutenção.</p>
+                <a href="{{ url_for('loja_page') }}" class="btn btn-danger px-5 py-3 fw-bold" style="background-color: #ff2b2b; border: none; border-radius: 6px;">
+                    Aceder à Loja
+                </a>
+            </div>
+        </div>
+
+        <!-- Conteúdo do Rodapé (Logo e Links) -->
+        <div style="background-color: #0b0f14; padding: 50px 0 20px; border-top: 1px solid #1f2937;">
+            <div class="container">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" height="38" style="mix-blend-mode: screen; background: transparent;">
+                            <div class="brand-text">
+                                <span class="brand-title text-danger fs-6">FERRAMENTAS</span>
+                                <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
+                            </div>
+                        </div>
+                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp[cite: 3].</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Links Rápidos</h5>
+                        <ul class="list-unstyled small">
+                            <li class="mb-2"><a href="{{ url_for('main_page') }}" style="color: #9ca3af; text-decoration: none;">Início</a></li>
+                            <li class="mb-2"><a href="{{ url_for('loja_page') }}" style="color: #9ca3af; text-decoration: none;">Catálogo</a></li>
+                            <li class="mb-2"><a href="{{ url_for('manutencao_page') }}" style="color: #9ca3af; text-decoration: none;">Manutenção</a></li>
+                            <li class="mb-2"><a href="{{ url_for('login') }}" style="color: #9ca3af; text-decoration: none;">Entrar no Sistema</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Contato & Suporte</h5>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-phone me-2 text-danger"></i> (11) 2362-5394</p>
+                        <p class="small mb-1" style="color: #9ca3af;"><i class="fas fa-envelope me-2 text-danger"></i> contato@jbferramentas.com.br</p>
+                    </div>
+                </div>
+                <hr style="border-color: #374151;">
+                <div class="text-center small py-2">
+                    <p class="mb-0 text-light opacity-75">&copy; JB-Ferramentas - Todos os direitos reservados.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script para renderizar gráficos simulados com Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const ctxFaturamento = document.getElementById('chartFaturamento').getContext('2d');
+        new Chart(ctxFaturamento, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'],
+                datasets: [{
+                    label: 'Faturamento (R$)',
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 419.90],
+                    borderColor: '#ff2b2b',
+                    backgroundColor: 'rgba(255, 43, 43, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const ctxServicos = document.getElementById('chartServicos').getContext('2d');
+        new Chart(ctxServicos, {
+            type: 'bar',
+            data: {
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out'],
+                datasets: [{
+                    label: 'Qtd de Serviços',
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+                    backgroundColor: '#121820'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    </script>
 </body>
 </html>

@@ -1,60 +1,240 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JB Ferramentas - Soluções Completas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=1.9">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JB-Ferramentas | Gestão, Comércio & Manutenção</title>
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- CSS Separado -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
 </head>
 <body>
-    <div class="bg-container-tela-principal"></div>
 
-    <main class="landing-container">
-        <section class="logo-section">
-            <div class="logo-wrapper">
-                <div class="logo-box">
-                    <h1>JB</h1>
+  {% include '_header.html' %}
+
+  <!-- 3. Banner Principal -->
+  <header class="hero-section">
+    <div class="container text-center text-lg-start">
+      <div class="row align-items-center">
+        <div class="col-lg-7">
+          <h1 class="hero-title mb-3">Gestão, Comércio & Manutenção de Ferramentas <span>com Agilidade</span></h1>
+          <p class="hero-subtitle">Equipamentos revisados, suporte técnico especializado e facilidade para locação e compra na sua obra.</p>
+          <div class="d-flex flex-column flex-sm-row justify-content-center justify-content-lg-start gap-3">
+            <a href="{{ url_for('loja_page') }}" class="btn btn-jb-orange">
+              <i class="fas fa-search me-2"></i> Ver Catálogo
+            </a>
+            <a href="{{ url_for('manutencao_page') }}" class="btn btn-jb-outline">
+              <i class="fas fa-wrench me-2"></i> Solicitar Manutenção
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 4. Consulta de Ordem de Serviço (OS) -->
+  <section class="py-5 bg-white">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+          <div class="card shadow-lg p-4 p-md-5 border-0 rounded-4 bg-light">
+            <div class="mb-3">
+              <i class="fas fa-search text-danger fs-1 mb-2"></i>
+              <h3 class="fw-bold text-dark">Consulte o Andamento da sua OS</h3>
+              <p class="text-muted small">Digite o número da Ordem de Serviço para verificar o status em tempo real.</p>
+            </div>
+
+            <!-- Formulário de Busca -->
+            <form action="{{ url_for('main_page') }}" method="GET" class="input-group mb-3">
+              <input type="text" name="os_busca" class="form-control form-control-lg bg-white border shadow-none" placeholder="Digite o número da OS (Ex: 102)" value="{{ os_busca or '' }}" required>
+              <button class="btn btn-danger px-4 fw-bold" type="submit" style="background-color: #ff2b2b; border: none;">
+                <i class="fas fa-search me-1"></i> Consultar
+              </button>
+            </form>
+
+            <!-- Exibição do Resultado da Busca -->
+            {% if os_busca %}
+              {% if resultado_os %}
+                <div class="card mt-4 p-4 border-0 bg-white rounded-3 text-start shadow-sm">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="fas fa-clipboard-list text-danger me-2"></i> OS #{{ resultado_os.id }}</h5>
+                    <span class="badge bg-danger text-white px-3 py-2 text-uppercase" style="background-color: #ff2b2b !important; font-size: 0.8rem;">
+                      {{ resultado_os.status }}
+                    </span>
+                  </div>
+                  <hr class="my-2 border-secondary opacity-25">
+                  <p class="mb-1 text-dark"><strong>Ferramenta:</strong> {{ resultado_os.ferramenta }}</p>
+                  <p class="mb-1 text-dark"><strong>Modelo:</strong> {{ resultado_os.modelo or 'Não informado' }}</p>
+                  <p class="mb-0 text-dark"><strong>Marca:</strong> {{ resultado_os.marca or 'Não informada' }}</p>
                 </div>
-                <h2 class="company-subname">FERRAMENTAS</h2>
-                <div class="tool-icons-row">
-                    <i class="fas fa-screwdriver"></i>
-                    <i class="fas fa-wrench"></i>
-                    <i class="fas fa-hammer"></i>
+              {% else %}
+                <div class="alert alert-warning mt-4 border-0 shadow-sm text-center py-3 mb-0" role="alert">
+                  <i class="fas fa-exclamation-triangle me-2"></i> Nenhuma Ordem de Serviço encontrada com o número <strong>{{ os_busca }}</strong>.
                 </div>
-            </div>
-        </section>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        <section class="content-collumn">
-            <div class="text-content">
-                <h1 class="main-headline">Soluções completas<br>em ferramentas</h1>
-                <p class="description-text">
-                    Venda, aluguel e manutenção de equipamentos com qualidade e confiança.
-                </p>
-            </div>
+  <!-- 5. Diferenciais -->
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h6 class="text-danger text-uppercase fw-bold">Por que a JB-Ferramentas?</h6>
+        <h2 class="fw-bold">A Solução Completa para o seu Projeto</h2>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-3 text-center">
+          <div class="feature-card p-4 h-100">
+            <div class="feature-icon"><i class="fas fa-truck-loading"></i></div>
+            <h5 class="fw-bold">Logística Rápida</h5>
+            <p class="text-muted small">Agilidade no envio de equipamentos direto para o local da obra.</p>
+          </div>
+        </div>
+        <div class="col-md-3 text-center">
+          <div class="feature-card p-4 h-100">
+            <div class="feature-icon"><i class="fas fa-check-double"></i></div>
+            <h5 class="fw-bold">Rigidez na Revisão</h5>
+            <p class="text-muted small">Máquinas testadas e inspecionadas por profissionais qualificados.</p>
+          </div>
+        </div>
+        <div class="col-md-3 text-center">
+          <div class="feature-card p-4 h-100">
+            <div class="feature-icon"><i class="fas fa-user-cog"></i></div>
+            <h5 class="fw-bold">Manutenção Especializada</h5>
+            <p class="text-muted small">Orçamentos rápidos com fotos e controle completo de peças.</p>
+          </div>
+        </div>
+        <div class="col-md-3 text-center">
+          <div class="feature-card p-4 h-100">
+            <div class="feature-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+            <h5 class="fw-bold">Planos Flexíveis</h5>
+            <p class="text-muted small">Condições adaptadas para aluguel diário, semanal ou mensal.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-            <div class="action-buttons-group">
-                <a href="/ferramentas" class="btn-landing btn-red">
-                    <div class="btn-content">
-                        <i class="fas fa-tools"></i>
-                        <span>Serviços</span>
-                    </div>
-                    <i class="fas fa-chevron-right arrow-icon"></i>
-                </a>
-                
-                <a href="/login" class="btn-landing btn-red">
-                    <div class="btn-content">
-                        <i class="fas fa-user"></i>
-                        <span>Entrar</span>
-                    </div>
-                    <i class="fas fa-chevron-right arrow-icon"></i>
-                </a>
+  <!-- 6. Vitrine de Categorias -->
+  <section class="py-5">
+    <div class="container">
+      <div class="text-center mb-5">
+        <h6 class="text-primary text-uppercase fw-bold">Nossas Soluções</h6>
+        <h2 class="fw-bold">Equipamentos para Todas as Etapas</h2>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="category-box">
+            <img src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=600&q=80" alt="Perfuração">
+            <div class="category-overlay">
+              <h5 class="fw-bold mb-1">Perfuração & Demolição</h5>
+              <p class="small mb-0">Marteletes, furadeiras e rompedores industriais.</p>
             </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="category-box">
+            <img src="https://www.rubi.com/es/blog/wp-content/uploads/2022/07/2-Formato-Header-Blog-1050x550-2-47-1024x536.jpg" alt="Concretagem">
+            <div class="category-overlay">
+              <h5 class="fw-bold mb-1">Concretagem & Mistura</h5>
+              <p class="small mb-0">Betoneiras e vibradores de imersão.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="category-box">
+            <img src="https://images.unsplash.com/photo-1581092162384-8987c1d64718?auto=format&fit=crop&w=600&q=80" alt="Ferramentas Elétricas">
+            <div class="category-overlay">
+              <h5 class="fw-bold mb-1">Ferramentas Elétricas & Bateria</h5>
+              <p class="small mb-0">Parafusadeiras, serras e esmerilhadeiras.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="text-center mt-4">
+        <a href="{{ url_for('loja_page') }}" class="btn btn-jb-orange">
+          Acessar Catálogo Completo <i class="fas fa-arrow-right ms-2"></i>
+        </a>
+      </div>
+    </div>
+  </section>
 
-            <div class="first-purchase-info">
-                <p>É a sua primeira compra? <a href="/register" class="link-cadastre">Cadastre-se.</a></p>
+  <!-- 7. Seção Sobre Nós -->
+  <section id="sobre" class="py-5 bg-light">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-6 mb-4 mb-lg-0">
+          <img src="https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80" class="img-fluid rounded-3 shadow" alt="Equipe JB Ferramentas">
+        </div>
+        <div class="col-lg-6 ps-lg-5">
+          <h6 class="text-primary text-uppercase fw-bold">Sobre a JB-Ferramentas</h6>
+          <h2 class="fw-bold mb-3">Tradição em Comércio, Manutenção e Locação</h2>
+          <p class="text-muted">Projeto acadêmico desenvolvido no âmbito da Univesp com foco inovações e soluções eficientes para o comércio e manutenção de ferramentas[cite: 3]. Garantimos o suporte ideal para que sua operação não pare.</p>
+          <ul class="list-unstyled text-muted mb-4">
+            <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Equipamentos revisados e seguros.</li>
+            <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Transparência nos orçamentos de manutenção.</li>
+            <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Atendimento dedicado a clientes e parceiros.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Chamada Final de Ação (CTA) -->
+  <section class="cta-section text-center">
+    <div class="container">
+      <h2 class="fw-bold mb-3">Pronto para otimizar a sua obra?</h2>
+      <p class="lead mb-4">Aceda ao sistema agora para alugar ferramentas ou solicitar uma ordem de serviço de manutenção.</p>
+      <a href="{{ url_for('loja_page') }}" class="btn btn-jb-orange px-5">
+        Aceder à Loja
+      </a>
+    </div>
+  </section>
+
+  <!-- 9. Rodapé -->
+  <footer>
+    <div class="container">
+      <div class="row g-4 mb-4">
+        <div class="col-md-4">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" height="40" style="mix-blend-mode: screen; background: transparent;">
+            <div class="brand-text">
+              <span class="brand-title text-danger fs-6">FERRAMENTAS</span>
+              <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
             </div>
-        </section>
-    </main>
+          </div>
+          <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas[cite: 3]. Projeto Univesp[cite: 3].</p>
+        </div>
+        <div class="col-md-4">
+          <h5>Links Rápidos</h5>
+          <ul class="list-unstyled small">
+            <li class="mb-2"><a href="{{ url_for('main_page') }}">Início</a></li>
+            <li class="mb-2"><a href="{{ url_for('loja_page') }}">Catálogo</a></li>
+            <li class="mb-2"><a href="{{ url_for('manutencao_page') }}">Manutenção</a></li>
+            <li class="mb-2"><a href="{{ url_for('login') }}">Entrar no Sistema</a></li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h5>Contato & Suporte</h5>
+          <p class="small mb-1"><i class="fas fa-phone me-2 text-danger"></i> (11) 2362-5394</p>
+          <p class="small mb-1"><i class="fas fa-envelope me-2 text-danger"></i> contato@jbferramentas.com.br</p>
+        </div>
+      </div>
+      <hr class="border-secondary">
+      <div class="text-center small py-2">
+        <p class="mb-0 text-light opacity-75">&copy; JB-Ferramentas - Todos os direitos reservados.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

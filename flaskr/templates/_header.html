@@ -1,0 +1,90 @@
+<!-- Importação do CSS exclusivo do cabeçalho -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+
+<!-- Header Wrapper com fundo escuro unificado -->
+<header class="jb-header-wrapper">
+
+  <!-- 1. Topo Informativo -->
+  <div class="jb-top-bar d-none d-md-block py-2">
+    <div class="container d-flex justify-content-between align-items-center">
+      <div>
+        <i class="fas fa-phone-alt me-2 text-danger"></i> (11) 2362-5394
+        <span class="mx-3">|</span>
+        <i class="fas fa-envelope me-2 text-danger"></i> contato@jbferramentas.com.br
+      </div>
+      <div>
+        <i class="fas fa-tools me-2 text-danger"></i> Gestão comércio & manutenção de ferramentas
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Cabeçalho / Navegação com Logótipo Oficial -->
+  <nav class="navbar navbar-expand-lg navbar-dark jb-navbar">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url_for('main_page') }}">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="JB-Ferramentas Logo" height="36">
+        <div class="brand-text">
+          <span class="brand-title text-danger fw-bold" style="font-size: 0.9rem; display: block; line-height: 1.1;">FERRAMENTAS</span>
+          <span class="brand-subtitle text-white d-block" style="font-size: 0.55rem; letter-spacing: 0.5px; opacity: 0.9;">COMÉRCIO & MANUTENÇÃO</span>
+        </div>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center gap-3">
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('main_page') }}">Início</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('ferramentas_page') }}">Destaques</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('loja_page') }}">Catálogo</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('manutencao_page') }}">Manutenção</a></li>
+
+          {% if session.get('logged_in') %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('perfil_page') }}">Histórico</a></li>
+
+            {% if pode_ver_gerenciador %}
+            <li class="nav-item">
+              <a class="nav-link text-warning fw-bold" href="{{ url_for('colaborador_dashboard') }}">
+                <i class="fas fa-cogs me-1"></i> Gerenciador
+              </a>
+            </li>
+            {% endif %}
+
+            {% if pode_ver_painel %}
+            <li class="nav-item">
+              <a class="nav-link text-info fw-bold" href="{{ url_for('painel_graficos') }}">
+                <i class="fas fa-chart-line me-1"></i> Painel
+              </a>
+            </li>
+            {% endif %}
+
+            <li class="nav-item ms-lg-2">
+              <a class="btn btn-outline-light btn-sm px-3 py-2 fw-bold d-inline-flex align-items-center gap-2" href="{{ url_for('perfil_page') }}" style="border-radius: 6px;">
+                <i class="fas fa-user"></i> Perfil
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="btn btn-danger btn-sm px-3 py-2 fw-bold" href="{{ url_for('logout') }}" style="background-color: #ff2b2b; border: none; border-radius: 6px;">Sair</a>
+            </li>
+          {% else %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('main_page') }}#sobre">Sobre Nós</a></li>
+            
+            <!-- Botão de Cadastro -->
+            <li class="nav-item ms-lg-2">
+              <a class="btn btn-sm px-3 py-2 fw-bold jb-btn-cadastrar" href="{{ url_for('register') }}">
+                <i class="fas fa-user-plus me-1"></i> Cadastrar
+              </a>
+            </li>
+
+            <!-- Botão de Entrar -->
+            <li class="nav-item">
+              <a class="btn btn-sm px-4 py-2 fw-bold shadow-sm jb-btn-entrar" href="{{ url_for('login') }}">
+                <i class="fas fa-sign-in-alt me-1"></i> Entrar
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+</header>

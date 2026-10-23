@@ -3,6 +3,8 @@ Validações feitas no servidor. O navegador também valida (static/js/register.
 mas isso pode ser burlado, então o servidor confere de novo antes de gravar.
 """
 import re
+from flask import session
+from model.db import jb_solucoes_db
 
 
 def somente_numeros(texto):
@@ -38,3 +40,51 @@ def cnpj_valido(cnpj):
     d1 = calcular(cnpj[:12])
     d2 = calcular(cnpj[:12] + str(d1))
     return d1 == int(cnpj[12]) and d2 == int(cnpj[13])
+
+
+def pode_ver_painel():
+    """
+    Verifica se o utilizador atual tem perfil de Administrador ou Colaborador.
+    """
+    if not session.get('logged_in'):
+        return False
+    
+    user_code = session.get('user_code')
+    if not user_code:
+        return False
+        
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("SELECT perfil FROM pessoas WHERE id = %s", (user_code,))
+        row = cursor.fetchone()
+        cursor.close()
+        
+        if row and row[0] in ('Administrador', 'Colaborador', 'adm', 'colaborador'):
+            return True
+    except Exception:
+        pass
+        
+    return False
+
+
+def pode_ver_gerenciador():
+    """Verifica se o utilizador atual é Colaborador ou Administrador."""
+    if not session.get('logged_in'):
+        return False
+    
+    user_code = session.get('user_code')
+    if not user_code:
+        return False
+        
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("SELECT perfil FROM pessoas WHERE id = %s", (user_code,))
+        row = cursor.fetchone()
+        cursor.close()
+        
+        if row and row[0] in ('Administrador', 'Colaborador', 'adm', 'colaborador'):
+            return True
+    except Exception:
+        pass
+        
+    return False
