@@ -1,0 +1,74 @@
+/* Container Principal */
+.jb-os-container {
+    min-height: 80vh;
+}
+
+/* Card do Formulário */
+.jb-form-wrapper {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    padding: 30px;
+    margin-top: 10px;
+}
+
+/* Títulos de Sessão */
+.jb-section-title {
+    color: #121820;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+/* Inputs Personalizados */
+.jb-input {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 10px 15px;
+    background-color: #f8fafc;
+    transition: all 0.3s ease;
+}
+
+.jb-input:focus {
+    border-color: #121820;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(18, 24, 32, 0.1);
+}
+
+/* Zona de Upload / Câmera */
+.jb-upload-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    background-color: #f8fafc;
+    transition: all 0.3s ease;
+}
+
+.jb-upload-zone:hover {
+    border-color: #ff2b2b;
+    background-color: #fff1f1; /* Fundo levemente vermelho */
+}
+
+/* Botão Principal Vermelho */
+.jb-btn-primary {
+    background-color: #ff2b2b;
+    border-color: #ff2b2b;
+    transition: all 0.3s ease;
+}
+
+.jb-btn-primary:hover {
+    background-color: #e02626; /* Um tom de vermelho mais escuro */
+    border-color: #e02626;
+}
+
+/* Botão Voltar (herdado da outra tela) */
+.jb-btn-voltar {
+    transition: color 0.3s ease;
+    font-weight: 500;
+}
+
+.jb-btn-voltar:hover {
+    color: #ff2b2b !important;
+}

@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
 </head>
 <body>
-
+  <!-- Cabeçalho / Navegação Completo e Padrão -->
   {% include '_header.html' %}
 
   <!-- 3. Banner Principal -->
@@ -56,26 +56,51 @@
               </button>
             </form>
 
-            <!-- Exibição do Resultado da Busca -->
+            <!-- Resultados da Busca da OS -->
             {% if os_busca %}
-              {% if resultado_os %}
-                <div class="card mt-4 p-4 border-0 bg-white rounded-3 text-start shadow-sm">
-                  <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold text-dark mb-0"><i class="fas fa-clipboard-list text-danger me-2"></i> OS #{{ resultado_os.id }}</h5>
-                    <span class="badge bg-danger text-white px-3 py-2 text-uppercase" style="background-color: #ff2b2b !important; font-size: 0.8rem;">
-                      {{ resultado_os.status }}
-                    </span>
-                  </div>
-                  <hr class="my-2 border-secondary opacity-25">
-                  <p class="mb-1 text-dark"><strong>Ferramenta:</strong> {{ resultado_os.ferramenta }}</p>
-                  <p class="mb-1 text-dark"><strong>Modelo:</strong> {{ resultado_os.modelo or 'Não informado' }}</p>
-                  <p class="mb-0 text-dark"><strong>Marca:</strong> {{ resultado_os.marca or 'Não informada' }}</p>
-                </div>
-              {% else %}
-                <div class="alert alert-warning mt-4 border-0 shadow-sm text-center py-3 mb-0" role="alert">
-                  <i class="fas fa-exclamation-triangle me-2"></i> Nenhuma Ordem de Serviço encontrada com o número <strong>{{ os_busca }}</strong>.
-                </div>
-              {% endif %}
+            <div class="mt-4 text-start">
+                {% if resultado_os %}
+                    <div class="card shadow-sm border-0" style="background-color: #f8fafc; border-left: 5px solid #ff2b2b !important;">
+                        <div class="card-body p-4">
+                            <h4 class="fw-bold mb-3 text-dark">
+                                <i class="fas fa-clipboard-check text-danger me-2"></i> Detalhes da {{ resultado_os.numero_os }}
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-7">
+                                    <p class="mb-2"><strong class="text-secondary">Equipamento:</strong> <br> {{ resultado_os.equipamento }}</p>
+                                    <p class="mb-2"><strong class="text-secondary">Diagnóstico Técnico:</strong> <br> {{ resultado_os.diagnostico }}</p>
+                                    <p class="mb-0 mt-3">
+                                        <strong class="text-secondary me-2">Status atual:</strong> 
+                                        <span class="badge bg-warning text-dark px-3 py-2" style="font-size: 0.9rem;">{{ resultado_os.status }}</span>
+                                    </p>
+                                </div>
+                                
+                                <div class="col-md-5 mt-3 mt-md-0 text-md-end">
+                                    {% if resultado_os.foto %}
+                                        <p class="text-muted small fw-bold mb-2">Evidência Anexada</p>
+                                        <a href="{{ url_for('static', filename=resultado_os.foto) }}" target="_blank">
+                                            <img src="{{ url_for('static', filename=resultado_os.foto) }}" alt="Foto do Equipamento" class="img-fluid rounded shadow-sm border" style="max-height: 180px; object-fit: cover;">
+                                        </a>
+                                        <div class="small text-muted mt-1">Clique para ampliar</div>
+                                    {% else %}
+                                        <div class="d-flex align-items-center justify-content-md-end h-100 text-muted opacity-50">
+                                            <div class="text-center">
+                                                <i class="fas fa-camera-slash fa-2x mb-2"></i>
+                                                <br><small>Sem fotos anexadas</small>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning border-0 shadow-sm" style="background-color: #fff3cd; color: #856404;">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Nenhuma Ordem de Serviço encontrada com o número <strong>{{ os_busca }}</strong>. Verifique o código e tente novamente.
+                    </div>
+                {% endif %}
+            </div>
             {% endif %}
           </div>
         </div>
@@ -177,7 +202,7 @@
         <div class="col-lg-6 ps-lg-5">
           <h6 class="text-primary text-uppercase fw-bold">Sobre a JB-Ferramentas</h6>
           <h2 class="fw-bold mb-3">Tradição em Comércio, Manutenção e Locação</h2>
-          <p class="text-muted">Projeto acadêmico desenvolvido no âmbito da Univesp com foco inovações e soluções eficientes para o comércio e manutenção de ferramentas[cite: 3]. Garantimos o suporte ideal para que sua operação não pare.</p>
+          <p class="text-muted">Projeto acadêmico desenvolvido no âmbito da Univesp com foco em inovações e soluções eficientes para o comércio e manutenção de ferramentas. Garantimos o suporte ideal para que sua operação não pare.</p>
           <ul class="list-unstyled text-muted mb-4">
             <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Equipamentos revisados e seguros.</li>
             <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Transparência nos orçamentos de manutenção.</li>
@@ -211,7 +236,7 @@
               <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
             </div>
           </div>
-          <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas[cite: 3]. Projeto Univesp[cite: 3].</p>
+          <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp.</p>
         </div>
         <div class="col-md-4">
           <h5>Links Rápidos</h5>

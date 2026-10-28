@@ -11,8 +11,9 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body class="dashboard-body">
+<body>
 
+    <!-- Cabeçalho / Navegação Completo e Padrão -->
     {% include '_header.html' %}
 
     <!-- 3. Conteúdo Principal da Tela (Fundo Branco) -->
@@ -28,9 +29,9 @@
         <!-- Seção de Boas-Vindas -->
         <section class="welcome-section mb-4">
             <div class="welcome-container" style="text-align: left;">
-                {% if usuario_logado %}
+                {% if primeiro_nome %}
                     <h1 class="welcome-text text-dark" style="font-size: 2.3rem; font-weight: 800; margin-bottom: 5px;">
-                        Olá, {{ usuario_logado }}!
+                        Olá, {{ primeiro_nome }}!
                     </h1>
                     <p class="welcome-subtext text-muted" style="font-size: 1.05rem;">
                         Selecione um serviço para continuar

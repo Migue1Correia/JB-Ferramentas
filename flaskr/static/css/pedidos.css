@@ -1,0 +1,103 @@
+/* Container Principal com fundo branco */
+.jb-pedidos-container {
+    min-height: 80vh;
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+}
+
+/* Estilização das Abas (Tabs) para Fundo Claro */
+.jb-tabs {
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.jb-tabs .nav-link {
+    color: #4a5568;
+    border: none;
+    background-color: transparent;
+    padding: 10px 20px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.jb-tabs .nav-link:hover {
+    color: #1a202c;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+.jb-tabs .nav-link.active {
+    color: #1a202c;
+    background-color: transparent;
+    border-bottom: 2px solid #ff2b2b; /* Vermelho JB Ferramentas */
+}
+
+/* Container da Tabela - Estilo Card Limpo */
+.jb-table-wrapper {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    margin-top: 20px;
+    padding: 0; /* Removido para o cabeçalho escuro encostar nas bordas do card */
+}
+
+/* Estilo da Tabela JB - Claro com Identidade Escura no Topo */
+.jb-table {
+    margin-bottom: 0;
+    background-color: #ffffff;
+}
+
+.jb-table thead th {
+    background-color: #121820; /* Fundo escuro JB Ferramentas */
+    color: #ffffff;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    padding: 15px 20px;
+    border-bottom: 3px solid #ff2b2b; /* Linha de identidade vermelha */
+}
+
+.jb-table tbody td {
+    vertical-align: middle;
+    font-size: 0.95rem;
+    color: #334155;
+    padding: 12px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background-color: #ffffff;
+}
+
+.jb-table tbody tr:hover td {
+    background-color: #f8fafc; /* Destaque suave ao passar o rato na linha */
+}
+
+/* Ajuste nos Botões de Ação da Tabela */
+.jb-table .btn-outline-dark {
+    color: #121820;
+    border-color: #cbd5e1;
+}
+
+.jb-table .btn-outline-dark:hover {
+    background-color: #121820;
+    color: #ffffff;
+    border-color: #121820;
+}
+
+/* Badges de Status Customizados */
+.badge {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Botão Voltar */
+.jb-btn-voltar {
+    transition: color 0.3s ease;
+    font-weight: 500;
+}
+
+.jb-btn-voltar:hover {
+    color: #ff2b2b !important;
+}

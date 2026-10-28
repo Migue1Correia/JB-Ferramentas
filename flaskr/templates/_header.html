@@ -36,11 +36,18 @@
           <li class="nav-item"><a class="nav-link" href="{{ url_for('main_page') }}">Início</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('ferramentas_page') }}">Destaques</a></li>
           <li class="nav-item"><a class="nav-link" href="{{ url_for('loja_page') }}">Catálogo</a></li>
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('manutencao_page') }}">Manutenção</a></li>
+          
+          <!-- Link de Manutenção Dinâmico: Colaborador vai para Dashboard, Cliente vai para Manutenção -->
+          <li class="nav-item">
+            <a class="nav-link" href="{% if pode_ver_gerenciador or pode_ver_painel %}{{ url_for('colaborador_dashboard') }}{% else %}{{ url_for('manutencao_page') }}{% endif %}">
+                Manutenção
+            </a>
+          </li>
 
           {% if session.get('logged_in') %}
             <li class="nav-item"><a class="nav-link" href="{{ url_for('perfil_page') }}">Histórico</a></li>
 
+            <!-- Visível apenas para Colaboradores / Administradores -->
             {% if pode_ver_gerenciador %}
             <li class="nav-item">
               <a class="nav-link text-warning fw-bold" href="{{ url_for('colaborador_dashboard') }}">
@@ -49,6 +56,7 @@
             </li>
             {% endif %}
 
+            <!-- Visível apenas para Colaboradores / Administradores -->
             {% if pode_ver_painel %}
             <li class="nav-item">
               <a class="nav-link text-info fw-bold" href="{{ url_for('painel_graficos') }}">

@@ -69,10 +69,27 @@ body.dashboard-body {
   transition: transform 0.3s ease;
 }
 
-/* Transição suave para os ícones */
-.service-card-item i {
-  transition: transform 0.3s ease, color 0.3s ease;
+/* Card de Painel - Animação e Borda em amarelo */
+
+
+.service-card-painel {
+  border-left: 6px solid #FBC02D;
 }
+
+.service-card-painel:hover {
+  transform: translateY(-6px);
+  border-color: #FBC02D;
+  box-shadow: 0 12px 25px rgba(251, 192, 45, 0.25);
+}
+
+.service-card-painel:hover .icon-painel {
+  color: #FBC02D !important;
+  transform: scale(1.1);
+  transition: transform 0.3s ease;
+}
+
+
+
 
 /* ==========================================================
    ANIMAÇÃO DOS CARDS DE DESTAQUES DA SEMANA & PRODUTOS
@@ -95,18 +112,4 @@ body.dashboard-body {
 /* ==========================================================
    Painel de visualização 
    ========================================================== */
-.service-card-painel {
-  border-left: 6px solid #d1d5db !important;
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.service-card-painel:hover {
-  transform: translateY(-6px);
-  border-color: #cbd5e1 !important;
-  border-left-color: #FBC02D !important;
-  box-shadow: 0 12px 25px rgba(251, 192, 45, 0.25) !important;
-}
-
-.service-card-painel:hover .icon-painel {
-  color: #FBC02D !important;
-}
+/* Card de Painel - Mesmo estilo de animação e hover */
