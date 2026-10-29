@@ -178,7 +178,7 @@ def detalhe_produto(id):
     return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
 
 
-# === 5. LOGIN ===
+# === 5. PROCESSAMENTO DE LOGIN ===
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -196,14 +196,23 @@ def login():
                 
                 try:
                     cursor = jb_solucoes_db.connection.cursor()
+                    
+                    # Lê o perfil diretamente da tabela pessoas (como mostrado na sua imagem)
                     cursor.execute("SELECT perfil FROM pessoas WHERE id = %s", (id_pessoa,))
                     resultado = cursor.fetchone()
                     cursor.close()
                     
-                    if resultado:
+                    if resultado and resultado[0]:
+                        # Converte para minúsculas e remove espaços
                         perfil = str(resultado[0]).strip().lower()
+                        
+                        # Se na base de dados estiver "administrador", o sistema trata como "admin"
+                        if perfil == 'administrador':
+                            perfil = 'admin'
+                            
                         session['user_perfil'] = perfil 
                         
+                        # Liberta os menus para a equipa
                         if perfil in ['colaborador', 'admin', 'gerente']:
                             session['pode_ver_gerenciador'] = True
                             session['pode_ver_painel'] = True
@@ -216,7 +225,8 @@ def login():
                         session['pode_ver_painel'] = False
                         
                 except Exception as e:
-                    print("Erro SQL:", e)
+                    print("Erro SQL no Login:", e)
+                    # Fallback de segurança
                     session['user_perfil'] = 'cliente'
                     session['pode_ver_gerenciador'] = False
                     session['pode_ver_painel'] = False
@@ -270,7 +280,7 @@ def perfil_page():
     return render_template('perfil.html', user_infos=user_infos, status=status, historico=historico_servicos)
 
 
-# === 7. CADASTRO ===
+# === 7. CADASTRO (COM LÓGICA DE PRÉ-CADASTRO) ===
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == "GET":
@@ -279,14 +289,8 @@ def register():
     if request.method == "POST":
         name = (request.form.get('nome') or '').strip()
         user_type_raw = request.form.get('tipo_pessoa') or request.form.get('tipo')
-        if user_type_raw in ('fisica', 'pf'):
-            user_type = 'pf'
-        elif user_type_raw in ('juridica', 'pj'):
-            user_type = 'pj'
-        else:
-            flash("Tipo de pessoa inválido.", "danger")
-            return render_template('register.html')
-
+        user_type = 'pj' if user_type_raw in ('juridica', 'pj') else 'pf'
+        
         code = somente_numeros(request.form.get('cpf_cnpj') or request.form.get('code'))
         address = (request.form.get('endereco') or '').strip()
         email = (request.form.get('email') or '').strip()
@@ -300,32 +304,58 @@ def register():
 
         documento_ok = cnpj_valido(code) if user_type == 'pj' else cpf_valido(code)
         if not documento_ok:
-            msg_erro = "CNPJ inválido." if user_type == 'pj' else "CPF inválido."
-            flash(msg_erro, "danger")
-            return render_template('register.html')
-
-        if PersonModel.exist(code, by="code"):
-            flash("CPF/CNPJ já cadastrado.", "danger")
+            flash("CPF/CNPJ inválido.", "danger")
             return render_template('register.html')
 
         if UserAccountModel.get(user) is not None:
             flash("Este nome de usuário já está em uso.", "danger")
             return render_template('register.html')
 
-        if not PersonModel.create(name, user_type, code, address, email, phone_number):
-            flash("Erro no cadastro.", "danger")
+        try:
+            cursor = jb_solucoes_db.connection.cursor()
+            
+            # 1. Verifica se a pessoa já existe (Pré-cadastro)
+            cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (code,))
+            pessoa = cursor.fetchone()
+            
+            if pessoa:
+                id_pessoa = pessoa[0]
+                # Verifica se já tem um login real associado
+                cursor.execute("SELECT id FROM usuarios WHERE id_pessoa = %s", (id_pessoa,))
+                if cursor.fetchone():
+                    flash("Este CPF/CNPJ já possui uma conta de acesso completa.", "danger")
+                    return render_template('register.html')
+                else:
+                    # ATUALIZA os dados do pré-cadastro com o novo e-mail e endereço
+                    cursor.execute("""
+                        UPDATE pessoas SET nome = %s, endereco = %s, email = %s, telefone = %s
+                        WHERE id = %s
+                    """, (name, address, email, phone_number, id_pessoa))
+            else:
+                # CRIA uma nova pessoa do zero se não houver pré-cadastro
+                cursor.execute("""
+                    INSERT INTO pessoas (nome, tipo, endereco, email, telefone, codigo)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (name, user_type, address, email, phone_number, code))
+                id_pessoa = cursor.lastrowid
+
+            # 2. Cria o utilizador (Login e Senha) com perfil 1 (Cliente)
+            hashed_password = jb_bcrypt.generate_password_hash(password).decode("utf-8")
+            cursor.execute("""
+                INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo)
+                VALUES (%s, %s, %s, 1, 1)
+            """, (user, hashed_password, id_pessoa))
+            
+            jb_solucoes_db.connection.commit()
+            cursor.close()
+            
+            flash("Conta criada com sucesso! Faça login para ver as suas OS.", "success")
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            print("Erro no cadastro:", e)
+            flash("Erro ao processar o cadastro.", "danger")
             return render_template('register.html')
-
-        person_infos = PersonModel.get(code)
-        hashed_password = jb_bcrypt.generate_password_hash(password).decode("utf-8")
-
-        if not UserAccountModel.create(user, hashed_password, person_infos["id"], 1, True):
-            PersonModel.delete(person_infos["id"])
-            flash("Erro ao criar a conta. Tente novamente.", "danger")
-            return render_template('register.html')
-
-        flash("Cadastro realizado com sucesso!", "success")
-        return redirect(url_for('login'))
 
 
 # === 8. LOGOUT ===
@@ -406,21 +436,37 @@ def comprar_ferramenta(ferramenta_id):
 # === 12. DASHBOARD / PEDIDOS ===
 @app.route('/colaborador/dashboard')
 def colaborador_dashboard():
-    if not session.get('logged_in') or session.get('user_perfil') not in ('Colaborador', 'colaborador'):
-        flash("Acesso restrito a colaboradores.", "danger")
+    # Pega o perfil em letras minúsculas para evitar erros de digitação (Ex: 'Admin', 'admin', 'ADMIN')
+    perfil = str(session.get('user_perfil', '')).lower()
+    
+    if not session.get('logged_in') or perfil not in ['colaborador', 'admin']:
+        flash("Acesso restrito à equipa interna e administradores.", "danger")
         return redirect(url_for('login'))
+        
     return render_template('gerenciador.html')
 
+# === PAINEL DE PEDIDOS (COM DADOS) ===
 @app.route('/colaborador/painel')
 def painel_colaborador():
-    if not session.get('logged_in'):
+    perfil = str(session.get('user_perfil', '')).lower()
+    
+    if not session.get('logged_in') or perfil not in ['colaborador', 'admin']:
+        flash("Acesso restrito à equipa interna e administradores.", "danger")
         return redirect(url_for('login'))
+        
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('pedidos.html', servicos=servicos_pendentes)
 
+# === PÁGINA DE PEDIDOS (RENDERIZAÇÃO SIMPLES) ===
 @app.route("/colaborador/pedidos")
 def pedidos_page():
-    return render_template('pedidos.html')  
+    perfil = str(session.get('user_perfil', '')).lower()
+    
+    if not session.get('logged_in') or perfil not in ['colaborador', 'admin']:
+        flash("Acesso restrito à equipa interna e administradores.", "danger")
+        return redirect(url_for('login'))
+        
+    return render_template('pedidos.html')
 
 
 # === 13. CRIAR ORDEM DE SERVIÇO ===
@@ -535,26 +581,98 @@ def responder_orcamento(id_servico, resposta):
     return redirect(url_for('perfil_page'))
 
 
-# === 16. GERENCIAR FERRAMENTAS ===
-@app.route('/colaborador/ferramentas', methods=['GET', 'POST'])
+# === 16. GERENCIAR FERRAMENTAS E EQUIPA (EXCLUSIVO ADMIN) ===
+@app.route('/admin/ferramentas', methods=['GET', 'POST'])
 def gerenciar_ferramentas():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+    if not session.get('logged_in') or session.get('user_perfil') != 'admin':
+        flash("Acesso negado. Apenas administradores têm permissão.", "danger")
+        return redirect(url_for('main_page'))
+        
     if request.method == 'POST':
         marca = request.form.get('marca')
         modelo = request.form.get('modelo')
         descricao = request.form.get('descricao')
         id_tipo = request.form.get('tipo_ferramenta')
         sucesso, mensagem = ToolModel.create(marca, modelo, descricao, id_tipo)
-        if sucesso:
-            flash(mensagem, "success")
-        else:
-            flash(mensagem, "danger")
+        flash(mensagem, "success" if sucesso else "danger")
         return redirect(url_for('gerenciar_ferramentas'))
+        
+    # Busca dados para o painel
     tipos = ToolModel.get_tipos()
     todas_ferramentas = ToolModel.get_all()
     filiais = AdminModel.get_filiais()
-    return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais)
+    
+    # Busca a equipa cadastrada diretamente pelo banco
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("""
+            SELECT u.nome_usuario, p.nome, p.codigo, p.perfil, p.telefone
+            FROM usuarios u
+            JOIN pessoas p ON u.id_pessoa = p.id
+            WHERE p.perfil IN ('colaborador', 'admin', 'administrador')
+            ORDER BY p.nome ASC
+        """)
+        equipe = cursor.fetchall()
+        cursor.close()
+    except Exception as e:
+        print("Erro ao buscar equipa:", e)
+        equipe = []
+
+    return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais, equipe=equipe)
+
+# === 16.1. ROTA DE CADASTRO DE EQUIPA ===
+@app.route('/admin/cadastrar_equipe', methods=['POST'])
+def cadastrar_equipe():
+    if not session.get('logged_in') or session.get('user_perfil') != 'admin':
+        return redirect(url_for('main_page'))
+        
+    nome = request.form.get('nome')
+    cpf = somente_numeros(request.form.get('cpf'))
+    telefone = request.form.get('telefone')
+    email = request.form.get('email')
+    usuario = request.form.get('usuario')
+    senha = request.form.get('senha')
+    nivel = request.form.get('nivel') # 'colaborador' ou 'admin'
+    
+    id_perfil = 3 if nivel == 'admin' else 2
+    
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        
+        # 1. Verifica se CPF ou Usuário já existe
+        cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (cpf,))
+        if cursor.fetchone():
+            flash("Já existe uma pessoa com este CPF cadastrada no sistema.", "warning")
+            return redirect(url_for('gerenciar_ferramentas'))
+            
+        cursor.execute("SELECT id FROM usuarios WHERE nome_usuario = %s", (usuario,))
+        if cursor.fetchone():
+            flash("Este nome de usuário (Login) já está a ser utilizado.", "warning")
+            return redirect(url_for('gerenciar_ferramentas'))
+            
+        # 2. Insere a pessoa
+        cursor.execute("""
+            INSERT INTO pessoas (nome, tipo, codigo, endereco, email, telefone, perfil) 
+            VALUES (%s, 'pf', %s, 'Equipa Interna', %s, %s, %s)
+        """, (nome, cpf, email, telefone, nivel))
+        id_pessoa = cursor.lastrowid
+        
+        # 3. Cria a conta de acesso com a senha criptografada
+        hashed_password = jb_bcrypt.generate_password_hash(senha).decode("utf-8")
+        cursor.execute("""
+            INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo)
+            VALUES (%s, %s, %s, %s, 1)
+        """, (usuario, hashed_password, id_pessoa, id_perfil))
+        
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        
+        flash(f"Conta de {nivel.capitalize()} criada com sucesso!", "success")
+    except Exception as e:
+        print("Erro ao cadastrar equipe:", e)
+        flash("Ocorreu um erro ao registar o membro da equipa.", "danger")
+        
+    return redirect(url_for('gerenciar_ferramentas'))
 
 
 # === 17. ADICIONAR PEÇAS ===
@@ -636,6 +754,99 @@ def painel_graficos():
     dados = PainelModel.get_resumo_mensal()
     return render_template('painel_graficos.html', dados=dados)
 
+# === 23. TELA DE ORÇAMENTOS ===
+@app.route("/colaborador/orcamentos")
+def orcamentos_page():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        # Busca serviços de manutenção que ainda não foram aprovados ou finalizados
+        query = """
+            SELECT s.id, s.titulo_servico, p.nome, s.descricao_servico, s.data_abertura, s.status_servico, s.valor_servico
+            FROM servicos s
+            JOIN pessoas p ON s.id_pessoa_solicitante = p.id
+            WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN ('Aberto', 'Aguardando avaliação técnica', 'Aguardando Orçamento')
+            ORDER BY s.data_abertura DESC
+        """
+        cursor.execute(query)
+        orcamentos_pendentes = cursor.fetchall()
+        cursor.close()
+    except Exception as e:
+        print("Erro ao buscar orçamentos:", e)
+        orcamentos_pendentes = []
+        
+    return render_template('orcamentos.html', orcamentos=orcamentos_pendentes)
+
+
+# === 24. TELA GERAL DE SERVIÇOS ===
+@app.route("/colaborador/servicos")
+def servicos_page():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        # Adicionados os campos de descrição e valor para exibir no Modal de Detalhes
+        query = """
+            SELECT s.id, s.titulo_servico, p.nome, s.servico_solicitado, s.status_servico, DATE_FORMAT(s.data_abertura, '%d/%m/%Y %H:%i'), s.descricao_servico, s.valor_servico
+            FROM servicos s
+            JOIN pessoas p ON s.id_pessoa_solicitante = p.id
+            ORDER BY s.data_abertura DESC
+        """
+        cursor.execute(query)
+        lista_servicos = cursor.fetchall()
+        cursor.close()
+    except Exception as e:
+        print("Erro ao buscar serviços:", e)
+        lista_servicos = []
+        
+    return render_template('servicos.html', servicos=lista_servicos)
+
+# === 25. TELA DE CLIENTES (COLABORADOR) ===
+@app.route("/colaborador/clientes", methods=["GET", "POST"])
+def gerenciar_clientes():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
+    cursor = jb_solucoes_db.connection.cursor()
+    
+    if request.method == "POST":
+        nome = request.form.get("nome")
+        telefone = request.form.get("telefone")
+        codigo = somente_numeros(request.form.get("codigo")) # CPF/CNPJ
+        
+        try:
+            cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (codigo,))
+            if cursor.fetchone():
+                flash("Um cliente com este CPF/CNPJ já existe no sistema.", "warning")
+            else:
+                # Cria o Pré-cadastro. Endereço e E-mail recebem valores padrão até o cliente se registar.
+                cursor.execute("""
+                    INSERT INTO pessoas (nome, tipo, endereco, email, telefone, codigo) 
+                    VALUES (%s, 'pf', 'Não informado', 'nao@informado.com', %s, %s)
+                """, (nome, telefone, codigo))
+                jb_solucoes_db.connection.commit()
+                flash("Cliente pré-cadastrado com sucesso!", "success")
+        except Exception as e:
+            print("Erro ao criar cliente:", e)
+            flash("Erro ao cadastrar cliente.", "danger")
+            
+        return redirect(url_for('gerenciar_clientes'))
+        
+    # GET: Lista todos os clientes e verifica se têm conta ativa (login)
+    cursor.execute("""
+        SELECT p.id, p.nome, p.codigo, p.telefone, p.email,
+               (SELECT COUNT(*) FROM servicos WHERE id_pessoa_solicitante = p.id) as total_os,
+               (SELECT COUNT(*) FROM usuarios WHERE id_pessoa = p.id) as tem_conta
+        FROM pessoas p
+        ORDER BY p.nome ASC
+    """)
+    clientes = cursor.fetchall()
+    cursor.close()
+    
+    return render_template('clientes.html', clientes=clientes)
 
 if __name__ == "__main__":
     app.run(debug=True)

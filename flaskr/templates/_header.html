@@ -65,6 +65,15 @@
             </li>
             {% endif %}
 
+            <!-- Botão Exclusivo para Administradores -->
+            {% if session.get('user_perfil')|lower == 'admin' %}
+            <li class="nav-item ms-1">
+                <a class="nav-link fw-bold text-white px-3 py-2 rounded d-inline-flex align-items-center" href="{{ url_for('gerenciar_ferramentas') }}" style="background-color: #151a21; border-bottom: 2px solid #ff2b2b;">
+                    <i class="fas fa-crown text-danger me-1"></i> Admin
+                </a>
+            </li>
+            {% endif %}
+
             <li class="nav-item ms-lg-2">
               <a class="btn btn-outline-light btn-sm px-3 py-2 fw-bold d-inline-flex align-items-center gap-2" href="{{ url_for('perfil_page') }}" style="border-radius: 6px;">
                 <i class="fas fa-user"></i> Perfil

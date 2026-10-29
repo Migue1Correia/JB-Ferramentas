@@ -1,127 +1,286 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JB Ferramentas - Catálogo de ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styleJB.css') }}?v=3.4">
+    <title>Painel Admin - Catálogo de Ferramentas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_ferramentas.css') }}">
 </head>
-<body>
+<body style="background-color: #ffffff;">
 
-    {% include '_topo_colaborador.html' %}
+    {% include '_header.html' %}
 
-    <main class="dashboard-content">
-        <section class="profile-card">
-            <div class="card-header">
-                <i class="fas fa-plus" aria-hidden="true"></i>
-                <h2>Cadastrar ferramenta</h2>
+    <main class="container py-5 jb-admin-container mt-4">
+        
+        <!-- Botão Voltar -->
+        <a href="javascript:history.back()" class="text-decoration-none text-secondary mb-3 d-inline-block fw-bold" style="transition: color 0.3s;" onmouseover="this.style.color='#ff2b2b'" onmouseout="this.style.color='#6c757d'">
+            <i class="fas fa-arrow-left me-1"></i> Voltar
+        </a>
+
+        <!-- Cabeçalho -->
+        <div class="mb-5 border-bottom pb-3">
+            <h2 class="fw-bold text-dark mb-0">
+                <i class="fas fa-crown text-danger me-2"></i> Painel Administrativo de Ferramentas
+            </h2>
+            <p class="text-muted mt-2 mb-0">Gestão exclusiva do catálogo base, lançamento de estoque e controlo da equipa interna.</p>
+        </div>
+
+        <div class="row g-4 mb-5">
+            
+            <!-- FORMULÁRIO 1: Cadastrar Ferramenta Base -->
+            <div class="col-lg-6">
+                <div class="jb-form-card shadow-sm">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fas fa-plus-circle text-danger me-2"></i> Cadastrar Nova Ferramenta</h5>
+                    
+                    {% if tipos %}
+                    <form method="POST" action="{{ url_for('gerenciar_ferramentas') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="marca" class="form-label fw-bold text-secondary small">Marca</label>
+                                <input type="text" class="form-control" id="marca" name="marca" maxlength="50" placeholder="Ex: Bosch" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="modelo" class="form-label fw-bold text-secondary small">Modelo</label>
+                                <input type="text" class="form-control" id="modelo" name="modelo" maxlength="50" placeholder="Ex: GSB 13 RE" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tipo_ferramenta" class="form-label fw-bold text-secondary small">Categoria / Tipo</label>
+                            <select class="form-select" id="tipo_ferramenta" name="tipo_ferramenta" required>
+                                <option value="" disabled selected>Selecione o tipo...</option>
+                                {% for tipo in tipos %}
+                                <option value="{{ tipo[0] }}">{{ tipo[1] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="descricao" class="form-label fw-bold text-secondary small">Descrição Breve</label>
+                            <input type="text" class="form-control" id="descricao" name="descricao" maxlength="255" placeholder="Detalhes adicionais da ferramenta">
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn jb-btn-primary fw-bold">
+                                <i class="fas fa-save me-2"></i> Adicionar ao Catálogo
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning border-0 shadow-sm mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Registe primeiro os tipos de ferramentas no sistema para habilitar o cadastro.
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            {% if tipos %}
-            <form method="POST" action="{{ url_for('gerenciar_ferramentas') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label for="marca">Marca</label>
-                        <input type="text" id="marca" name="marca" maxlength="50" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="modelo">Modelo</label>
-                        <input type="text" id="modelo" name="modelo" maxlength="50" required>
-                    </div>
-                    <div class="input-group">
-                        <label for="tipo_ferramenta">Tipo</label>
-                        <select id="tipo_ferramenta" name="tipo_ferramenta" required>
-                            {% for tipo in tipos %}
-                            <option value="{{ tipo[0] }}">{{ tipo[1] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="descricao">Descrição</label>
-                        <input type="text" id="descricao" name="descricao" maxlength="255">
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Cadastrar ferramenta</button>
-                </div>
-            </form>
-            {% else %}
-            <p style="color: #aaaaaa;">Ainda não há tipos de ferramenta no banco (tabela ferramenta_tipos), então não dá para cadastrar ferramentas por aqui.</p>
-            {% endif %}
-        </section>
 
-        <section class="profile-card">
-            <div class="card-header">
-                <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
-                <h2>Cadastrar unidade em estoque</h2>
-            </div>
-            {% if ferramentas and filiais %}
-            <form method="POST" action="{{ url_for('admin_unidades') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label for="id_ferramenta">Ferramenta</label>
-                        <select id="id_ferramenta" name="id_ferramenta" required>
-                            {% for ferramenta in ferramentas %}
-                            <option value="{{ ferramenta[0] }}">{{ ferramenta[1] }} {{ ferramenta[2] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="id_filial">Filial</label>
-                        <select id="id_filial" name="id_filial" required>
-                            {% for filial in filiais %}
-                            <option value="{{ filial[0] }}">{{ filial[2] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="input-group full-width">
-                        <label for="numero_serie">Número de série (não pode repetir)</label>
-                        <input type="text" id="numero_serie" name="numero_serie" maxlength="50" required>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Cadastrar unidade</button>
-                </div>
-            </form>
-            {% else %}
-            <p style="color: #aaaaaa;">Cadastre pelo menos uma ferramenta e uma filial para lançar unidades em estoque.</p>
-            {% endif %}
-        </section>
+            <!-- FORMULÁRIO 2: Lançar Unidade em Estoque -->
+            <div class="col-lg-6">
+                <div class="jb-form-card shadow-sm" style="border-left-color: #151a21;">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fas fa-boxes-stacked text-dark me-2"></i> Lançar Unidade em Estoque</h5>
+                    
+                    {% if ferramentas and filiais %}
+                    <form method="POST" action="{{ url_for('admin_unidades') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-3">
+                            <label for="id_ferramenta" class="form-label fw-bold text-secondary small">Selecionar Ferramenta Base</label>
+                            <select class="form-select" id="id_ferramenta" name="id_ferramenta" required>
+                                <option value="" disabled selected>Escolha a ferramenta cadastrada...</option>
+                                {% for ferramenta in ferramentas %}
+                                <option value="{{ ferramenta[0] }}">{{ ferramenta[1] }} {{ ferramenta[2] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
 
-        <section class="profile-card">
-            <div class="card-header">
-                <i class="fas fa-toolbox" aria-hidden="true"></i>
-                <h2>Ferramentas cadastradas</h2>
+                        <div class="mb-3">
+                            <label for="id_filial" class="form-label fw-bold text-secondary small">Atribuir à Filial</label>
+                            <select class="form-select" id="id_filial" name="id_filial" required>
+                                {% for filial in filiais %}
+                                <option value="{{ filial[0] }}">{{ filial[2] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="numero_serie" class="form-label fw-bold text-secondary small">Número de Série (Identificador Único)</label>
+                            <input type="text" class="form-control" id="numero_serie" name="numero_serie" maxlength="50" placeholder="Ex: SN-9008234" required>
+                            <div class="form-text">Este número não pode ser repetido no sistema.</div>
+                        </div>
+
+                        <div class="d-grid mt-auto">
+                            <button type="submit" class="btn btn-dark fw-bold">
+                                <i class="fas fa-barcode me-2"></i> Registar Unidade
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-secondary border-0 shadow-sm mt-3">
+                        <i class="fas fa-info-circle me-2"></i> Cadastre pelo menos uma Ferramenta e uma Filial para habilitar o lançamento de estoque físico.
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            {% if ferramentas %}
-            <div class="table-responsive">
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Cód.</th>
-                            <th scope="col">Marca</th>
-                            <th scope="col">Modelo</th>
-                            <th scope="col">Descrição</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SESSÃO DE RECURSOS HUMANOS / GESTÃO DE EQUIPA  -->
+        <!-- ============================================== -->
+        <h4 class="fw-bold text-dark mb-4 mt-5 pt-3 border-top"><i class="fas fa-users-cog text-danger me-2"></i> Gestão de Contas Internas</h4>
+        
+        <div class="row g-4 mb-5">
+            <!-- Formulário: Cadastrar Conta Interna -->
+            <div class="col-lg-4">
+                <div class="jb-form-card shadow-sm" style="background-color: #ffffff;">
+                    <h6 class="fw-bold text-dark mb-4"><i class="fas fa-user-shield text-danger me-2"></i> Nova Conta</h6>
+                    
+                    <form method="POST" action="{{ url_for('cadastrar_equipe') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-sm" name="nome" placeholder="Nome Completo" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-sm" name="cpf" placeholder="CPF (Apenas números)" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="email" class="form-control form-control-sm" name="email" placeholder="E-mail" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-sm" name="telefone" placeholder="Telefone/WhatsApp" required>
+                        </div>
+                        
+                        <hr class="border-secondary opacity-25">
+                        
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-sm fw-bold text-primary" name="usuario" placeholder="Nome de Usuário (Login)" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="password" class="form-control form-control-sm" name="senha" placeholder="Senha Provisória" required>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small">Nível de Acesso</label>
+                            <select class="form-select form-select-sm" name="nivel" required>
+                                <option value="colaborador" selected>Colaborador (Equipa Técnica)</option>
+                                <option value="admin">Administrador (Acesso Total)</option>
+                            </select>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-sm jb-btn-primary fw-bold">
+                                <i class="fas fa-check me-1"></i> Criar Conta
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabela: Membros da Equipa Ativos -->
+            <div class="col-lg-8">
+                <div class="jb-table-wrapper h-100" style="margin-top: 0;">
+                    <table class="table jb-table table-hover h-100 mb-0">
+                        <thead>
+                            <tr>
+                                <th>COLABORADOR</th>
+                                <th>LOGIN</th>
+                                <th>CONTATO</th>
+                                <th class="text-center">PERMISSÃO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if equipe %}
+                                {% for membro in equipe %}
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold text-dark d-block">{{ membro[1] }}</span>
+                                        <small class="text-muted">CPF: {{ membro[2] }}</small>
+                                    </td>
+                                    <td class="fw-bold text-secondary">{{ membro[0] }}</td>
+                                    <td class="text-muted small">{{ membro[4] }}</td>
+                                    <td class="text-center">
+                                        {% if membro[3] == 'admin' or membro[3] == 'administrador' %}
+                                            <span class="badge badge-admin px-3 py-2 rounded-pill"><i class="fas fa-crown me-1"></i> Admin</span>
+                                        {% else %}
+                                            <span class="badge badge-colab px-3 py-2 rounded-pill"><i class="fas fa-wrench me-1"></i> Colaborador</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        Nenhuma conta de equipa registada.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABELA: Catálogo Registado -->
+        <h4 class="fw-bold text-dark mb-3 mt-5 border-top pt-4"><i class="fas fa-toolbox text-danger me-2"></i> Catálogo Registado</h4>
+        
+        <div class="jb-table-wrapper mb-5">
+            <table class="table jb-table table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">CÓD.</th>
+                        <th style="width: 25%;">MARCA</th>
+                        <th style="width: 30%;">MODELO</th>
+                        <th style="width: 35%;">DESCRIÇÃO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if ferramentas %}
                         {% for ferramenta in ferramentas %}
                         <tr>
-                            <td>{{ ferramenta[0] }}</td>
-                            <td>{{ ferramenta[1] }}</td>
-                            <td><strong>{{ ferramenta[2] }}</strong></td>
-                            <td>{{ ferramenta[3] or '-' }}</td>
+                            <td class="fw-bold text-danger">{{ ferramenta[0] }}</td>
+                            <td class="fw-bold text-dark">{{ ferramenta[1] }}</td>
+                            <td class="fw-bold text-dark">{{ ferramenta[2] }}</td>
+                            <td class="text-muted small">{{ ferramenta[3] or 'Sem descrição' }}</td>
                         </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p style="color: #aaaaaa;">Nenhuma ferramenta cadastrada ainda.</p>
-            {% endif %}
-        </section>
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-3 text-secondary d-block"></i>
+                                Nenhuma ferramenta base registada no catálogo até ao momento.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
     </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Alertas SweetAlert2 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    Swal.fire({
+                        icon: '{{ "success" if category == "success" else "error" if category == "danger" else "warning" }}',
+                        title: 'Aviso do Sistema',
+                        text: '{{ message }}',
+                        confirmButtonColor: '#151a21'
+                    });
+                });
+            </script>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 </body>
 </html>

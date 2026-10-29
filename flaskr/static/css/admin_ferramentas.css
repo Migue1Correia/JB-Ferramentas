@@ -1,0 +1,68 @@
+/* Container Principal */
+.jb-admin-container {
+    min-height: 80vh;
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 8px;
+}
+
+/* Cards de Formulário */
+.jb-form-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 25px;
+    border-left: 4px solid #ff2b2b;
+    height: 100%;
+}
+
+/* Estilo da Tabela JB */
+.jb-table-wrapper {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    margin-top: 10px;
+}
+
+.jb-table {
+    margin-bottom: 0;
+    background-color: #ffffff;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Cabeçalho Escuro */
+.jb-table thead th {
+    background-color: #151a21 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    padding: 16px 20px;
+    border: none !important;
+    border-bottom: 3px solid #ff2b2b !important;
+    white-space: nowrap;
+}
+
+.jb-table thead th:first-child { border-top-left-radius: 8px; }
+.jb-table thead th:last-child { border-top-right-radius: 8px; }
+.jb-table tbody td { vertical-align: middle; font-size: 0.95rem; color: #334155; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; }
+.jb-table tbody tr:hover td { background-color: #f8fafc; }
+
+/* Botões Customizados */
+.jb-btn-primary {
+    background-color: #ff2b2b;
+    border-color: #ff2b2b;
+    color: #ffffff;
+    transition: all 0.3s ease;
+}
+
+.jb-btn-primary:hover {
+    background-color: #e02626;
+    border-color: #e02626;
+    color: #ffffff;
+}
+
+/* Badges de Acesso Equipa */
+.badge-admin { background-color: #151a21; color: #ff2b2b; border: 1px solid #ff2b2b; }
+.badge-colab { background-color: #f8fafc; color: #334155; border: 1px solid #cbd5e1; }

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Todos os Serviços - JB Ferramentas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* Força a estilização visual contra falhas de cache do navegador */
+        .jb-servicos-container { min-height: 80vh; background-color: #ffffff; padding: 30px; border-radius: 8px; }
+        .jb-table-wrapper { background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); margin-top: 10px; }
+        .jb-table { margin-bottom: 0; background-color: #ffffff; border-collapse: separate; border-spacing: 0; }
+        
+        /* Cabeçalho Idêntico ao de Orçamentos */
+        .jb-table thead th {
+            background-color: #151a21 !important;
+            color: #ffffff !important;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            padding: 16px 20px;
+            border: none !important;
+            border-bottom: 3px solid #ff2b2b !important;
+            white-space: nowrap;
+        }
+        .jb-table thead th:first-child { border-top-left-radius: 8px; }
+        .jb-table thead th:last-child { border-top-right-radius: 8px; }
+        .jb-table tbody td { vertical-align: middle; font-size: 0.95rem; color: #334155; padding: 15px 20px; border-bottom: 1px solid #f1f5f9; }
+        .jb-table tbody tr:hover td { background-color: #f8fafc; }
+
+        /* Cores Forçadas para os Badges */
+        .badge-manutencao { background-color: #e0f2fe !important; color: #0284c7 !important; border: 1px solid #bae6fd; }
+        .badge-aluguel { background-color: #fef08a !important; color: #a16207 !important; border: 1px solid #fde047; }
+        .badge-venda { background-color: #dcfce7 !important; color: #166534 !important; border: 1px solid #bbf7d0; }
+        
+        .modal-header.jb-dark-header { background-color: #151a21; color: #ffffff; border-bottom: 3px solid #ff2b2b; }
+        .modal-header.jb-dark-header .btn-close { filter: invert(1); }
+    </style>
+</head>
+<body style="background-color: #ffffff;">
+    
+    {% include '_header.html' %}
+
+    <main class="container py-5 jb-servicos-container mt-4">
+        
+        <!-- Botão Voltar -->
+        <a href="javascript:history.back()" class="text-decoration-none text-secondary mb-3 d-inline-block fw-bold" style="transition: color 0.3s;" onmouseover="this.style.color='#ff2b2b'" onmouseout="this.style.color='#6c757d'">
+            <i class="fas fa-arrow-left me-1"></i> Voltar
+        </a>
+
+        <!-- Cabeçalho -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-dark mb-0">
+                <i class="fas fa-layer-group text-danger me-2"></i> Todos os Serviços
+            </h2>
+            <a href="{{ url_for('criar_os') }}" class="btn fw-bold px-4 text-white" style="background-color: #ff2b2b;">
+                <i class="fas fa-plus me-2"></i> Novo Serviço
+            </a>
+        </div>
+
+        <!-- Tabela Geral de Serviços -->
+        <div class="jb-table-wrapper">
+            <table class="table jb-table table-hover">
+                <thead>
+                    <tr>
+                        <th>CÓDIGO / TÍTULO</th>
+                        <th>CLIENTE</th>
+                        <th>TIPO DE SERVIÇO</th>
+                        <th>DATA</th>
+                        <th>STATUS</th>
+                        <th class="text-center">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if servicos %}
+                        {% for servico in servicos %}
+                        <tr>
+                            <td class="fw-bold text-danger">{{ servico[1] }}</td>
+                            <td class="fw-bold">{{ servico[2] }}</td>
+                            
+                            <!-- Badges com cores vibrantes -->
+                            <td>
+                                {% if servico[3] and 'manutencao' in servico[3]|lower %}
+                                    <span class="badge badge-manutencao px-3 py-2 rounded-pill"><i class="fas fa-wrench me-1"></i> Manutenção</span>
+                                {% elif servico[3] and 'aluguel' in servico[3]|lower %}
+                                    <span class="badge badge-aluguel px-3 py-2 rounded-pill"><i class="fas fa-handshake me-1"></i> Aluguel</span>
+                                {% elif servico[3] and 'venda' in servico[3]|lower %}
+                                    <span class="badge badge-venda px-3 py-2 rounded-pill"><i class="fas fa-shopping-cart me-1"></i> Venda</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border px-3 py-2 rounded-pill"><i class="fas fa-tag me-1"></i> {{ servico[3] or 'Outro' }}</span>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="text-muted small">{{ servico[5] }}</td>
+                            
+                            <td>
+                                <span class="badge bg-secondary text-white px-2 py-1">{{ servico[4] }}</span>
+                            </td>
+                            
+                            <td class="text-center">
+                                <!-- Botão que aciona o Modal de Detalhes -->
+                                <button type="button" class="btn btn-sm btn-outline-dark fw-bold" data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ servico[0] }}">
+                                    <i class="fas fa-eye me-1"></i> Detalhes
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Modal de Detalhes para este Serviço -->
+                        <div class="modal fade" id="modalDetalhes{{ servico[0] }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg">
+                                    <div class="modal-header jb-dark-header">
+                                        <h5 class="modal-title fw-bold"><i class="fas fa-info-circle me-2"></i> Detalhes do Serviço</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body p-4 bg-light">
+                                        <div class="row mb-3">
+                                            <div class="col-6">
+                                                <small class="text-muted fw-bold d-block">Código/Título</small>
+                                                <span class="text-danger fw-bold fs-5">{{ servico[1] }}</span>
+                                            </div>
+                                            <div class="col-6 text-end">
+                                                <small class="text-muted fw-bold d-block">Status</small>
+                                                <span class="badge bg-secondary px-3 py-2">{{ servico[4] }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <hr class="border-secondary opacity-25">
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted fw-bold d-block">Cliente Solicitante</small>
+                                            <span class="text-dark">{{ servico[2] }}</span>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted fw-bold d-block">Descrição Completa</small>
+                                            <div class="p-3 bg-white border rounded text-secondary" style="white-space: pre-wrap; font-size: 0.9rem;">{{ servico[6] or 'Nenhuma descrição detalhada fornecida.' }}</div>
+                                        </div>
+
+                                        <div class="row mt-4">
+                                            <div class="col-6">
+                                                <small class="text-muted fw-bold d-block">Data de Abertura</small>
+                                                <span class="text-dark">{{ servico[5] }}</span>
+                                            </div>
+                                            <div class="col-6 text-end">
+                                                <small class="text-muted fw-bold d-block">Valor Total</small>
+                                                <span class="text-success fw-bold fs-5">R$ {{ "%.2f"|format(servico[7] or 0) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer bg-white">
+                                        <button type="button" class="btn fw-bold text-white px-4" style="background-color: #151a21;" data-bs-dismiss="modal">Fechar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-3 text-secondary d-block"></i>
+                                Nenhum serviço registado no sistema até ao momento.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

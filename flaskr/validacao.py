@@ -4,8 +4,6 @@ mas isso pode ser burlado, então o servidor confere de novo antes de gravar.
 """
 import re
 from flask import session
-from model.db import jb_solucoes_db
-
 
 def somente_numeros(texto):
     """Tira pontos, traços e barras. Ex.: '123.456.789-09' -> '12345678909'"""
@@ -45,46 +43,13 @@ def cnpj_valido(cnpj):
 def pode_ver_painel():
     """
     Verifica se o utilizador atual tem perfil de Administrador ou Colaborador.
+    Lê diretamente da sessão configurada no momento do Login (muito mais rápido e sem erros).
     """
-    if not session.get('logged_in'):
-        return False
-    
-    user_code = session.get('user_code')
-    if not user_code:
-        return False
-        
-    try:
-        cursor = jb_solucoes_db.connection.cursor()
-        cursor.execute("SELECT perfil FROM pessoas WHERE id = %s", (user_code,))
-        row = cursor.fetchone()
-        cursor.close()
-        
-        if row and row[0] in ('Administrador', 'Colaborador', 'adm', 'colaborador'):
-            return True
-    except Exception:
-        pass
-        
-    return False
+    return session.get('pode_ver_painel', False)
 
 
 def pode_ver_gerenciador():
-    """Verifica se o utilizador atual é Colaborador ou Administrador."""
-    if not session.get('logged_in'):
-        return False
-    
-    user_code = session.get('user_code')
-    if not user_code:
-        return False
-        
-    try:
-        cursor = jb_solucoes_db.connection.cursor()
-        cursor.execute("SELECT perfil FROM pessoas WHERE id = %s", (user_code,))
-        row = cursor.fetchone()
-        cursor.close()
-        
-        if row and row[0] in ('Administrador', 'Colaborador', 'adm', 'colaborador'):
-            return True
-    except Exception:
-        pass
-        
-    return False
+    """
+    Verifica se o utilizador atual tem permissão para aceder ao Gerenciador.
+    """
+    return session.get('pode_ver_gerenciador', False)
