@@ -93,6 +93,50 @@
                                     {% endif %}
                                 </div>
                             </div>
+
+                          
+                          <!-- Bloco de Aprovação de Orçamento Modernizado -->
+                          {% if resultado_os.status|lower == 'aguardando orçamento' or resultado_os.status|lower == 'aguardando aprovação' %}
+                          <div class="mt-5 rounded-4 shadow border position-relative overflow-hidden" style="background-color: #ffffff;">
+                              <!-- Faixa decorativa no topo -->
+                              <div class="position-absolute top-0 start-0 w-100" style="height: 5px; background: linear-gradient(90deg, #ffc107, #ff9800);"></div>
+                              
+                              <div class="p-4 p-md-5">
+                                  <div class="text-center mb-4">
+                                      <span class="bg-warning text-dark rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 70px; height: 70px;">
+                                          <i class="fas fa-file-invoice-dollar fs-2"></i>
+                                      </span>
+                                      <h4 class="fw-bold text-dark mb-1">Orçamento Disponível</h4>
+                                      <p class="text-muted small px-3">O diagnóstico técnico foi concluído com sucesso. Analise o valor abaixo para darmos seguimento ao conserto.</p>
+                                  </div>
+                                  
+                                  <!-- Caixa de Valor Estilo "Fatura" -->
+                                  <div class="rounded-3 p-4 text-center mb-4" style="background-color: #f8f9fa; border: 2px dashed #dee2e6;">
+                                      <p class="text-secondary mb-1 text-uppercase fw-bold" style="font-size: 0.85rem; letter-spacing: 1px;">Valor Total do Serviço</p>
+                                      <h1 class="fw-bold text-success mb-0 display-5">{{ resultado_os.valor | moeda }}</h1>
+                                  </div>
+                                  
+                                  <div class="d-flex flex-column flex-md-row gap-3 justify-content-center mt-4">
+                                      <!-- Formulário para Aprovar -->
+                                      <form id="form-aprovar-{{ resultado_os.id }}" method="POST" action="{{ url_for('responder_orcamento', id_servico=resultado_os.id, resposta='aprovado') }}" class="w-100">
+                                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                          <button type="button" class="btn btn-success fw-bold w-100 py-3 shadow-sm btn-aprovar" data-valor="{{ resultado_os.valor | moeda }}" data-id="{{ resultado_os.id }}">
+                                              <i class="fas fa-check-circle me-2 fs-5 align-middle"></i> <span class="align-middle">Aprovar Orçamento</span>
+                                          </button>
+                                      </form>
+                                      
+                                      <!-- Formulário para Recusar -->
+                                      <form id="form-recusar-{{ resultado_os.id }}" method="POST" action="{{ url_for('responder_orcamento', id_servico=resultado_os.id, resposta='recusado') }}" class="w-100">
+                                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                          <button type="button" class="btn btn-outline-danger fw-bold w-100 py-3 btn-recusar" data-id="{{ resultado_os.id }}">
+                                              <i class="fas fa-times-circle me-2 fs-5 align-middle"></i> <span class="align-middle">Recusar Orçamento</span>
+                                          </button>
+                                      </form>
+                                  </div>
+                              </div>
+                          </div>
+                          {% endif %}
+
                         </div>
                     </div>
                 {% else %}
@@ -261,5 +305,65 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Biblioteca SweetAlert2 para os alertas bonitos -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- Pop-up de Aprovação ---
+        const btnsAprovar = document.querySelectorAll('.btn-aprovar');
+        btnsAprovar.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const valor = this.getAttribute('data-valor');
+                const id = this.getAttribute('data-id');
+                
+                Swal.fire({
+                    title: 'Aprovar Serviço?',
+                    html: `Você autoriza a nossa equipa a iniciar o conserto no valor de <br><strong class="fs-2 text-success mt-2 d-block">${valor}</strong>`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fas fa-check me-1"></i> Sim, autorizar!',
+                    cancelButtonText: 'Cancelar',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Se o cliente clicou em sim, envia o formulário
+                        document.getElementById('form-aprovar-' + id).submit();
+                    }
+                });
+            });
+        });
+
+        // --- Pop-up de Recusa ---
+        const btnsRecusar = document.querySelectorAll('.btn-recusar');
+        btnsRecusar.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                
+                Swal.fire({
+                    title: 'Recusar Orçamento?',
+                    text: "Ao recusar, o serviço será cancelado e o equipamento devolvido sem conserto. Deseja realmente recusar?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fas fa-times me-1"></i> Sim, recusar',
+                    cancelButtonText: 'Voltar',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Se o cliente clicou em sim, envia o formulário
+                        document.getElementById('form-recusar-' + id).submit();
+                    }
+                });
+            });
+        });
+        
+    });
+  </script>
 </body>
 </html>

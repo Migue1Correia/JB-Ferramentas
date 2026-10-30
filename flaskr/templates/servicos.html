@@ -99,10 +99,21 @@
                             </td>
                             
                             <td class="text-center">
-                                <!-- Botão que aciona o Modal de Detalhes -->
-                                <button type="button" class="btn btn-sm btn-outline-dark fw-bold" data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ servico[0] }}">
-                                    <i class="fas fa-eye me-1"></i> Detalhes
-                                </button>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <!-- Botão Inteligente do WhatsApp -->
+                                    <a href="https://wa.me/{{ servico[8]|zap }}?text=Olá {{ servico[2].split()[0] }}, tudo bem? A sua {{ servico[1] }} na JB-Ferramentas foi atualizada para o status: *{{ servico[4] }}*. Acesse o nosso site para verificar o andamento!" 
+                                       target="_blank" 
+                                       class="btn btn-sm text-white fw-bold d-flex align-items-center" 
+                                       style="background-color: #25D366; border-color: #25D366;" 
+                                       title="Avisar cliente via WhatsApp">
+                                        <i class="fab fa-whatsapp fs-5"></i>
+                                    </a>
+
+                                    <!-- Botão que aciona o Modal de Detalhes -->
+                                    <button type="button" class="btn btn-sm btn-outline-dark fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalDetalhes{{ servico[0] }}">
+                                        <i class="fas fa-eye me-1"></i> Detalhes
+                                    </button>
+                                </div>
                             </td>
                         </tr>
 

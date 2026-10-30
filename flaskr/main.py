@@ -13,7 +13,7 @@ from model.service import ServiceModel
 from model.colaborador import ColaboradorModel
 from model.admin import AdminModel
 from model.painel import PainelModel
-from validacao import somente_numeros, cpf_valido, cnpj_valido, pode_ver_painel
+from validacao import somente_numeros, cpf_valido, cnpj_valido
 from dotenv import load_dotenv
 
 # Carrega as configurações do arquivo .env
@@ -51,19 +51,28 @@ def formulario_expirado(erro):
     return redirect(request.referrer or url_for('login'))
 
 
-def pode_ver_painel():
-    return bool(session.get('logged_in'))
-
-
 @app.context_processor
 def variaveis_dos_menus():
-    return {"pode_ver_painel": pode_ver_painel()}
+    """Injeta as permissões corretas (definidas no login) em todos os ficheiros HTML."""
+    return {
+        "pode_ver_painel": session.get('pode_ver_painel', False),
+        "pode_ver_gerenciador": session.get('pode_ver_gerenciador', False)
+    }
 
 
 @app.template_filter('moeda')
 def formatar_moeda(valor):
     texto = f"{float(valor or 0):,.2f}"
     return "R$ " + texto.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+@app.template_filter('zap')
+def formatar_zap(telefone):
+    """Limpa o telefone e adiciona o código 55 do Brasil para o link do WhatsApp"""
+    if not telefone:
+        return ""
+    numeros = ''.join(filter(str.isdigit, str(telefone)))
+    return f"55{numeros}" if numeros else ""
 
 
 # === 1. TELA INICIAL (LANDING PAGE) ===
@@ -81,9 +90,10 @@ def main_page():
             
         try:
             cursor = jb_solucoes_db.connection.cursor()
-            # Procura o serviço e junta (LEFT JOIN) com a manutenção para pegar a foto
+            # Adicionamos s.id e s.valor_servico na busca
             query = """
-                SELECT s.titulo_servico, s.descricao_servico, s.status_servico, m.diagnostico, m.foto_equipamento 
+                SELECT s.id, s.titulo_servico, s.descricao_servico, s.status_servico, 
+                       m.diagnostico, m.foto_equipamento, s.valor_servico 
                 FROM servicos s
                 LEFT JOIN manutencoes m ON s.id = m.id_servico
                 WHERE s.titulo_servico = %s
@@ -94,15 +104,17 @@ def main_page():
             
             if row:
                 # Extrai apenas o nome do equipamento da descrição completa
-                descricao_completa = row[1]
+                descricao_completa = row[2]
                 equipamento_nome = descricao_completa.split('\n')[0].replace('Equipamento: ', '') if descricao_completa else "Não especificado"
 
                 resultado_os = {
-                    "numero_os": row[0],
+                    "id": row[0],
+                    "numero_os": row[1],
                     "equipamento": equipamento_nome,
-                    "status": row[2],
-                    "diagnostico": row[3],
-                    "foto": row[4]
+                    "status": row[3],
+                    "diagnostico": row[4],
+                    "foto": row[5],
+                    "valor": row[6] or 0.00 
                 }
         except Exception as e:
             print("Erro na busca da OS:", e)
@@ -196,23 +208,18 @@ def login():
                 
                 try:
                     cursor = jb_solucoes_db.connection.cursor()
-                    
-                    # Lê o perfil diretamente da tabela pessoas (como mostrado na sua imagem)
                     cursor.execute("SELECT perfil FROM pessoas WHERE id = %s", (id_pessoa,))
                     resultado = cursor.fetchone()
                     cursor.close()
                     
                     if resultado and resultado[0]:
-                        # Converte para minúsculas e remove espaços
                         perfil = str(resultado[0]).strip().lower()
                         
-                        # Se na base de dados estiver "administrador", o sistema trata como "admin"
                         if perfil == 'administrador':
                             perfil = 'admin'
                             
                         session['user_perfil'] = perfil 
                         
-                        # Liberta os menus para a equipa
                         if perfil in ['colaborador', 'admin', 'gerente']:
                             session['pode_ver_gerenciador'] = True
                             session['pode_ver_painel'] = True
@@ -226,7 +233,6 @@ def login():
                         
                 except Exception as e:
                     print("Erro SQL no Login:", e)
-                    # Fallback de segurança
                     session['user_perfil'] = 'cliente'
                     session['pode_ver_gerenciador'] = False
                     session['pode_ver_painel'] = False
@@ -369,6 +375,7 @@ def logout():
 @app.route('/manutencao', methods=['GET', 'POST'])
 def manutencao_page():
     if not session.get('logged_in'):
+        flash("Por favor, faça login ou cadastre-se para solicitar uma manutenção.", "warning")
         return redirect(url_for('login'))
 
     if request.method == 'POST':
@@ -433,40 +440,25 @@ def comprar_ferramenta(ferramenta_id):
     return redirect(url_for('perfil_page'))
 
 
-# === 12. DASHBOARD / PEDIDOS ===
+# === 12. DASHBOARD / GERENCIADOR ===
 @app.route('/colaborador/dashboard')
 def colaborador_dashboard():
-    # Pega o perfil em letras minúsculas para evitar erros de digitação (Ex: 'Admin', 'admin', 'ADMIN')
-    perfil = str(session.get('user_perfil', '')).lower()
-    
-    if not session.get('logged_in') or perfil not in ['colaborador', 'admin']:
+    if not session.get('logged_in') or not session.get('pode_ver_gerenciador'):
         flash("Acesso restrito à equipa interna e administradores.", "danger")
         return redirect(url_for('login'))
         
     return render_template('gerenciador.html')
 
-# === PAINEL DE PEDIDOS (COM DADOS) ===
+
+# === 12.1 PAINEL DE PEDIDOS / GRÁFICOS ===
 @app.route('/colaborador/painel')
 def painel_colaborador():
-    perfil = str(session.get('user_perfil', '')).lower()
-    
-    if not session.get('logged_in') or perfil not in ['colaborador', 'admin']:
+    if not session.get('logged_in') or not session.get('pode_ver_painel'):
         flash("Acesso restrito à equipa interna e administradores.", "danger")
         return redirect(url_for('login'))
         
     servicos_pendentes = ColaboradorModel.get_servicos_pendentes()
     return render_template('pedidos.html', servicos=servicos_pendentes)
-
-# === PÁGINA DE PEDIDOS (RENDERIZAÇÃO SIMPLES) ===
-@app.route("/colaborador/pedidos")
-def pedidos_page():
-    perfil = str(session.get('user_perfil', '')).lower()
-    
-    if not session.get('logged_in') or perfil not in ['colaborador', 'admin']:
-        flash("Acesso restrito à equipa interna e administradores.", "danger")
-        return redirect(url_for('login'))
-        
-    return render_template('pedidos.html')
 
 
 # === 13. CRIAR ORDEM DE SERVIÇO ===
@@ -488,7 +480,6 @@ def criar_os():
             
             if fotos and fotos[0].filename != '':
                 foto = fotos[0]
-                # Usa a pasta configurada no topo do arquivo para evitar erros de caminho
                 pasta_uploads = app.config['UPLOAD_FOLDER']
                 
                 nome_seguro = secure_filename(foto.filename)
@@ -499,7 +490,6 @@ def criar_os():
                 
                 caminho_foto_banco = f"uploads/equipamentos/{nome_arquivo}"
             
-            # Utiliza a variável correta da sua base de dados
             cursor = jb_solucoes_db.connection.cursor()
             
             cursor.execute("SELECT id FROM pessoas WHERE telefone = %s OR nome = %s LIMIT 1", (telefone, cliente))
@@ -570,15 +560,40 @@ def atualizar_orcamento(id_servico):
 # === 15. CLIENTE RESPONDE ORÇAMENTO ===
 @app.route('/cliente/orcamento/<int:id_servico>/<resposta>', methods=['POST'])
 def responder_orcamento(id_servico, resposta):
+    # A TRAVA DE NEGÓCIO: Se não estiver logado, redireciona para criar conta/entrar!
     if not session.get('logged_in'):
+        flash("Para aprovar ou recusar este orçamento com segurança, por favor acesse a sua conta ou faça um cadastro rápido.", "warning")
         return redirect(url_for('login'))
-    user_id = session.get('user_code')
-    sucesso, mensagem = ServiceModel.responder_orcamento(id_servico, user_id, resposta)
-    if sucesso:
-        flash(mensagem, "success")
-    else:
-        flash(mensagem, "danger")
-    return redirect(url_for('perfil_page'))
+        
+    novo_status = 'Orçamento Aprovado' if resposta == 'aprovado' else 'Orçamento Recusado'
+    numero_os = None
+    
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        
+        cursor.execute("""
+            UPDATE servicos 
+            SET status_servico = %s 
+            WHERE id = %s
+        """, (novo_status, id_servico))
+        
+        cursor.execute("SELECT titulo_servico FROM servicos WHERE id = %s", (id_servico,))
+        row = cursor.fetchone()
+        if row:
+            numero_os = row[0].replace('OS-', '')
+            
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        
+        flash(f"Orçamento {resposta.upper()} com sucesso!", "success")
+    except Exception as e:
+        print("Erro ao responder orçamento:", e)
+        flash("Ocorreu um erro ao processar a resposta.", "danger")
+        
+    if numero_os:
+        return redirect(url_for('main_page', os_busca=numero_os))
+        
+    return redirect(url_for('main_page'))
 
 
 # === 16. GERENCIAR FERRAMENTAS E EQUIPA (EXCLUSIVO ADMIN) ===
@@ -597,12 +612,10 @@ def gerenciar_ferramentas():
         flash(mensagem, "success" if sucesso else "danger")
         return redirect(url_for('gerenciar_ferramentas'))
         
-    # Busca dados para o painel
     tipos = ToolModel.get_tipos()
     todas_ferramentas = ToolModel.get_all()
     filiais = AdminModel.get_filiais()
     
-    # Busca a equipa cadastrada diretamente pelo banco
     try:
         cursor = jb_solucoes_db.connection.cursor()
         cursor.execute("""
@@ -620,6 +633,7 @@ def gerenciar_ferramentas():
 
     return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais, equipe=equipe)
 
+
 # === 16.1. ROTA DE CADASTRO DE EQUIPA ===
 @app.route('/admin/cadastrar_equipe', methods=['POST'])
 def cadastrar_equipe():
@@ -632,14 +646,13 @@ def cadastrar_equipe():
     email = request.form.get('email')
     usuario = request.form.get('usuario')
     senha = request.form.get('senha')
-    nivel = request.form.get('nivel') # 'colaborador' ou 'admin'
+    nivel = request.form.get('nivel')
     
     id_perfil = 3 if nivel == 'admin' else 2
     
     try:
         cursor = jb_solucoes_db.connection.cursor()
         
-        # 1. Verifica se CPF ou Usuário já existe
         cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (cpf,))
         if cursor.fetchone():
             flash("Já existe uma pessoa com este CPF cadastrada no sistema.", "warning")
@@ -650,14 +663,12 @@ def cadastrar_equipe():
             flash("Este nome de usuário (Login) já está a ser utilizado.", "warning")
             return redirect(url_for('gerenciar_ferramentas'))
             
-        # 2. Insere a pessoa
         cursor.execute("""
             INSERT INTO pessoas (nome, tipo, codigo, endereco, email, telefone, perfil) 
             VALUES (%s, 'pf', %s, 'Equipa Interna', %s, %s, %s)
         """, (nome, cpf, email, telefone, nivel))
         id_pessoa = cursor.lastrowid
         
-        # 3. Cria a conta de acesso com a senha criptografada
         hashed_password = jb_bcrypt.generate_password_hash(senha).decode("utf-8")
         cursor.execute("""
             INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo)
@@ -748,11 +759,12 @@ def admin_unidades():
 def painel_graficos():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    if not pode_ver_painel():
+    if not session.get('pode_ver_painel'):
         flash("Você não tem permissão para ver o painel.", "danger")
         return redirect(url_for('ferramentas_page'))
     dados = PainelModel.get_resumo_mensal()
     return render_template('painel_graficos.html', dados=dados)
+
 
 # === 23. TELA DE ORÇAMENTOS ===
 @app.route("/colaborador/orcamentos")
@@ -762,9 +774,9 @@ def orcamentos_page():
         
     try:
         cursor = jb_solucoes_db.connection.cursor()
-        # Busca serviços de manutenção que ainda não foram aprovados ou finalizados
+        # Adicionado p.telefone (Índice 7)
         query = """
-            SELECT s.id, s.titulo_servico, p.nome, s.descricao_servico, s.data_abertura, s.status_servico, s.valor_servico
+            SELECT s.id, s.titulo_servico, p.nome, s.descricao_servico, s.data_abertura, s.status_servico, s.valor_servico, p.telefone
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
             WHERE s.servico_solicitado = 'manutencao' AND s.status_servico IN ('Aberto', 'Aguardando avaliação técnica', 'Aguardando Orçamento')
@@ -788,9 +800,9 @@ def servicos_page():
         
     try:
         cursor = jb_solucoes_db.connection.cursor()
-        # Adicionados os campos de descrição e valor para exibir no Modal de Detalhes
+        # Adicionado p.telefone (Índice 8)
         query = """
-            SELECT s.id, s.titulo_servico, p.nome, s.servico_solicitado, s.status_servico, DATE_FORMAT(s.data_abertura, '%d/%m/%Y %H:%i'), s.descricao_servico, s.valor_servico
+            SELECT s.id, s.titulo_servico, p.nome, s.servico_solicitado, s.status_servico, DATE_FORMAT(s.data_abertura, '%d/%m/%Y %H:%i'), s.descricao_servico, s.valor_servico, p.telefone
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
             ORDER BY s.data_abertura DESC
@@ -804,6 +816,7 @@ def servicos_page():
         
     return render_template('servicos.html', servicos=lista_servicos)
 
+
 # === 25. TELA DE CLIENTES (COLABORADOR) ===
 @app.route("/colaborador/clientes", methods=["GET", "POST"])
 def gerenciar_clientes():
@@ -815,14 +828,13 @@ def gerenciar_clientes():
     if request.method == "POST":
         nome = request.form.get("nome")
         telefone = request.form.get("telefone")
-        codigo = somente_numeros(request.form.get("codigo")) # CPF/CNPJ
+        codigo = somente_numeros(request.form.get("codigo")) 
         
         try:
             cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (codigo,))
             if cursor.fetchone():
                 flash("Um cliente com este CPF/CNPJ já existe no sistema.", "warning")
             else:
-                # Cria o Pré-cadastro. Endereço e E-mail recebem valores padrão até o cliente se registar.
                 cursor.execute("""
                     INSERT INTO pessoas (nome, tipo, endereco, email, telefone, codigo) 
                     VALUES (%s, 'pf', 'Não informado', 'nao@informado.com', %s, %s)
@@ -835,7 +847,6 @@ def gerenciar_clientes():
             
         return redirect(url_for('gerenciar_clientes'))
         
-    # GET: Lista todos os clientes e verifica se têm conta ativa (login)
     cursor.execute("""
         SELECT p.id, p.nome, p.codigo, p.telefone, p.email,
                (SELECT COUNT(*) FROM servicos WHERE id_pessoa_solicitante = p.id) as total_os,
@@ -847,6 +858,7 @@ def gerenciar_clientes():
     cursor.close()
     
     return render_template('clientes.html', clientes=clientes)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

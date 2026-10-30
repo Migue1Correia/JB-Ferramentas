@@ -45,14 +45,20 @@
                 
                 <!-- Imagem do Produto -->
                 <div class="col-md-5 text-center">
-                    <img src="{{ url_for('static', filename=ferramenta.imagem) }}" class="img-fluid rounded shadow-sm" alt="{{ ferramenta.nome }}" style="max-height: 320px; object-fit: cover; width: 100%;">
+                    {% if ferramenta.imagem %}
+                        <img src="{{ url_for('static', filename=ferramenta.imagem) }}" class="img-fluid rounded shadow-sm" alt="{{ ferramenta.nome }}" style="max-height: 320px; object-fit: cover; width: 100%;">
+                    {% else %}
+                        <div class="bg-light rounded-4 p-4 h-100 d-flex align-items-center justify-content-center border" style="min-height: 320px;">
+                            <i class="fas fa-tools text-secondary" style="font-size: 8rem; opacity: 0.15;"></i>
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Informações e Ações do Produto -->
                 <div class="col-md-7">
                     <span class="badge bg-light text-dark border mb-2 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">Categoria: Elétricas / Manutenção</span>
                     <h1 class="h3 fw-bold text-dark mb-3">{{ ferramenta.nome }}</h1>
-                    <p class="text-muted small mb-4">{{ ferramenta.descricao }}</p>
+                    <p class="text-muted small mb-4">{{ ferramenta.descricao or 'Nenhuma descrição detalhada fornecida para este equipamento.' }}</p>
 
                     <!-- Especificações rápidas -->
                     <div class="row g-2 mb-4 text-center">
@@ -60,14 +66,14 @@
                             <div class="p-2 border rounded bg-light">
                                 <i class="fas fa-bolt text-danger mb-1"></i>
                                 <div class="small fw-bold text-dark">Potência</div>
-                                <span class="text-muted" style="font-size: 0.8rem;">750W</span>
+                                <span class="text-muted" style="font-size: 0.8rem;">Consulte</span>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="p-2 border rounded bg-light">
                                 <i class="fas fa-weight-hanging text-danger mb-1"></i>
                                 <div class="small fw-bold text-dark">Peso</div>
-                                <span class="text-muted" style="font-size: 0.8rem;">2.5kg</span>
+                                <span class="text-muted" style="font-size: 0.8rem;">Leve</span>
                             </div>
                         </div>
                         <div class="col-4">
@@ -79,30 +85,41 @@
                         </div>
                     </div>
 
-                    <!-- Preço e Botão de Ação -->
+                    <!-- Preço -->
                     <div class="mb-4">
                         <span class="d-block text-muted small uppercase fw-bold">Valor do investimento</span>
                         <span class="fs-3 fw-bold text-danger">{{ ferramenta.preco|moeda }}{% if ferramenta.tipo == 'Alugar' %}/dia{% endif %}</span>
                     </div>
 
-                    <!-- Formulário Dinâmico para Enviar Requisição ao Servidor -->
-                    <form action="{% if ferramenta.tipo == 'Alugar' %}{{ url_for('alugar_ferramenta', ferramenta_id=ferramenta.id) }}{% else %}{{ url_for('comprar_ferramenta', ferramenta_id=ferramenta.id) }}{% endif %}" method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        
+                    <!-- Botões Inteligentes do WhatsApp -->
+                    <div class="bg-light p-3 rounded-3 mb-3 border" style="border-left: 4px solid #25D366 !important;">
+                        <h6 class="fw-bold text-dark mb-1">Fale com a nossa equipa</h6>
+                        <p class="small text-muted mb-0">Valide a disponibilidade e as melhores condições diretamente pelo WhatsApp.</p>
+                    </div>
+
+                    <div class="d-flex flex-column gap-3 mt-3">
+                        <!-- Botão de Locação via WhatsApp -->
                         {% if ferramenta.tipo == 'Alugar' %}
-                            <div class="mb-3" style="max-width: 200px;">
-                                <label class="form-label small fw-bold text-secondary">Quantidade de dias:</label>
-                                <input type="number" name="dias_aluguel" class="form-control form-control-sm bg-light" value="1" min="1" max="30">
-                            </div>
+                        <a href="https://wa.me/5511999999999?text=Olá! Estou no site da JB Ferramentas e tenho interesse em *ALUGAR* o equipamento: {{ ferramenta.nome }}." 
+                           target="_blank" 
+                           class="btn fw-bold px-4 py-3 shadow-sm d-flex align-items-center justify-content-center"
+                           style="background-color: #ffc107; color: #000; border: none; font-size: 1.1rem; transition: transform 0.2s;"
+                           onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="fab fa-whatsapp me-2 fs-4 text-success"></i> Consultar Locação
+                        </a>
+                        {% else %}
+                        <!-- Botão de Compra via WhatsApp -->
+                        <a href="https://wa.me/5511965122613?text=Olá! Estou no site da JB Ferramentas e tenho interesse em *COMPRAR* o equipamento: {{ ferramenta.nome }}." 
+                           target="_blank" 
+                           class="btn fw-bold px-4 py-3 shadow-sm d-flex align-items-center justify-content-center text-white"
+                           style="background-color: #25D366; border: none; font-size: 1.1rem; transition: transform 0.2s;"
+                           onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="fab fa-whatsapp me-2 fs-4"></i> Consultar Compra
+                        </a>
                         {% endif %}
+                    </div>
 
-                        <button type="submit" class="btn btn-danger w-100 py-3 fw-bold shadow-sm" style="background-color: #ff2b2b; border: none; border-radius: 8px;">
-                            <i class="fas fa-{% if ferramenta.tipo == 'Alugar' %}calendar-check{% else %}shopping-cart{% endif %} me-2"></i>
-                            Confirmar {{ ferramenta.tipo }}
-                        </button>
-                    </form>
-
-                    <div class="mt-3 text-center">
+                    <div class="mt-4 text-center">
                         <span class="small text-success fw-bold"><i class="fas fa-check-circle me-1"></i> Disponível em estoque (Filial São Paulo)</span>
                     </div>
                 </div>
@@ -142,7 +159,7 @@
                                 <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
                             </div>
                         </div>
-                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp[cite: 3].</p>
+                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp.</p>
                     </div>
                     <div class="col-md-4">
                         <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Links Rápidos</h5>

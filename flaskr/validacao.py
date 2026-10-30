@@ -6,13 +6,19 @@ import re
 from flask import session
 
 def somente_numeros(texto):
-    """Tira pontos, traços e barras. Ex.: '123.456.789-09' -> '12345678909'"""
-    return re.sub(r"\D", "", texto or "")
+    """Tira pontos, traços e barras. Garante que seja lido como texto."""
+    # O str(texto) previne falhas se o HTML/JS enviar o dado como número inteiro em vez de texto
+    return re.sub(r"\D", "", str(texto) if texto else "")
 
 
 def cpf_valido(cpf):
     """Confere os dois dígitos verificadores do CPF."""
     cpf = somente_numeros(cpf)
+    
+    # Blindagem: Se o navegador "comeu" os zeros à esquerda (ex: CPF começando em 045), recoloca-os.
+    if 0 < len(cpf) < 11:
+        cpf = cpf.zfill(11)
+        
     if len(cpf) != 11 or cpf == cpf[0] * 11:
         return False
 
@@ -27,6 +33,11 @@ def cpf_valido(cpf):
 def cnpj_valido(cnpj):
     """Confere os dois dígitos verificadores do CNPJ."""
     cnpj = somente_numeros(cnpj)
+    
+    # Blindagem para CNPJ: Recoloca zeros à esquerda caso tenham sido removidos pelo frontend
+    if 0 < len(cnpj) < 14:
+        cnpj = cnpj.zfill(14)
+        
     if len(cnpj) != 14 or cnpj == cnpj[0] * 14:
         return False
 

@@ -23,7 +23,7 @@
             <h2 class="fw-bold text-dark mb-0">
                 <i class="fas fa-file-invoice-dollar text-danger me-2"></i> Gestão de Orçamentos
             </h2>
-            <a href="{{ url_for('pedidos_page') }}" class="btn btn-outline-secondary fw-bold px-4">
+            <a href="{{ url_for('painel_colaborador') }}" class="btn btn-outline-secondary fw-bold px-4">
                 <i class="fas fa-list me-2"></i> Ver Todos os Pedidos
             </a>
         </div>
@@ -45,15 +45,31 @@
                         {% for orc in orcamentos %}
                         <tr>
                             <td class="fw-bold text-danger">{{ orc[1] }}</td>
-                            <td class="fw-bold">{{ orc[2] }}</td>
+                            <td class="fw-bold">
+                                {{ orc[2] }}
+                                <!-- Exibe o telefone discretamente abaixo do nome -->
+                                <small class="text-muted d-block" style="font-size: 0.75rem;"><i class="fas fa-phone-alt me-1"></i>{{ orc[7] or 'Não informado' }}</small>
+                            </td>
                             <td class="text-muted small">{{ orc[3].split('\n')[0].replace('Equipamento: ', '') }}</td>
                             <td>
                                 <span class="badge bg-warning text-dark px-2 py-1">{{ orc[5] }}</span>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm jb-btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalOrcamento{{ orc[0] }}">
-                                    <i class="fas fa-calculator me-1"></i> Gerar Orçamento
-                                </button>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <!-- Botão Inteligente do WhatsApp -->
+                                    <a href="https://wa.me/{{ orc[7]|zap }}?text=Olá {{ orc[2].split()[0] }}, tudo bem? A sua {{ orc[1] }} na JB-Ferramentas foi atualizada para o status: *{{ orc[5] }}*. Acesse o nosso site para ver o laudo e aprovar o orçamento!" 
+                                       target="_blank" 
+                                       class="btn btn-sm text-white fw-bold d-flex align-items-center" 
+                                       style="background-color: #25D366; border-color: #25D366;" 
+                                       title="Avisar cliente via WhatsApp">
+                                        <i class="fab fa-whatsapp me-1"></i> Avisar
+                                    </a>
+
+                                    <!-- Botão de Gerar Orçamento -->
+                                    <button type="button" class="btn btn-sm jb-btn-primary fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalOrcamento{{ orc[0] }}">
+                                        <i class="fas fa-calculator me-1"></i> Orçar
+                                    </button>
+                                </div>
                             </td>
                         </tr>
 
@@ -82,7 +98,7 @@
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label fw-bold text-secondary">Alterar Status</label>
                                                     <select class="form-select form-select-lg" name="status_servico" required>
-                                                        <option value="Aguardando Aprovação">Aguardando Aprovação do Cliente</option>
+                                                        <option value="Aguardando Orçamento">Aguardando Orçamento (Liberar para o Cliente)</option>
                                                         <option value="Em Manutenção">Em Manutenção</option>
                                                         <option value="Aguardando Peça">Aguardando Peça</option>
                                                     </select>
