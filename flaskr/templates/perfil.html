@@ -26,7 +26,7 @@
             </a>
         </div>
 
-        <!-- Exibição de mensagens flash (como "Compra realizada com sucesso!") -->
+        <!-- Exibição de mensagens flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -76,15 +76,62 @@
                     <input type="text" name="endereco" class="form-control bg-light shadow-none" value="{{ user_infos.address if user_infos else '' }}">
                 </div>
 
-                <div class="d-flex gap-3">
-                    <button type="submit" class="btn btn-danger px-4 py-2 fw-bold shadow-sm" style="background-color: #ff2b2b; border: none; border-radius: 6px;">
+                <!-- Botões Principais do Perfil -->
+                <div class="d-flex flex-column flex-sm-row justify-content-between gap-3 mt-5">
+                    <button type="submit" class="btn fw-bold px-5 py-3 text-white flex-grow-1" style="background-color: #ff2b2b; border: none; max-width: 300px;">
                         <i class="fas fa-save me-2"></i> Salvar Alterações
                     </button>
-                    <a href="{{ url_for('logout') }}" class="btn btn-outline-dark px-4 py-2 fw-bold" style="border-radius: 6px;">
+                    
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-dark fw-bold px-4 py-3 d-flex align-items-center justify-content-center">
                         <i class="fas fa-sign-out-alt me-2"></i> Sair da Conta
                     </a>
                 </div>
             </form>
+
+            <!-- Zona de Perigo - LGPD (Bloco Separado e Espaçado) -->
+            <div class="mt-5 pt-4 border-top">
+                <div class="p-4 rounded-3 shadow-sm" style="background-color: #fff5f5; border: 1px solid #ffc2c2;">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-4">
+                        <div class="text-center text-md-start">
+                            <h5 class="fw-bold text-danger mb-1">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Zona de Perigo (LGPD)
+                            </h5>
+                            <p class="small text-danger text-opacity-75 mb-0">
+                                Ao excluir a conta, os seus dados pessoais serão anonimizados permanentemente e perderá o acesso.
+                            </p>
+                        </div>
+                        
+                        <form id="form-excluir-conta" action="{{ url_for('excluir_conta_lgpd') }}" method="POST" class="m-0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="button" class="btn btn-danger text-white fw-bold px-4 py-3 text-nowrap" onclick="confirmarExclusao()">
+                                <i class="fas fa-trash-alt me-2"></i> Excluir Definitivamente
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Script do SweetAlert para confirmar a exclusão -->
+            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+            <script>
+            function confirmarExclusao() {
+                Swal.fire({
+                    title: 'Tem a certeza absoluta?',
+                    text: "Esta ação é irreversível. Todos os seus dados pessoais (nome, documento, contacto) serão anonimizados para sempre e perderá o acesso ao sistema.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fas fa-trash-alt me-1"></i> Sim, excluir meus dados',
+                    cancelButtonText: 'Cancelar',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('form-excluir-conta').submit();
+                    }
+                });
+            }
+            </script>
         </div>
 
         <!-- Bloco 2: Histórico de Pedidos e Serviços -->
@@ -157,7 +204,7 @@
                                 <span class="brand-subtitle text-white" style="font-size: 0.55rem;">COMÉRCIO & MANUTENÇÃO</span>
                             </div>
                         </div>
-                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp[cite: 3].</p>
+                        <p class="small text-light opacity-75">Gestão, comércio & manutenção de ferramentas. Projeto Univesp.</p>
                     </div>
                     <div class="col-md-4">
                         <h5 style="color: #fff; font-weight: 700; margin-bottom: 20px;">Links Rápidos</h5>

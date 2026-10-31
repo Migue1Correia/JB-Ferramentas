@@ -35,7 +35,7 @@
                     <h5 class="fw-bold text-dark mb-4"><i class="fas fa-plus-circle text-danger me-2"></i> Cadastrar Nova Ferramenta</h5>
                     
                     {% if tipos %}
-                    <form method="POST" action="{{ url_for('gerenciar_ferramentas') }}">
+                    <form method="POST" action="{{ url_for('gerenciar_ferramentas') }}" enctype="multipart/form-data">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         <div class="row">
@@ -49,14 +49,30 @@
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo_ferramenta" class="form-label fw-bold text-secondary small">Categoria / Tipo</label>
+                                <select class="form-select" id="tipo_ferramenta" name="tipo_ferramenta" required>
+                                    <option value="" disabled selected>Selecione o tipo...</option>
+                                    {% for tipo in tipos %}
+                                    <option value="{{ tipo[0] }}">{{ tipo[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="operacao" class="form-label fw-bold text-secondary small">Operação</label>
+                                <select class="form-select" id="operacao" name="operacao" required>
+                                    <option value="" disabled selected>Finalidade...</option>
+                                    <option value="Venda">Apenas Venda</option>
+                                    <option value="Alugar">Apenas Locação</option>
+                                    <option value="Ambos">Venda e Locação</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
-                            <label for="tipo_ferramenta" class="form-label fw-bold text-secondary small">Categoria / Tipo</label>
-                            <select class="form-select" id="tipo_ferramenta" name="tipo_ferramenta" required>
-                                <option value="" disabled selected>Selecione o tipo...</option>
-                                {% for tipo in tipos %}
-                                <option value="{{ tipo[0] }}">{{ tipo[1] }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="foto_ferramenta" class="form-label fw-bold text-secondary small">Foto do Equipamento</label>
+                            <input type="file" class="form-control" id="foto_ferramenta" name="foto_ferramenta" accept="image/*">
                         </div>
 
                         <div class="mb-4">
