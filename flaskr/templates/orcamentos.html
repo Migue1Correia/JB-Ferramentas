@@ -2,130 +2,114 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Orçamentos - JB Ferramentas</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/orcamentos.css') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_ferramentas.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orcamentos.css') }}">
 </head>
 <body style="background-color: #ffffff;">
-    
+
     {% include '_header.html' %}
 
-    <main class="container py-5 jb-orcamentos-container mt-4">
+    <main class="container py-5 jb-admin-container mt-4">
         
-        <!-- Botão Voltar -->
-        <a href="javascript:history.back()" class="text-decoration-none text-secondary mb-3 d-inline-block jb-btn-voltar" style="transition: color 0.3s ease; font-weight: 500;" onmouseover="this.style.color='#ff2b2b'" onmouseout="this.style.color='#6c757d'">
-            <i class="fas fa-arrow-left me-1"></i> Voltar
+        <a href="{{ url_for('colaborador_dashboard') }}" class="text-decoration-none text-secondary mb-3 d-inline-block fw-bold voltar-link">
+            <i class="fas fa-arrow-left me-1"></i> Voltar ao Dashboard
         </a>
 
-        <!-- Cabeçalho -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold text-dark mb-0">
-                <i class="fas fa-file-invoice-dollar text-danger me-2"></i> Gestão de Orçamentos
-            </h2>
-            <a href="{{ url_for('painel_colaborador') }}" class="btn btn-outline-secondary fw-bold px-4">
-                <i class="fas fa-list me-2"></i> Ver Todos os Pedidos
-            </a>
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <div>
+                <h2 class="fw-bold text-dark mb-0">
+                    <i class="fas fa-file-invoice-dollar text-danger me-2"></i> Gestão de Orçamentos e OS
+                </h2>
+                <p class="text-muted mt-2 mb-0">Acompanhe e altere o status das ordens de serviço em andamento.</p>
+            </div>
         </div>
 
-        <!-- Tabela de Orçamentos Pendentes -->
-        <div class="jb-table-wrapper">
-            <table class="table jb-table table-hover">
-                <thead>
+        <!-- Barra de Pesquisa e Filtros -->
+        <div class="row mb-4 search-bar-container align-items-center g-3">
+            <!-- Pesquisa por Texto -->
+            <div class="col-lg-4">
+                <div class="input-group shadow-sm border rounded-3">
+                    <span class="input-group-text"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="searchInput" class="form-control py-2" placeholder="Buscar cliente ou OS..." onkeyup="filtrarTabela()">
+                </div>
+            </div>
+            
+            <!-- Botões de Filtro por Status -->
+            <div class="col-lg-8 text-lg-end">
+                <div class="d-flex gap-2 flex-wrap justify-content-lg-end" id="statusFilters">
+                    <button class="btn btn-sm btn-dark filter-btn shadow-sm" data-status="Todos">Todos</button>
+                    <button class="btn btn-sm btn-outline-dark filter-btn shadow-sm" data-status="Aberto">Abertos</button>
+                    <button class="btn btn-sm btn-outline-dark filter-btn shadow-sm" data-status="Aguardando">Aguardando</button>
+                    <button class="btn btn-sm btn-outline-primary filter-btn shadow-sm" data-status="Aprovado">Aprovados</button>
+                    <button class="btn btn-sm btn-outline-warning filter-btn shadow-sm text-dark" data-status="Em Andamento">Em Andamento</button>
+                    <button class="btn btn-sm btn-outline-success filter-btn shadow-sm" data-status="Concluído">Prontas/Concluídas</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="jb-table-wrapper shadow-sm border-0">
+            <table class="table jb-table table-hover mb-0" id="tabelaOrcamentos">
+                <thead class="table-dark" style="background-color: #151a21;">
                     <tr>
-                        <th>Nº OS</th>
-                        <th>Cliente</th>
-                        <th>Equipamento Relatado</th>
-                        <th>Status Atual</th>
-                        <th class="text-center">Ações</th>
+                        <th class="py-3 px-4 border-0" style="border-radius: 12px 0 0 0;">Nº OS</th>
+                        <th class="py-3 px-4 border-0">CLIENTE</th>
+                        <th class="py-3 px-4 border-0">EQUIPAMENTO RELATADO</th>
+                        <th class="py-3 px-4 border-0">STATUS ATUAL</th>
+                        <th class="py-3 px-4 border-0" style="border-radius: 0 12px 0 0;">AÇÕES</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if orcamentos %}
-                        {% for orc in orcamentos %}
+                        {% for o in orcamentos %}
                         <tr>
-                            <td class="fw-bold text-danger">{{ orc[1] }}</td>
-                            <td class="fw-bold">
-                                {{ orc[2] }}
-                                <!-- Exibe o telefone discretamente abaixo do nome -->
-                                <small class="text-muted d-block" style="font-size: 0.75rem;"><i class="fas fa-phone-alt me-1"></i>{{ orc[7] or 'Não informado' }}</small>
+                            <td class="fw-bold text-danger px-4">{{ o[1] }}</td>
+                            <td class="px-4">
+                                <span class="fw-bold text-dark d-block">{{ o[2] }}</span>
+                                <span class="text-muted small"><i class="fas fa-phone-alt me-1"></i> {{ o[7] }}</span>
                             </td>
-                            <td class="text-muted small">{{ orc[3].split('\n')[0].replace('Equipamento: ', '') }}</td>
-                            <td>
-                                <span class="badge bg-warning text-dark px-2 py-1">{{ orc[5] }}</span>
+                            <td class="text-secondary px-4">
+                                {% set linhas = o[3].split('\n') %}
+                                {% if linhas|length > 0 %}
+                                    <span class="d-block text-dark fw-semibold">{{ linhas[0]|replace('Equipamento: ', '') }}</span>
+                                {% endif %}
+                                {% if linhas|length > 1 %}
+                                    <span class="small text-muted">{{ linhas[1]|replace('Defeito Relatado: ', '') }}</span>
+                                {% endif %}
                             </td>
-                            <td class="text-center">
-                                <div class="d-flex justify-content-center gap-2">
-                                    <!-- Botão Inteligente do WhatsApp -->
-                                    <a href="https://wa.me/{{ orc[7]|zap }}?text=Olá {{ orc[2].split()[0] }}, tudo bem? A sua {{ orc[1] }} na JB-Ferramentas foi atualizada para o status: *{{ orc[5] }}*. Acesse o nosso site para ver o laudo e aprovar o orçamento!" 
-                                       target="_blank" 
-                                       class="btn btn-sm text-white fw-bold d-flex align-items-center" 
-                                       style="background-color: #25D366; border-color: #25D366;" 
-                                       title="Avisar cliente via WhatsApp">
+                            <td class="px-4 status-col">
+                                <!-- Dropdown para Mudar Status -->
+                                <form action="{{ url_for('atualizar_status_os', id_servico=o[0]) }}" method="POST" class="m-0 p-0">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <select name="novo_status" class="form-select status-select bg-light text-dark" onchange="this.form.submit()">
+                                        <option value="Aberto" {% if o[5] == 'Aberto' %}selected{% endif %}>Aberto</option>
+                                        <option value="Aguardando avaliação técnica" {% if o[5] == 'Aguardando avaliação técnica' %}selected{% endif %}>Aguardando Avaliação</option>
+                                        <option value="Aguardando Orçamento" {% if o[5] == 'Aguardando Orçamento' %}selected{% endif %}>Aguardando Orçamento</option>
+                                        <option value="Orçamento Aprovado" {% if o[5] == 'Orçamento Aprovado' %}selected{% endif %}>Orçamento Aprovado</option>
+                                        <option value="Orçamento Recusado" {% if o[5] == 'Orçamento Recusado' %}selected{% endif %}>Orçamento Recusado</option>
+                                        <option value="Em Andamento" {% if o[5] == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
+                                        <option value="Aguardando Peça" {% if o[5] == 'Aguardando Peça' %}selected{% endif %}>Aguardando Peça</option>
+                                        <option value="Concluído" {% if o[5] == 'Concluído' %}selected{% endif %}>Concluído</option>
+                                    </select>
+                                </form>
+                            </td>
+                            <td class="px-4">
+                                <div class="d-flex gap-2">
+                                    <a href="https://wa.me/{{ o[7]|zap }}?text=Ol%C3%A1%20{{ o[2].split()[0] }}!%20Temos%20uma%20atualiza%C3%A7%C3%A3o%20sobre%20a%20sua%20{{ o[1] }}%20na%20JB%20Ferramentas." target="_blank" class="btn btn-sm btn-success fw-bold px-3 rounded-pill shadow-sm">
                                         <i class="fab fa-whatsapp me-1"></i> Avisar
                                     </a>
-
-                                    <!-- Botão de Gerar Orçamento -->
-                                    <button type="button" class="btn btn-sm jb-btn-primary fw-bold d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalOrcamento{{ orc[0] }}">
-                                        <i class="fas fa-calculator me-1"></i> Orçar
-                                    </button>
                                 </div>
                             </td>
                         </tr>
-
-                        <!-- Modal Dinâmico para cada OS -->
-                        <div class="modal fade" id="modalOrcamento{{ orc[0] }}" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header jb-dark-header">
-                                        <h5 class="modal-title fw-bold"><i class="fas fa-tools me-2"></i> Orçamento Técnico - {{ orc[1] }}</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <form action="{{ url_for('atualizar_orcamento', id_servico=orc[0]) }}" method="POST" enctype="multipart/form-data">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                        <div class="modal-body p-4 bg-light">
-                                            
-                                            <div class="mb-3">
-                                                <label class="form-label fw-bold text-secondary">Defeito/Laudo Técnico Detalhado</label>
-                                                <textarea class="form-control" name="detalhes_dano" rows="4" placeholder="Descreva as peças que precisam de troca e o serviço a ser feito..." required></textarea>
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-md-6 mb-3">
-                                                    <label class="form-label fw-bold text-secondary">Valor Total do Serviço (R$)</label>
-                                                    <input type="number" step="0.01" class="form-control form-control-lg fw-bold text-success" name="valor_servico" placeholder="0.00" required>
-                                                </div>
-                                                <div class="col-md-6 mb-3">
-                                                    <label class="form-label fw-bold text-secondary">Alterar Status</label>
-                                                    <select class="form-select form-select-lg" name="status_servico" required>
-                                                        <option value="Aguardando Orçamento">Aguardando Orçamento (Liberar para o Cliente)</option>
-                                                        <option value="Em Manutenção">Em Manutenção</option>
-                                                        <option value="Aguardando Peça">Aguardando Peça</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            <div class="mb-3">
-                                                <label class="form-label fw-bold text-secondary">Anexar Nova Foto (Opcional - Peça Quebrada)</label>
-                                                <input class="form-control" type="file" name="imagem_dano" accept="image/*" capture="environment">
-                                                <div class="form-text">Adicione uma foto da peça danificada aberta para enviar ao cliente junto com o valor.</div>
-                                            </div>
-
-                                        </div>
-                                        <div class="modal-footer bg-white border-top-0">
-                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                            <button type="submit" class="btn jb-btn-primary fw-bold"><i class="fas fa-save me-2"></i> Salvar Orçamento</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                         {% endfor %}
                     {% else %}
                         <tr>
                             <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="fas fa-check-circle fa-2x mb-3 text-success d-block"></i>
-                                Não há Ordens de Serviço a aguardar orçamento no momento.
+                                <i class="fas fa-clipboard-check fa-3x mb-3 opacity-50 d-block"></i>
+                                Nenhuma OS pendente ou em andamento na sua filial.
                             </td>
                         </tr>
                     {% endif %}
@@ -133,20 +117,87 @@
             </table>
         </div>
     </main>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
-    <!-- Flash Messages via SweetAlert2 -->
+    <script>
+        let filtroStatusAtual = 'Todos';
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    let defaultClass = b.getAttribute('class').replace('btn-', 'btn-outline-').replace('btn-outline-outline-', 'btn-outline-');
+                    b.setAttribute('class', defaultClass);
+                    if(b.dataset.status === 'Todos') b.classList.replace('btn-outline-dark', 'btn-outline-dark');
+                });
+                
+                let activeClass = this.getAttribute('class').replace('btn-outline-', 'btn-');
+                this.setAttribute('class', activeClass);
+                
+                filtroStatusAtual = this.getAttribute('data-status');
+                filtrarTabela();
+            });
+        });
+
+        function filtrarTabela() {
+            let input = document.getElementById("searchInput");
+            let filterText = input.value.toUpperCase();
+            let table = document.getElementById("tabelaOrcamentos");
+            let tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+                let row = tr[i];
+                let colStatus = row.querySelector('.status-col select');
+                
+                if (!colStatus) continue;
+
+                let rowStatus = colStatus.value;
+                let matchText = false;
+                let tds = row.getElementsByTagName("td");
+                for (let j = 0; j < tds.length - 2; j++) {
+                    if (tds[j]) {
+                        let txtValue = tds[j].textContent || tds[j].innerText;
+                        if (txtValue.toUpperCase().indexOf(filterText) > -1) {
+                            matchText = true;
+                            break;
+                        }
+                    }
+                }
+
+                let matchStatus = false;
+                if (filtroStatusAtual === 'Todos') {
+                    matchStatus = true;
+                } else if (filtroStatusAtual === 'Aguardando') {
+                    if (rowStatus.includes('Aguardando')) matchStatus = true;
+                } else if (filtroStatusAtual === 'Aprovado') {
+                    if (rowStatus.includes('Aprovado')) matchStatus = true;
+                } else {
+                    if (rowStatus === filtroStatusAtual) matchStatus = true;
+                }
+
+                if (matchText && matchStatus) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        }
+    </script>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
             <script>
-                Swal.fire({
-                    icon: '{{ "success" if category == "success" else "error" }}',
-                    title: '{{ "Sucesso!" if category == "success" else "Atenção!" }}',
-                    text: '{{ message }}',
-                    confirmButtonColor: '#ff2b2b'
+                document.addEventListener("DOMContentLoaded", function() {
+                    Swal.fire({
+                        icon: '{{ "success" if category == "success" else "error" if category == "danger" else "warning" }}',
+                        title: 'Aviso do Sistema',
+                        text: '{{ message }}',
+                        confirmButtonColor: '#151a21',
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
                 });
             </script>
             {% endfor %}

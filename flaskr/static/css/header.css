@@ -58,3 +58,13 @@ header.jb-header-wrapper,
   background-color: #e02424 !important;
   color: #ffffff !important;
 }
+
+.hover-locacoes {
+        border-left: 4px solid #e9ecef !important; /* Mantém a borda cinza padrão */
+        transition: all 0.3s ease;
+    }
+    .hover-locacoes:hover {
+        border-left: 4px solid #0d6efd !important; /* Muda para Azul no hover */
+        box-shadow: 0 4px 15px rgba(13, 110, 253, 0.2) !important; /* Sombra Azul */
+        transform: translateY(-2px);
+    }

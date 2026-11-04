@@ -29,20 +29,35 @@
                     <div class="col-lg-7">
                         
                         <!-- Busca de Cliente -->
-                        <h5 class="jb-section-title">Dados do Cliente</h5>
-                        <div class="mb-3">
-                            <label for="cliente" class="form-label fw-bold text-secondary">Nome do Cliente</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control jb-input" id="cliente" name="cliente" placeholder="Digite para buscar ou cadastrar novo..." required>
-                                <button class="btn btn-outline-secondary px-3" type="button" id="btnBuscaCliente" style="border-color: #cbd5e1; background-color: #f8fafc;">
-                                    <i class="fas fa-search text-dark"></i> Buscar
-                                </button>
-                            </div>
+                    <h5 class="jb-section-title">Dados do Cliente</h5>
+                    <div class="mb-3">
+                        <label for="cliente" class="form-label fw-bold text-secondary">Selecione o Cliente</label>
+                        <div class="input-group">
+                            <select class="form-select jb-input" id="cliente" name="cliente" required>
+                                <option value="" disabled selected>Selecione um cliente cadastrado...</option>
+                                {% for c in clientes %}
+                                <option value="{{ c[1] }}" data-telefone="{{ c[2] }}">{{ c[1] }} {% if c[2] %}(Tel: {{ c[2] }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="mb-4">
-                            <label for="telefone" class="form-label fw-bold text-secondary">Telefone / WhatsApp</label>
-                            <input type="text" class="form-control jb-input" id="telefone" name="telefone" placeholder="(11) 90000-0000">
-                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="telefone" class="form-label fw-bold text-secondary">Telefone / WhatsApp</label>
+                        <input type="text" class="form-control jb-input" id="telefone" name="telefone" placeholder="(11) 90000-0000" required>
+                    </div>
+
+                    <!-- Script opcional para preencher o telefone automaticamente ao selecionar o cliente -->
+                    <script>
+                        document.getElementById('cliente').addEventListener('change', function() {
+                            let selectedOption = this.options[this.selectedIndex];
+                            let telefone = selectedOption.getAttribute('data-telefone');
+                            if (telefone && telefone !== 'None') {
+                                document.getElementById('telefone').value = telefone;
+                            } else {
+                                document.getElementById('telefone').value = '';
+                            }
+                        });
+                    </script>
 
                         <!-- Dados do Equipamento -->
                         <h5 class="jb-section-title">Dados do Equipamento</h5>

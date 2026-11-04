@@ -1,0 +1,81 @@
+/* ==========================================================================
+   Estilos da Tela de Gestão de Locações (Controle Interno)
+   ========================================================================== */
+
+/* Container Global da Tela */
+.jb-admin-container {
+    max-width: 1200px;
+}
+
+/* Painel do Formulário de Nova Locação */
+.jb-form-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 30px;
+    border: 1px solid rgba(0,0,0,0.05);
+    height: 100%;
+}
+
+.jb-form-card label {
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+}
+
+.jb-form-card input, .jb-form-card select {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.jb-form-card input:focus, .jb-form-card select:focus {
+    border-color: #ff2b2b;
+    box-shadow: 0 0 0 0.25rem rgba(255, 43, 43, 0.25) !important;
+    outline: none;
+}
+
+/* Tabela de Locações Ativas */
+.jb-table-wrapper {
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.jb-table {
+    margin-bottom: 0;
+}
+
+.jb-table thead th {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e9ecef;
+    padding: 15px 20px;
+    font-weight: 700;
+}
+
+.jb-table tbody td {
+    padding: 15px 20px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f5;
+    font-size: 0.9rem;
+}
+
+.jb-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.jb-table tbody tr:hover {
+    background-color: #fcfcfc;
+}
+
+/* Personalização das Badges de Status (Em Uso / Devolvido) */
+.badge {
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}

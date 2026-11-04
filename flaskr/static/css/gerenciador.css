@@ -105,3 +105,14 @@ body.gerenciador-body {
   background-color: rgba(25, 135, 84, 0.15) !important;
   color: #198754 !important;
 }
+
+
+/* 6. Locações (Azul Clássico) */
+.card-locacoes:hover {
+  border-left-color: #0d6efd !important;
+  box-shadow: 0 12px 25px rgba(13, 110, 253, 0.2) !important;
+}
+.card-locacoes:hover .card-icon-box {
+  background-color: rgba(13, 110, 253, 0.15) !important;
+  color: #0d6efd !important;
+}

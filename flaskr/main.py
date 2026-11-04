@@ -471,6 +471,12 @@ def painel_colaborador():
 # === 13. CRIAR ORDEM DE SERVIÇO ===
 @app.route("/colaborador/criar_os", methods=["GET", "POST"])
 def criar_os():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+    cursor = jb_solucoes_db.connection.cursor()
+    id_filial_colab = session.get('id_filial') # <--- Pega a filial do funcionário logado
+
     if request.method == "POST":
         try:
             cliente = request.form.get("cliente")
@@ -481,7 +487,6 @@ def criar_os():
             
             numero_os = f"OS-{random.randint(10000, 99999)}"
             id_colaborador = session.get('user_code', 1) 
-            id_filial_colab = session.get('id_filial') # <--- Carimba a OS com a filial
             
             caminho_foto_banco = None
             fotos = request.files.getlist('fotos_os')
@@ -498,18 +503,18 @@ def criar_os():
                 
                 caminho_foto_banco = f"uploads/equipamentos/{nome_arquivo}"
             
-            cursor = jb_solucoes_db.connection.cursor()
-            
+            # Procura o cliente pelo telefone ou nome
             cursor.execute("SELECT id FROM pessoas WHERE telefone = %s OR nome = %s LIMIT 1", (telefone, cliente))
             pessoa_resultado = cursor.fetchone()
             
             if pessoa_resultado:
                 id_cliente = pessoa_resultado[0]
             else:
+                # Cria o cliente associando-o à filial atual do colaborador
                 cursor.execute("""
-                    INSERT INTO pessoas (nome, tipo, endereco, email, telefone) 
-                    VALUES (%s, 'pf', 'Não informado', 'nao@informado.com', %s)
-                """, (cliente, telefone))
+                    INSERT INTO pessoas (nome, tipo, endereco, email, telefone, id_filial) 
+                    VALUES (%s, 'pf', 'Não informado', 'nao@informado.com', %s, %s)
+                """, (cliente, telefone, id_filial_colab))
                 id_cliente = cursor.lastrowid
                 
             descricao_completa = f"Equipamento: {equipamento} (Série: {num_serie})\nDefeito Relatado: {defeito}"
@@ -537,7 +542,12 @@ def criar_os():
             flash(erro_msg, "danger")
             return redirect(url_for('criar_os'))
             
-    return render_template('criar_os.html')
+    # MÉTODO GET: Busca todos os clientes cadastrados para exibir no formulário
+    cursor.execute("SELECT id, nome, telefone, codigo FROM pessoas ORDER BY nome ASC")
+    clientes = cursor.fetchall()
+    cursor.close()
+    
+    return render_template('criar_os.html', clientes=clientes)
 
 
 # === 14. ATUALIZAR ORÇAMENTO ===
@@ -633,7 +643,7 @@ def gerenciar_ferramentas():
         try:
             cursor = jb_solucoes_db.connection.cursor()
             cursor.execute("""
-                INSERT INTO ferramentas (marca, modelo, descricao, id_tipo, operacao, imagem) 
+                INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo, operacao, imagem) 
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (marca, modelo, descricao, id_tipo, operacao, caminho_foto))
             jb_solucoes_db.connection.commit()
@@ -801,26 +811,27 @@ def painel_graficos():
     return render_template('painel_graficos.html', dados=dados)
 
 
-# === 23. TELA DE ORÇAMENTOS ===
+# === 23. TELA DE ORÇAMENTOS E MANUTENÇÕES ===
 @app.route("/colaborador/orcamentos")
 def orcamentos_page():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
         
-    id_filial = session.get('id_filial') # <--- Puxa a filial da sessão
+    id_filial = session.get('id_filial')
     
     try:
         cursor = jb_solucoes_db.connection.cursor()
+        # Agora busca todas as OSs que não foram Canceladas ou Entregues
         query = """
             SELECT s.id, s.titulo_servico, p.nome, s.descricao_servico, s.data_abertura, s.status_servico, s.valor_servico, p.telefone
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
             WHERE s.servico_solicitado = 'manutencao' 
-              AND s.status_servico IN ('Aberto', 'Aguardando avaliação técnica', 'Aguardando Orçamento')
+              AND s.status_servico NOT IN ('Cancelado', 'Entregue')
               AND (s.id_filial = %s OR %s IS NULL) 
             ORDER BY s.data_abertura DESC
         """
-        cursor.execute(query, (id_filial, id_filial)) # <--- Aplica o filtro de filial
+        cursor.execute(query, (id_filial, id_filial))
         orcamentos_pendentes = cursor.fetchall()
         cursor.close()
     except Exception as e:
@@ -828,6 +839,25 @@ def orcamentos_page():
         orcamentos_pendentes = []
         
     return render_template('orcamentos.html', orcamentos=orcamentos_pendentes)
+
+# === 23.1 MUDAR STATUS DA OS VIA DROPDOWN ===
+@app.route('/colaborador/atualizar_status_os/<int:id_servico>', methods=['POST'])
+def atualizar_status_os(id_servico):
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+    
+    novo_status = request.form.get('novo_status')
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("UPDATE servicos SET status_servico = %s WHERE id = %s", (novo_status, id_servico))
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        flash(f"Status da OS atualizado para '{novo_status}'!", "success")
+    except Exception as e:
+        print("Erro ao atualizar status:", e)
+        flash("Erro ao atualizar o status.", "danger")
+        
+    return redirect(url_for('orcamentos_page'))
 
 
 # === 24. TELA GERAL DE SERVIÇOS ===
@@ -941,6 +971,60 @@ def excluir_conta_lgpd():
         flash("Ocorreu um erro ao processar a exclusão. Contacte o suporte.", "danger")
         return redirect(url_for('perfil_page'))
 
+
+# === 27. CONTROLE INTERNO DE LOCAÇÕES ===
+@app.route("/colaborador/locacoes", methods=["GET", "POST"])
+def gerenciar_locacoes():
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        flash("Acesso restrito à equipa interna.", "danger")
+        return redirect(url_for('login'))
+
+    id_filial = session.get('id_filial')
+    cursor = jb_solucoes_db.connection.cursor()
+
+    if request.method == "POST":
+        id_cliente = request.form.get("id_cliente")
+        id_ferramenta = request.form.get("id_ferramenta")
+        dias = int(request.form.get("dias", 1))
+        valor_diaria = float(request.form.get("valor_diaria", 0.0).replace(',', '.'))
+        valor_total = dias * valor_diaria
+        id_colab = session.get('user_code')
+
+        try:
+            cursor.execute("""
+                INSERT INTO locacoes (id_pessoa, id_ferramenta, dias, valor_diaria, valor_total, status, id_filial, id_colaborador)
+                VALUES (%s, %s, %s, %s, %s, 'Alugado', %s, %s)
+            """, (id_cliente, id_ferramenta, dias, valor_diaria, valor_total, id_filial, id_colab))
+            
+            jb_solucoes_db.connection.commit()
+            flash("Locação registada com sucesso no sistema!", "success")
+        except Exception as e:
+            print("Erro ao registar locação:", e)
+            flash("Erro ao salvar a locação na base de dados.", "danger")
+        
+        return redirect(url_for('gerenciar_locacoes'))
+
+    # Buscar dados para os select boxes (Clientes e Ferramentas de Locação)
+    cursor.execute("SELECT id, nome, codigo FROM pessoas ORDER BY nome ASC")
+    clientes = cursor.fetchall()
+    
+    cursor.execute("SELECT id, marca, modelo FROM ferramentas WHERE operacao IN ('Alugar', 'Ambos')")
+    ferramentas = cursor.fetchall()
+
+    # Buscar locações ativas da filial do colaborador
+    query_locacoes = """
+        SELECT l.id, p.nome, f.marca, f.modelo, l.dias, l.valor_total, DATE_FORMAT(l.data_locacao, '%%d/%%m/%%Y'), l.status
+        FROM locacoes l
+        JOIN pessoas p ON l.id_pessoa = p.id
+        JOIN ferramentas f ON l.id_ferramenta = f.id
+        WHERE (l.id_filial = %s OR %s IS NULL)
+        ORDER BY l.data_locacao DESC
+    """
+    cursor.execute(query_locacoes, (id_filial, id_filial))
+    locacoes = cursor.fetchall()
+    cursor.close()
+
+    return render_template('locacoes.html', clientes=clientes, ferramentas=ferramentas, locacoes=locacoes)
 
 if __name__ == "__main__":
     app.run(debug=True)
