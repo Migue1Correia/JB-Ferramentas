@@ -5,3 +5,4 @@ python-dotenv==1.0.1
 mysqlclient==2.2.4
 waitress==3.0.0
 gunicorn==21.2.0
+Flask-MySQLdb
