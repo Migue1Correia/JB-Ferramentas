@@ -1026,5 +1026,33 @@ def gerenciar_locacoes():
 
     return render_template('locacoes.html', clientes=clientes, ferramentas=ferramentas, locacoes=locacoes)
 
+
+# === EXCLUIR FERRAMENTA DO CATÁLOGO ===
+@app.route('/admin/ferramenta/excluir/<int:id>', methods=['POST'])
+def excluir_ferramenta(id):
+    # Verifica se está logado e tem permissão
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('login'))
+    
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        
+        # Tenta excluir a ferramenta
+        cursor.execute("DELETE FROM ferramentas WHERE id = %s", (id,))
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        
+        flash("Ferramenta excluída do catálogo com sucesso!", "success")
+        
+    except Exception as e:
+        # Se cair aqui, é porque a ferramenta tem unidades no estoque ou histórico de locação vinculado
+        print("Erro ao excluir ferramenta:", e)
+        flash("Não é possível excluir. Existem unidades no estoque ou registos vinculados a esta ferramenta.", "warning")
+        
+    # ATENÇÃO: Se a sua função que carrega a tela do catálogo se chamar "admin_ferramentas", 
+    # troque 'gerenciar_ferramentas' abaixo por 'admin_ferramentas'.
+    return redirect(url_for('gerenciar_ferramentas'))
+
 if __name__ == "__main__":
     app.run(debug=True)
