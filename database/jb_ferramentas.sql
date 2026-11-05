@@ -2,7 +2,13 @@
 --
 -- Host: localhost    Database: jb_ferramentas
 -- ------------------------------------------------------
--- Server version	9.6.0-commercial
+-- Server version 9.6.0-commercial
+
+CREATE DATABASE IF NOT EXISTS `jb_ferramentas`
+DEFAULT CHARACTER SET utf8mb4
+COLLATE utf8mb4_0900_ai_ci;
+
+USE `jb_ferramentas`;
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -111,6 +117,8 @@ CREATE TABLE `ferramentas` (
   `modelo` varchar(50) NOT NULL,
   `descricao` tinytext,
   `id_ferramenta_tipo` int unsigned NOT NULL,
+  `operacao` varchar(50) DEFAULT 'Ambos',
+  `imagem` varchar(255) DEFAULT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -171,6 +179,7 @@ CREATE TABLE `manutencoes` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `diagnostico` text NOT NULL,
   `garantia` int NOT NULL,
+  `foto_equipamento` varchar(255) DEFAULT NULL,
   `id_servico` int unsigned NOT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -213,10 +222,10 @@ CREATE TABLE `perfis` (
   `perfil` varchar(20) NOT NULL,
   `descricao` text,
   `ativo` tinyint(1) NOT NULL DEFAULT '1',
-  `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -233,11 +242,45 @@ CREATE TABLE `pessoas` (
   `endereco` varchar(200) NOT NULL,
   `email` varchar(100) NOT NULL,
   `telefone` varchar(20) NOT NULL,
+  `codigo` varchar(20) DEFAULT NULL,
+  `perfil` varchar(50) DEFAULT NULL,
+  `id_filial` int unsigned DEFAULT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `codigo` varchar(20) DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `id_filial` (`id_filial`),
+  CONSTRAINT `pessoas_ibfk_1` FOREIGN KEY (`id_filial`) REFERENCES `filiais` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `locacoes`
+--
+
+DROP TABLE IF EXISTS `locacoes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `locacoes` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `id_pessoa` int unsigned NOT NULL,
+  `id_ferramenta` int unsigned NOT NULL,
+  `dias` int NOT NULL DEFAULT '1',
+  `valor_diaria` decimal(10,2) NOT NULL,
+  `valor_total` decimal(10,2) NOT NULL,
+  `data_locacao` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` varchar(50) DEFAULT 'Alugado',
+  `id_filial` int unsigned DEFAULT NULL,
+  `id_colaborador` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_pessoa` (`id_pessoa`),
+  KEY `id_ferramenta` (`id_ferramenta`),
+  KEY `id_filial` (`id_filial`),
+  KEY `id_colaborador` (`id_colaborador`),
+  CONSTRAINT `locacoes_ibfk_1` FOREIGN KEY (`id_pessoa`) REFERENCES `pessoas` (`id`),
+  CONSTRAINT `locacoes_ibfk_2` FOREIGN KEY (`id_ferramenta`) REFERENCES `ferramentas` (`id`),
+  CONSTRAINT `locacoes_ibfk_3` FOREIGN KEY (`id_filial`) REFERENCES `filiais` (`id`),
+  CONSTRAINT `locacoes_ibfk_4` FOREIGN KEY (`id_colaborador`) REFERENCES `pessoas` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -291,9 +334,9 @@ CREATE TABLE `servico_historicos` (
   `descricao_atividade` text,
   `tempo_execucao_minutos` int unsigned DEFAULT NULL,
   `id_servico` int unsigned NOT NULL,
-  `id_filial` int unsigned NOT NULL,
+  `id_filial` int unsigned DEFAULT NULL,
   `id_pessoa_responsavel` int unsigned NOT NULL,
-  `id_servico_status_lista` int unsigned NOT NULL,
+  `id_servico_status_lista` int unsigned DEFAULT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -340,15 +383,19 @@ CREATE TABLE `servicos` (
   `descricao_servico` text NOT NULL,
   `data_abertura` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `valor_servico` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `status_servico` varchar(50) NOT NULL DEFAULT 'Aberto',
   `id_pessoa_solicitante` int unsigned NOT NULL,
   `id_pessoa_abertura` int unsigned NOT NULL,
+  `id_filial` int unsigned DEFAULT NULL,
   `criando_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `id_pessoa_solicitante` (`id_pessoa_solicitante`),
   KEY `id_pessoa_abertura` (`id_pessoa_abertura`),
+  KEY `id_filial` (`id_filial`),
   CONSTRAINT `servicos_ibfk_1` FOREIGN KEY (`id_pessoa_solicitante`) REFERENCES `pessoas` (`id`),
-  CONSTRAINT `servicos_ibfk_2` FOREIGN KEY (`id_pessoa_abertura`) REFERENCES `pessoas` (`id`)
+  CONSTRAINT `servicos_ibfk_2` FOREIGN KEY (`id_pessoa_abertura`) REFERENCES `pessoas` (`id`),
+  CONSTRAINT `servicos_ibfk_3` FOREIGN KEY (`id_filial`) REFERENCES `filiais` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -400,6 +447,19 @@ CREATE TABLE `usuarios` (
   CONSTRAINT `usuarios_ibfk_2` FOREIGN KEY (`id_perfil`) REFERENCES `perfis` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dados iniciais obrigatórios (Perfis e Filial Matriz)
+--
+
+INSERT IGNORE INTO `perfis` (`id`, `perfil`, `descricao`, `ativo`) VALUES
+(1, 'Cliente', 'Acesso padrão para clientes', 1),
+(2, 'Colaborador', 'Acesso para gestão e manutenção', 1),
+(3, 'Admin', 'Administrador do sistema', 1);
+
+INSERT IGNORE INTO `filiais` (`id`, `codigo_filial`, `nome`, `endereco`) VALUES
+(1, 'MATRIZ', 'Matriz', 'São Paulo - SP');
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
