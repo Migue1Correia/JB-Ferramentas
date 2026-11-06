@@ -27,15 +27,78 @@
             <p class="text-muted mt-2 mb-0">Gestão exclusiva do catálogo base, lançamento de estoque e controlo da equipa interna.</p>
         </div>
 
+        <!-- ============================================== -->
+        <!-- SESSÃO DE PRÉ-REQUISITOS (TIPOS E FILIAIS)     -->
+        <!-- ============================================== -->
+        <div class="row g-4 mb-5">
+            <!-- FORMULÁRIO: Cadastrar Tipo de Ferramenta -->
+            <div class="col-lg-6">
+                <div class="jb-form-card shadow-sm h-100" style="border-left: 4px solid #0d6efd;">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fas fa-tags text-primary me-2"></i> Cadastrar Tipo de Ferramenta</h5>
+                    
+                    <form method="POST" action="{{ url_for('admin_tipos_rapido') }}" class="d-flex flex-column h-100">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="mb-4">
+                            <label for="tipo_nome" class="form-label fw-bold text-secondary small">Nome da Categoria (ex: Furadeira, Serra)</label>
+                            <input type="text" class="form-control" id="tipo_nome" name="tipo_nome" required>
+                        </div>
+                        
+                        <div class="d-grid mt-auto pt-3">
+                            <button type="submit" class="btn btn-primary fw-bold">
+                                <i class="fas fa-save me-2"></i> Salvar Categoria
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- FORMULÁRIO: Cadastrar Filial -->
+            <div class="col-lg-6">
+                <div class="jb-form-card shadow-sm h-100" style="border-left: 4px solid #198754;">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fas fa-store text-success me-2"></i> Cadastrar Nova Filial</h5>
+                    
+                    <form method="POST" action="{{ url_for('admin_filial_rapido') }}" class="d-flex flex-column h-100">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="codigo_filial" class="form-label fw-bold text-secondary small">Código</label>
+                                <input type="text" class="form-control" id="codigo_filial" name="codigo_filial" placeholder="Ex: SUL01" required>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label for="nome_filial" class="form-label fw-bold text-secondary small">Nome da Filial</label>
+                                <input type="text" class="form-control" id="nome_filial" name="nome" placeholder="Ex: Loja Sul" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="endereco_filial" class="form-label fw-bold text-secondary small">Endereço Completo</label>
+                            <input type="text" class="form-control" id="endereco_filial" name="endereco" placeholder="Rua, Número, Bairro, Cidade - Estado" required>
+                        </div>
+                        
+                        <div class="d-grid mt-auto pt-1">
+                            <button type="submit" class="btn btn-success fw-bold">
+                                <i class="fas fa-save me-2"></i> Salvar Filial
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- SESSÃO DO CATÁLOGO E ESTOQUE                   -->
+        <!-- ============================================== -->
         <div class="row g-4 mb-5">
             
             <!-- FORMULÁRIO 1: Cadastrar Ferramenta Base -->
             <div class="col-lg-6">
-                <div class="jb-form-card shadow-sm">
+                <div class="jb-form-card shadow-sm h-100">
                     <h5 class="fw-bold text-dark mb-4"><i class="fas fa-plus-circle text-danger me-2"></i> Cadastrar Nova Ferramenta</h5>
                     
                     {% if tipos %}
-                    <form method="POST" action="{{ url_for('gerenciar_ferramentas') }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ url_for('gerenciar_ferramentas') }}" enctype="multipart/form-data" class="d-flex flex-column h-100">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         <div class="row">
@@ -80,15 +143,15 @@
                             <input type="text" class="form-control" id="descricao" name="descricao" maxlength="255" placeholder="Detalhes adicionais da ferramenta">
                         </div>
 
-                        <div class="d-grid">
+                        <div class="d-grid mt-auto pt-3">
                             <button type="submit" class="btn jb-btn-primary fw-bold">
-                                <i class="fas fa-save me-2"></i> Adicionar ao Catálogo
+                                <i class="fas fa-plus me-2"></i> Adicionar ao Catálogo
                             </button>
                         </div>
                     </form>
                     {% else %}
                     <div class="alert alert-warning border-0 shadow-sm mt-3">
-                        <i class="fas fa-exclamation-triangle me-2"></i> Registe primeiro os tipos de ferramentas no sistema para habilitar o cadastro.
+                        <i class="fas fa-exclamation-triangle me-2"></i> Registe primeiro os tipos de ferramentas no sistema (formulário acima) para habilitar o cadastro.
                     </div>
                     {% endif %}
                 </div>
@@ -96,11 +159,11 @@
 
             <!-- FORMULÁRIO 2: Lançar Unidade em Estoque -->
             <div class="col-lg-6">
-                <div class="jb-form-card shadow-sm" style="border-left-color: #151a21;">
+                <div class="jb-form-card shadow-sm h-100" style="border-left-color: #151a21;">
                     <h5 class="fw-bold text-dark mb-4"><i class="fas fa-boxes-stacked text-dark me-2"></i> Lançar Unidade em Estoque</h5>
                     
                     {% if ferramentas and filiais %}
-                    <form method="POST" action="{{ url_for('admin_unidades') }}">
+                    <form method="POST" action="{{ url_for('admin_unidades') }}" class="d-flex flex-column h-100">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         <div class="mb-3">
@@ -128,7 +191,7 @@
                             <div class="form-text">Este número não pode ser repetido no sistema.</div>
                         </div>
 
-                        <div class="d-grid mt-auto">
+                        <div class="d-grid mt-auto pt-3">
                             <button type="submit" class="btn btn-dark fw-bold">
                                 <i class="fas fa-barcode me-2"></i> Registar Unidade
                             </button>

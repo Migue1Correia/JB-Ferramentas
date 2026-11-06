@@ -731,6 +731,50 @@ def cadastrar_equipe():
 
     return redirect(url_for('gerenciar_ferramentas'))
 
+
+# === 16.2 CADASTRAR TIPO DE FERRAMENTA (VIA PAINEL) ===
+@app.route('/admin/tipos/rapido', methods=['POST'])
+def admin_tipos_rapido():
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
+        flash("Acesso restrito.", "danger")
+        return redirect(url_for('login'))
+        
+    tipo_nome = request.form.get('tipo_nome')
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        # Insere o novo tipo
+        cursor.execute("INSERT INTO ferramenta_tipos (tipo) VALUES (%s)", (tipo_nome,))
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        flash(f"Tipo '{tipo_nome}' adicionado com sucesso!", "success")
+    except Exception as e:
+        print("Erro ao cadastrar tipo:", e)
+        flash("Erro ao salvar. Verifique se este tipo já existe.", "danger")
+        
+    return redirect(url_for('gerenciar_ferramentas'))
+
+
+# === 16.3 CADASTRAR FILIAL (VIA PAINEL) ===
+@app.route('/admin/filial/rapido', methods=['POST'])
+def admin_filial_rapido():
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
+        flash("Acesso restrito.", "danger")
+        return redirect(url_for('login'))
+        
+    codigo = request.form.get('codigo_filial')
+    nome = request.form.get('nome')
+    endereco = request.form.get('endereco')
+    
+    # Utiliza o seu model existente para salvar a filial
+    sucesso, msg = AdminModel.create_filial(codigo, nome, endereco)
+    
+    if sucesso:
+        flash(msg, "success")
+    else:
+        flash(msg, "danger")
+        
+    return redirect(url_for('gerenciar_ferramentas'))
+
 # === 17. ADICIONAR PEÇAS ===
 @app.route('/colaborador/orcamento/<int:id_servico>/peca', methods=['POST'])
 def adicionar_peca_orcamento(id_servico):
