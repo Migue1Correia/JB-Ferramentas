@@ -21,13 +21,13 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env
 
 app = Flask(__name__)
 
-app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost')
-app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root')
-app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '')
-app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'jb_ferramentas')
-app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', '3306'))
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost').strip().strip('"').strip("'")
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root').strip().strip('"').strip("'")
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '').strip().strip('"').strip("'")
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'jb_ferramentas').strip().strip('"').strip("'")
+app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', '3306').strip().strip('"').strip("'"))
 
-chave_secreta = os.getenv('SECRET_KEY', '')
+chave_secreta = os.getenv('SECRET_KEY', '').strip().strip('"').strip("'")
 if not chave_secreta or chave_secreta.startswith('troque'):
     print("AVISO: defina SECRET_KEY no arquivo .env. Usando uma chave temporária.")
     chave_secreta = secrets.token_hex(32)
