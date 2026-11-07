@@ -46,7 +46,7 @@
                 <!-- Imagem do Produto -->
                 <div class="col-md-5 text-center">
                     {% if ferramenta.imagem %}
-                        <img src="{{ url_for('static', filename=ferramenta.imagem) }}" class="img-fluid rounded shadow-sm" alt="{{ ferramenta.nome }}" style="max-height: 320px; object-fit: cover; width: 100%;">
+                        <img src="{{ url_for('static', filename=ferramenta.imagem.replace('static/', '')) if ferramenta.imagem else url_for('static', filename='img/produto.png') }}" class="img-fluid" alt="{{ ferramenta.modelo }}">
                     {% else %}
                         <div class="bg-light rounded-4 p-4 h-100 d-flex align-items-center justify-content-center border" style="min-height: 320px;">
                             <i class="fas fa-tools text-secondary" style="font-size: 8rem; opacity: 0.15;"></i>
@@ -100,7 +100,7 @@
                     <div class="d-flex flex-column gap-3 mt-3">
                         <!-- Botão de Locação via WhatsApp -->
                         {% if ferramenta.tipo == 'Alugar' %}
-                        <a href="https://wa.me/5511999999999?text=Olá! Estou no site da JB Ferramentas e tenho interesse em *ALUGAR* o equipamento: {{ ferramenta.nome }}." 
+                        <a href="https://wa.me/5511965122613?text=Olá! Estou no site da JB Ferramentas e tenho interesse em *ALUGAR* o equipamento: {{ ferramenta.nome }}." 
                            target="_blank" 
                            class="btn fw-bold px-4 py-3 shadow-sm d-flex align-items-center justify-content-center"
                            style="background-color: #ffc107; color: #000; border: none; font-size: 1.1rem; transition: transform 0.2s;"

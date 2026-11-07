@@ -76,6 +76,16 @@
                     <input type="text" name="endereco" class="form-control bg-light shadow-none" value="{{ user_infos.address if user_infos else '' }}">
                 </div>
 
+                <!-- [NOVO] Bloco de Segurança / Alteração de Senha -->
+                <hr class="my-4 text-secondary opacity-25">
+                <h5 class="fw-bold mb-3 text-dark"><i class="fas fa-lock text-secondary me-2"></i>Segurança</h5>
+                <div class="mb-4">
+                    <label for="nova_senha" class="form-label small fw-bold text-secondary">NOVA SENHA <span class="text-muted fw-normal text-transform-none">(Opcional)</span></label>
+                    <input type="password" name="nova_senha" id="nova_senha" class="form-control bg-light shadow-none" placeholder="Deixe em branco para manter a senha atual">
+                    <small class="form-text text-muted mt-1 d-block">Preencha apenas se desejar alterar a sua senha de acesso ou substituir a senha temporária.</small>
+                </div>
+                <!-- Fim do Bloco de Segurança -->
+
                 <!-- Botões Principais do Perfil -->
                 <div class="d-flex flex-column flex-sm-row justify-content-between gap-3 mt-5">
                     <button type="submit" class="btn fw-bold px-5 py-3 text-white flex-grow-1" style="background-color: #ff2b2b; border: none; max-width: 300px;">

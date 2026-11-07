@@ -21,13 +21,13 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env
 
 app = Flask(__name__)
 
-app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost').strip().strip('"').strip("'")
-app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root').strip().strip('"').strip("'")
-app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '').strip().strip('"').strip("'")
-app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'jb_ferramentas').strip().strip('"').strip("'")
-app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', '3306').strip().strip('"').strip("'"))
+app.config['MYSQL_HOST'] = os.getenv('MYSQL_HOST', 'localhost').strip().strip("'").strip('"')
+app.config['MYSQL_USER'] = os.getenv('MYSQL_USER', 'root').strip().strip("'").strip('"')
+app.config['MYSQL_PASSWORD'] = os.getenv('MYSQL_PASSWORD', '').strip().strip("'").strip('"')
+app.config['MYSQL_DB'] = os.getenv('MYSQL_DB', 'jb_ferramentas').strip().strip("'").strip('"')
+app.config['MYSQL_PORT'] = int(os.getenv('MYSQL_PORT', '3306').strip().strip("'").strip('"'))
+chave_secreta = os.getenv('SECRET_KEY', '').strip().strip("'").strip('"')
 
-chave_secreta = os.getenv('SECRET_KEY', '').strip().strip('"').strip("'")
 if not chave_secreta or chave_secreta.startswith('troque'):
     print("AVISO: defina SECRET_KEY no arquivo .env. Usando uma chave temporária.")
     chave_secreta = secrets.token_hex(32)
@@ -36,6 +36,13 @@ app.config['SECRET_KEY'] = chave_secreta
 # Blindagem de Cookies e Sessão (Segurança)
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Impede que scripts maliciosos leiam os cookies (Proteção XSS)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' # Previne ataques de falsificação de solicitações (CSRF)
+
+# [ATUALIZAÇÃO - PROFESSOR] Limite de Tamanho e Segurança de Uploads (Ponto 3)
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # Limite máximo de 5MB por ficheiro
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+def arquivo_permitido(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Proteção CSRF
 csrf = CSRFProtect(app)
@@ -86,15 +93,11 @@ def main_page():
     resultado_os = None
     
     if os_busca:
-        # Limpa os espaços e transforma em maiúsculas
         os_busca = os_busca.strip().upper()
-        
-        # Se o cliente digitar apenas "24903", o sistema ajusta automaticamente para "OS-24903"
         termo_busca = f"OS-{os_busca}" if not os_busca.startswith("OS-") else os_busca
             
         try:
             cursor = jb_solucoes_db.connection.cursor()
-            # Adicionamos s.id e s.valor_servico na busca
             query = """
                 SELECT s.id, s.titulo_servico, s.descricao_servico, s.status_servico, 
                        m.diagnostico, m.foto_equipamento, s.valor_servico 
@@ -107,7 +110,6 @@ def main_page():
             cursor.close()
             
             if row:
-                # Extrai apenas o nome do equipamento da descrição completa
                 descricao_completa = row[2]
                 equipamento_nome = descricao_completa.split('\n')[0].replace('Equipamento: ', '') if descricao_completa else "Não especificado"
 
@@ -128,7 +130,9 @@ def main_page():
     lista_ferramentas = []
     if ferramentas_db:
         for f in ferramentas_db:
-            lista_ferramentas.append(ToolModel.montar_item(f[0], f[1], f[2], f[3]))
+            item = ToolModel.montar_item(f[0], f[1], f[2], f[3])
+            item['imagem'] = f[6] if len(f) > 6 else None
+            lista_ferramentas.append(item)
 
     return render_template('landing.html', ferramentas=lista_ferramentas, resultado_os=resultado_os, os_busca=os_busca)
 
@@ -160,7 +164,9 @@ def ferramentas_page():
     lista_ferramentas = []
     if ferramentas_db:
         for f in ferramentas_db:
-            lista_ferramentas.append(ToolModel.montar_item(f[0], f[1], f[2], f[3]))
+            item = ToolModel.montar_item(f[0], f[1], f[2], f[3])
+            item['imagem'] = f[6] if len(f) > 6 else None
+            lista_ferramentas.append(item)
 
     return render_template('ferramentas.html', ferramentas=lista_ferramentas, usuario_logado=primeiro_nome)
 
@@ -175,7 +181,9 @@ def loja_page():
     lista_ferramentas = []
     if ferramentas_db:
         for f in ferramentas_db:
-            lista_ferramentas.append(ToolModel.montar_item(f[0], f[1], f[2], f[3]))
+            item = ToolModel.montar_item(f[0], f[1], f[2], f[3])
+            item['imagem'] = f[6] if len(f) > 6 else None
+            lista_ferramentas.append(item)
 
     return render_template('loja.html', ferramentas=lista_ferramentas)
 
@@ -186,11 +194,15 @@ def detalhe_produto(id):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
-    ferramenta_selecionada = ToolModel.get_by_id(id)
-    if ferramenta_selecionada:
+    ferramenta_db = ToolModel.get_by_id(id)
+    if ferramenta_db:
         ferramenta_selecionada = ToolModel.montar_item(
-            ferramenta_selecionada["id"], ferramenta_selecionada["marca"],
-            ferramenta_selecionada["modelo"], ferramenta_selecionada["descricao"])
+            ferramenta_db["id"], ferramenta_db["marca"],
+            ferramenta_db["modelo"], ferramenta_db["descricao"]
+        )
+        ferramenta_selecionada['imagem'] = ferramenta_db.get("imagem")
+    else:
+        ferramenta_selecionada = None
     return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
 
 
@@ -212,7 +224,6 @@ def login():
                 
                 try:
                     cursor = jb_solucoes_db.connection.cursor()
-                    # BUSCA O PERFIL E A FILIAL
                     cursor.execute("SELECT perfil, id_filial FROM pessoas WHERE id = %s", (id_pessoa,))
                     resultado = cursor.fetchone()
                     cursor.close()
@@ -223,7 +234,7 @@ def login():
                             perfil = 'admin'
                             
                         session['user_perfil'] = perfil 
-                        session['id_filial'] = resultado[1] # <--- Guarda a filial do colaborador
+                        session['id_filial'] = resultado[1]
                         
                         if perfil in ['colaborador', 'admin', 'gerente']:
                             session['pode_ver_gerenciador'] = True
@@ -253,6 +264,43 @@ def login():
     return render_template('index.html')
 
 
+# === [NOVO] 5.1 RECUPERAÇÃO DE SENHA ===
+@app.route("/esqueci_senha", methods=["GET", "POST"])
+def esqueci_senha():
+    if request.method == "POST":
+        codigo = somente_numeros(request.form.get("cpf_cnpj"))
+        email = request.form.get("email", "").strip()
+        
+        try:
+            cursor = jb_solucoes_db.connection.cursor()
+            cursor.execute("""
+                SELECT u.id FROM usuarios u
+                JOIN pessoas p ON u.id_pessoa = p.id
+                WHERE p.codigo = %s AND p.email = %s
+            """, (codigo, email))
+            resultado = cursor.fetchone()
+            
+            if resultado:
+                id_usuario = resultado[0]
+                senha_temporaria = "Jb@123456"
+                senha_hash = jb_bcrypt.generate_password_hash(senha_temporaria).decode("utf-8")
+                
+                cursor.execute("UPDATE usuarios SET senha = %s WHERE id = %s", (senha_hash, id_usuario))
+                jb_solucoes_db.connection.commit()
+                
+                flash("Senha redefinida com sucesso! A sua nova senha temporária é: Jb@123456 (Altere no perfil após login).", "success")
+                return redirect(url_for('login'))
+            else:
+                flash("CPF/CNPJ ou e-mail não encontrados no sistema.", "danger")
+                
+            cursor.close()
+        except Exception as e:
+            print("Erro na recuperação de senha:", e)
+            flash("Erro ao processar a solicitação.", "danger")
+            
+    return render_template("esqueci_senha.html")
+
+
 # === 6. PERFIL ===
 @app.route('/perfil', methods=['GET', 'POST'])
 def perfil_page():
@@ -270,7 +318,21 @@ def perfil_page():
         if not nome or not email:
             flash("Nome e e-mail são obrigatórios.", "danger")
         elif PersonModel.update(user_code, name=nome, address=endereco, email=email, phone_number=telefone):
-            flash("Dados atualizados com sucesso!", "success")
+            # [NOVO] Adicionada funcionalidade para alterar a senha
+            nova_senha = request.form.get('nova_senha')
+            if nova_senha:
+                senha_hash = jb_bcrypt.generate_password_hash(nova_senha).decode("utf-8")
+                try:
+                    cursor = jb_solucoes_db.connection.cursor()
+                    cursor.execute("UPDATE usuarios SET senha = %s WHERE id_pessoa = %s", (senha_hash, user_code))
+                    jb_solucoes_db.connection.commit()
+                    cursor.close()
+                    flash("Dados e senha atualizados com sucesso!", "success")
+                except Exception as e:
+                    print("Erro ao atualizar senha:", e)
+                    flash("Dados atualizados, mas houve um erro ao mudar a senha.", "warning")
+            else:
+                flash("Dados atualizados com sucesso!", "success")
         else:
             flash("Não foi possível salvar os dados. Tente novamente.", "danger")
         return redirect(url_for('perfil_page'))
@@ -327,32 +389,27 @@ def register():
         try:
             cursor = jb_solucoes_db.connection.cursor()
             
-            # 1. Verifica se a pessoa já existe (Pré-cadastro)
             cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (code,))
             pessoa = cursor.fetchone()
             
             if pessoa:
                 id_pessoa = pessoa[0]
-                # Verifica se já tem um login real associado
                 cursor.execute("SELECT id FROM usuarios WHERE id_pessoa = %s", (id_pessoa,))
                 if cursor.fetchone():
                     flash("Este CPF/CNPJ já possui uma conta de acesso completa.", "danger")
                     return render_template('register.html')
                 else:
-                    # ATUALIZA os dados do pré-cadastro com o novo e-mail e endereço
                     cursor.execute("""
                         UPDATE pessoas SET nome = %s, endereco = %s, email = %s, telefone = %s
                         WHERE id = %s
                     """, (name, address, email, phone_number, id_pessoa))
             else:
-                # CRIA uma nova pessoa do zero se não houver pré-cadastro
                 cursor.execute("""
                     INSERT INTO pessoas (nome, tipo, endereco, email, telefone, codigo)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, (name, user_type, address, email, phone_number, code))
                 id_pessoa = cursor.lastrowid
 
-            # 2. Cria o utilizador (Login e Senha) com perfil 1 (Cliente)
             hashed_password = jb_bcrypt.generate_password_hash(password).decode("utf-8")
             cursor.execute("""
                 INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo)
@@ -450,7 +507,8 @@ def comprar_ferramenta(ferramenta_id):
 # === 12. DASHBOARD / GERENCIADOR ===
 @app.route('/colaborador/dashboard')
 def colaborador_dashboard():
-    if not session.get('logged_in') or not session.get('pode_ver_gerenciador'):
+    # [ATUALIZAÇÃO - PROFESSOR] Checagem de perfil (Ponto 1)
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador', 'gerente']:
         flash("Acesso restrito à equipa interna e administradores.", "danger")
         return redirect(url_for('login'))
         
@@ -460,7 +518,7 @@ def colaborador_dashboard():
 # === 12.1 PAINEL DE PEDIDOS / GRÁFICOS ===
 @app.route('/colaborador/painel')
 def painel_colaborador():
-    if not session.get('logged_in') or not session.get('pode_ver_painel'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador', 'gerente']:
         flash("Acesso restrito à equipa interna e administradores.", "danger")
         return redirect(url_for('login'))
         
@@ -471,11 +529,11 @@ def painel_colaborador():
 # === 13. CRIAR ORDEM DE SERVIÇO ===
 @app.route("/colaborador/criar_os", methods=["GET", "POST"])
 def criar_os():
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         return redirect(url_for('login'))
 
     cursor = jb_solucoes_db.connection.cursor()
-    id_filial_colab = session.get('id_filial') # <--- Pega a filial do funcionário logado
+    id_filial_colab = session.get('id_filial')
 
     if request.method == "POST":
         try:
@@ -493,8 +551,13 @@ def criar_os():
             
             if fotos and fotos[0].filename != '':
                 foto = fotos[0]
-                pasta_uploads = app.config['UPLOAD_FOLDER']
                 
+                # [ATUALIZAÇÃO - PROFESSOR] Checagem de segurança do arquivo (Ponto 3)
+                if not arquivo_permitido(foto.filename):
+                    flash("Formato de imagem não permitido. Use PNG, JPG ou WEBP.", "danger")
+                    return redirect(url_for('criar_os'))
+
+                pasta_uploads = app.config['UPLOAD_FOLDER']
                 nome_seguro = secure_filename(foto.filename)
                 nome_arquivo = f"{numero_os}_{nome_seguro}"
                 
@@ -503,14 +566,12 @@ def criar_os():
                 
                 caminho_foto_banco = f"uploads/equipamentos/{nome_arquivo}"
             
-            # Procura o cliente pelo telefone ou nome
             cursor.execute("SELECT id FROM pessoas WHERE telefone = %s OR nome = %s LIMIT 1", (telefone, cliente))
             pessoa_resultado = cursor.fetchone()
             
             if pessoa_resultado:
                 id_cliente = pessoa_resultado[0]
             else:
-                # Cria o cliente associando-o à filial atual do colaborador
                 cursor.execute("""
                     INSERT INTO pessoas (nome, tipo, endereco, email, telefone, id_filial) 
                     VALUES (%s, 'pf', 'Não informado', 'nao@informado.com', %s, %s)
@@ -519,7 +580,6 @@ def criar_os():
                 
             descricao_completa = f"Equipamento: {equipamento} (Série: {num_serie})\nDefeito Relatado: {defeito}"
             
-            # Insere a OS associada à filial
             cursor.execute("""
                 INSERT INTO servicos (servico_solicitado, titulo_servico, descricao_servico, status_servico, id_pessoa_solicitante, id_pessoa_abertura, id_filial) 
                 VALUES ('manutencao', %s, %s, 'Aberto', %s, %s, %s)
@@ -542,7 +602,6 @@ def criar_os():
             flash(erro_msg, "danger")
             return redirect(url_for('criar_os'))
             
-    # MÉTODO GET: Busca todos os clientes cadastrados para exibir no formulário
     cursor.execute("SELECT id, nome, telefone, codigo FROM pessoas ORDER BY nome ASC")
     clientes = cursor.fetchall()
     cursor.close()
@@ -553,20 +612,28 @@ def criar_os():
 # === 14. ATUALIZAR ORÇAMENTO ===
 @app.route('/colaborador/orcamento/<int:id_servico>', methods=['POST'])
 def atualizar_orcamento(id_servico):
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         return redirect(url_for('login'))
+        
     id_colaborador = session.get('user_code')
     valor = request.form.get('valor_servico')
     status = request.form.get('status_servico')
     detalhes_dano = request.form.get('detalhes_dano')
     imagem = request.files.get('imagem_dano')
     caminho_relativo = None
+    
     if imagem and imagem.filename != '':
+        # [ATUALIZAÇÃO - PROFESSOR] Checagem de arquivo (Ponto 3)
+        if not arquivo_permitido(imagem.filename):
+            flash("Formato de imagem não permitido.", "danger")
+            return redirect(url_for('painel_colaborador'))
+
         nome_arquivo = secure_filename(imagem.filename)
         nome_final = f"manutencao_dano_{id_servico}_{nome_arquivo}"
         caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER'], nome_final)
         imagem.save(caminho_salvar)
         caminho_relativo = f"uploads/equipamentos/{nome_final}"
+        
     sucesso, mensagem = ColaboradorModel.atualizar_orcamento(
         id_servico, id_colaborador, valor, status, caminho_relativo, detalhes_dano
     )
@@ -634,11 +701,17 @@ def gerenciar_ferramentas():
         caminho_foto = None
         
         if foto and foto.filename != '':
+            # [ATUALIZAÇÃO - PROFESSOR] Proteção de upload (Ponto 3)
+            if not arquivo_permitido(foto.filename):
+                flash("Formato não permitido. Use apenas imagens (PNG, JPG, WEBP).", "danger")
+                return redirect(url_for('gerenciar_ferramentas'))
+
             nome_seguro = secure_filename(foto.filename)
             nome_final = f"ferramenta_{secrets.token_hex(4)}_{nome_seguro}"
             caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER'], nome_final)
             foto.save(caminho_salvar)
-            caminho_foto = f"uploads/equipamentos/{nome_final}"
+            
+            caminho_foto = f"static/uploads/equipamentos/{nome_final}"
         
         try:
             cursor = jb_solucoes_db.connection.cursor()
@@ -676,9 +749,11 @@ def gerenciar_ferramentas():
 
     return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais, equipe=equipe)
 
+
 # === 16.1 CADASTRAR CONTA DA EQUIPA (ADMIN) ===
 @app.route('/admin/equipe', methods=['POST'])
 def cadastrar_equipe():
+    # [ATUALIZAÇÃO - PROFESSOR] Bloqueio rigoroso de perfil (Ponto 1 e 2)
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
         flash("Acesso negado. Apenas administradores podem criar contas para a equipa.", "danger")
         return redirect(url_for('gerenciar_ferramentas'))
@@ -689,8 +764,8 @@ def cadastrar_equipe():
     telefone = request.form.get('telefone')
     usuario = request.form.get('usuario')
     senha = request.form.get('senha')
-    nivel = request.form.get('nivel') # 'colaborador' ou 'admin'
-    id_filial = request.form.get('id_filial') # <--- Captura a filial
+    nivel = request.form.get('nivel')
+    id_filial = request.form.get('id_filial')
 
     try:
         cursor = jb_solucoes_db.connection.cursor()
@@ -705,7 +780,6 @@ def cadastrar_equipe():
             flash("Este nome de login já está a ser utilizado por outro membro.", "danger")
             return redirect(url_for('gerenciar_ferramentas'))
 
-        # Insere a Pessoa com a filial
         cursor.execute("""
             INSERT INTO pessoas (nome, tipo, codigo, email, telefone, endereco, perfil, id_filial)
             VALUES (%s, 'pf', %s, %s, %s, 'Sede JB Ferramentas', %s, %s)
@@ -736,13 +810,12 @@ def cadastrar_equipe():
 @app.route('/admin/tipos/rapido', methods=['POST'])
 def admin_tipos_rapido():
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
-        flash("Acesso restrito.", "danger")
+        flash("Acesso restrito a administradores.", "danger")
         return redirect(url_for('login'))
         
     tipo_nome = request.form.get('tipo_nome')
     try:
         cursor = jb_solucoes_db.connection.cursor()
-        # Insere o novo tipo
         cursor.execute("INSERT INTO ferramenta_tipos (tipo) VALUES (%s)", (tipo_nome,))
         jb_solucoes_db.connection.commit()
         cursor.close()
@@ -758,16 +831,14 @@ def admin_tipos_rapido():
 @app.route('/admin/filial/rapido', methods=['POST'])
 def admin_filial_rapido():
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
-        flash("Acesso restrito.", "danger")
+        flash("Acesso restrito a administradores.", "danger")
         return redirect(url_for('login'))
         
     codigo = request.form.get('codigo_filial')
     nome = request.form.get('nome')
     endereco = request.form.get('endereco')
     
-    # Utiliza o seu model existente para salvar a filial
     sucesso, msg = AdminModel.create_filial(codigo, nome, endereco)
-    
     if sucesso:
         flash(msg, "success")
     else:
@@ -775,14 +846,17 @@ def admin_filial_rapido():
         
     return redirect(url_for('gerenciar_ferramentas'))
 
+
 # === 17. ADICIONAR PEÇAS ===
 @app.route('/colaborador/orcamento/<int:id_servico>/peca', methods=['POST'])
 def adicionar_peca_orcamento(id_servico):
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         return redirect(url_for('login'))
+        
     id_estoque_peca = request.form.get('id_estoque_peca')
     quantidade = request.form.get('quantidade', 1)
     sucesso, mensagem = ColaboradorModel.adicionar_peca_manutencao(id_servico, id_estoque_peca, quantidade)
+    
     if sucesso:
         flash(mensagem, "success")
     else:
@@ -793,8 +867,10 @@ def adicionar_peca_orcamento(id_servico):
 # === 18. CAIXA ===
 @app.route('/colaborador/financeiro')
 def relatorio_caixa():
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador', 'gerente']:
+        flash("Acesso não autorizado.", "danger")
         return redirect(url_for('login'))
+        
     dados_caixa = ColaboradorModel.get_relatorio_caixa()
     return render_template('caixa.html', caixa=dados_caixa)
 
@@ -802,14 +878,18 @@ def relatorio_caixa():
 # === 19. PERFIS ===
 @app.route('/admin/perfis', methods=['GET', 'POST'])
 def admin_perfis():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+    # [ATUALIZAÇÃO - PROFESSOR] Proteção de rota administrativa (Ponto 1)
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
+        flash("Acesso restrito apenas a administradores.", "danger")
+        return redirect(url_for('main_page'))
+        
     if request.method == 'POST':
         perfil = request.form.get('perfil')
         descricao = request.form.get('descricao')
         sucesso, msg = AdminModel.create_perfil(perfil, descricao)
         flash(msg, "success" if sucesso else "danger")
         return redirect(url_for('admin_perfis'))
+        
     perfis = AdminModel.get_perfis()
     return render_template('admin_perfis.html', perfis=perfis)
 
@@ -817,8 +897,11 @@ def admin_perfis():
 # === 20. FILIAIS ===
 @app.route('/admin/filiais', methods=['GET', 'POST'])
 def admin_filiais():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+    # [ATUALIZAÇÃO - PROFESSOR] Proteção de rota administrativa (Ponto 1)
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
+        flash("Acesso restrito apenas a administradores.", "danger")
+        return redirect(url_for('main_page'))
+        
     if request.method == 'POST':
         codigo = request.form.get('codigo_filial')
         nome = request.form.get('nome')
@@ -826,6 +909,7 @@ def admin_filiais():
         sucesso, msg = AdminModel.create_filial(codigo, nome, endereco)
         flash(msg, "success" if sucesso else "danger")
         return redirect(url_for('admin_filiais'))
+        
     filiais = AdminModel.get_filiais()
     return render_template('admin_filiais.html', filiais=filiais)
 
@@ -833,8 +917,11 @@ def admin_filiais():
 # === 21. UNIDADES ===
 @app.route('/admin/unidades', methods=['POST'])
 def admin_unidades():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
+    # [ATUALIZAÇÃO - PROFESSOR] Proteção de rota administrativa (Ponto 1)
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for('main_page'))
+        
     numero_serie = request.form.get('numero_serie')
     id_ferramenta = request.form.get('id_ferramenta')
     id_filial = request.form.get('id_filial')
@@ -846,11 +933,10 @@ def admin_unidades():
 # === 22. PAINEL COM GRÁFICOS ===
 @app.route('/colaborador/graficos')
 def painel_graficos():
-    if not session.get('logged_in'):
-        return redirect(url_for('login'))
-    if not session.get('pode_ver_painel'):
+    if not session.get('logged_in') or not session.get('pode_ver_painel'):
         flash("Você não tem permissão para ver o painel.", "danger")
         return redirect(url_for('ferramentas_page'))
+        
     dados = PainelModel.get_resumo_mensal()
     return render_template('painel_graficos.html', dados=dados)
 
@@ -858,14 +944,13 @@ def painel_graficos():
 # === 23. TELA DE ORÇAMENTOS E MANUTENÇÕES ===
 @app.route("/colaborador/orcamentos")
 def orcamentos_page():
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         return redirect(url_for('login'))
         
     id_filial = session.get('id_filial')
     
     try:
         cursor = jb_solucoes_db.connection.cursor()
-        # Agora busca todas as OSs que não foram Canceladas ou Entregues
         query = """
             SELECT s.id, s.titulo_servico, p.nome, s.descricao_servico, s.data_abertura, s.status_servico, s.valor_servico, p.telefone
             FROM servicos s
@@ -887,7 +972,7 @@ def orcamentos_page():
 # === 23.1 MUDAR STATUS DA OS VIA DROPDOWN ===
 @app.route('/colaborador/atualizar_status_os/<int:id_servico>', methods=['POST'])
 def atualizar_status_os(id_servico):
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         return redirect(url_for('login'))
     
     novo_status = request.form.get('novo_status')
@@ -907,21 +992,21 @@ def atualizar_status_os(id_servico):
 # === 24. TELA GERAL DE SERVIÇOS ===
 @app.route("/colaborador/servicos")
 def servicos_page():
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         return redirect(url_for('login'))
         
-    id_filial = session.get('id_filial') # <--- Puxa a filial da sessão
+    id_filial = session.get('id_filial')
     
     try:
         cursor = jb_solucoes_db.connection.cursor()
         query = """
-            SELECT s.id, s.titulo_servico, p.nome, s.servico_solicitado, s.status_servico, DATE_FORMAT(s.data_abertura, '%%d/%%m/%%Y %%H:%%i'), s.descricao_servico, s.valor_servico, p.telefone
+            SELECT s.id, s.titulo_servico, p.nome, s.servico_solicitado, s.status_servico, DATE_FORMAT(s.data_abertura, '%d/%m/%Y %H:%i'), s.descricao_servico, s.valor_servico, p.telefone
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
             WHERE (s.id_filial = %s OR %s IS NULL)
             ORDER BY s.data_abertura DESC
         """
-        cursor.execute(query, (id_filial, id_filial)) # <--- Aplica o filtro de filial
+        cursor.execute(query, (id_filial, id_filial))
         lista_servicos = cursor.fetchall()
         cursor.close()
     except Exception as e:
@@ -934,7 +1019,7 @@ def servicos_page():
 # === 25. TELA DE CLIENTES (COLABORADOR) ===
 @app.route("/colaborador/clientes", methods=["GET", "POST"])
 def gerenciar_clientes():
-    if not session.get('logged_in'):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         return redirect(url_for('login'))
         
     cursor = jb_solucoes_db.connection.cursor()
@@ -984,7 +1069,6 @@ def excluir_conta_lgpd():
     try:
         cursor = jb_solucoes_db.connection.cursor()
         
-        # 1. Anonimiza os dados sensíveis mantendo o histórico de OS e faturas
         cursor.execute("""
             UPDATE pessoas 
             SET nome = 'Cliente Excluído (LGPD)', 
@@ -995,7 +1079,6 @@ def excluir_conta_lgpd():
             WHERE id = %s
         """, (user_code,))
 
-        # 2. Desativa o acesso ao sistema
         cursor.execute("""
             UPDATE usuarios 
             SET ativo = 0, senha = 'lgpd_deleted_account'
@@ -1005,7 +1088,6 @@ def excluir_conta_lgpd():
         jb_solucoes_db.connection.commit()
         cursor.close()
 
-        # Limpa a sessão (faz logout)
         session.clear()
         flash("A sua conta e dados pessoais foram excluídos com sucesso, em conformidade com a LGPD.", "success")
         return redirect(url_for('main_page'))
@@ -1035,6 +1117,18 @@ def gerenciar_locacoes():
         id_colab = session.get('user_code')
 
         try:
+            # [ATUALIZAÇÃO - PROFESSOR] Regra de Negócio: Validação de Estoque antes de locar (Ponto 5)
+            cursor.execute("""
+                SELECT COUNT(*) FROM unidades_ferramenta 
+                WHERE id_ferramenta = %s AND id_filial = %s AND status = 'Disponível'
+            """, (id_ferramenta, id_filial))
+            estoque_resultado = cursor.fetchone()
+            estoque_disponivel = estoque_resultado[0] if estoque_resultado else 0
+            
+            if estoque_disponivel <= 0:
+                flash("Operação bloqueada: Não há unidades disponíveis desta ferramenta no momento na sua filial.", "warning")
+                return redirect(url_for('gerenciar_locacoes'))
+
             cursor.execute("""
                 INSERT INTO locacoes (id_pessoa, id_ferramenta, dias, valor_diaria, valor_total, status, id_filial, id_colaborador)
                 VALUES (%s, %s, %s, %s, %s, 'Alugado', %s, %s)
@@ -1048,16 +1142,14 @@ def gerenciar_locacoes():
         
         return redirect(url_for('gerenciar_locacoes'))
 
-    # Buscar dados para os select boxes (Clientes e Ferramentas de Locação)
     cursor.execute("SELECT id, nome, codigo FROM pessoas ORDER BY nome ASC")
     clientes = cursor.fetchall()
     
     cursor.execute("SELECT id, marca, modelo FROM ferramentas WHERE operacao IN ('Alugar', 'Ambos')")
     ferramentas = cursor.fetchall()
 
-    # Buscar locações ativas da filial do colaborador
     query_locacoes = """
-        SELECT l.id, p.nome, f.marca, f.modelo, l.dias, l.valor_total, DATE_FORMAT(l.data_locacao, '%%d/%%m/%%Y'), l.status
+        SELECT l.id, p.nome, f.marca, f.modelo, l.dias, l.valor_total, DATE_FORMAT(l.data_locacao, '%d/%m/%Y'), l.status
         FROM locacoes l
         JOIN pessoas p ON l.id_pessoa = p.id
         JOIN ferramentas f ON l.id_ferramenta = f.id
@@ -1074,7 +1166,6 @@ def gerenciar_locacoes():
 # === EXCLUIR FERRAMENTA DO CATÁLOGO ===
 @app.route('/admin/ferramenta/excluir/<int:id>', methods=['POST'])
 def excluir_ferramenta(id):
-    # Verifica se está logado e tem permissão
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
         flash("Acesso negado.", "danger")
         return redirect(url_for('login'))
@@ -1082,7 +1173,8 @@ def excluir_ferramenta(id):
     try:
         cursor = jb_solucoes_db.connection.cursor()
         
-        # Tenta excluir a ferramenta
+        # [ATUALIZAÇÃO - PROFESSOR] O tratamento da restrição de chave estrangeira (Ponto 4)
+        # O try/except já impede a quebra do sistema se houver dependências.
         cursor.execute("DELETE FROM ferramentas WHERE id = %s", (id,))
         jb_solucoes_db.connection.commit()
         cursor.close()
@@ -1090,12 +1182,9 @@ def excluir_ferramenta(id):
         flash("Ferramenta excluída do catálogo com sucesso!", "success")
         
     except Exception as e:
-        # Se cair aqui, é porque a ferramenta tem unidades no estoque ou histórico de locação vinculado
         print("Erro ao excluir ferramenta:", e)
-        flash("Não é possível excluir. Existem unidades no estoque ou registos vinculados a esta ferramenta.", "warning")
+        flash("Não é possível excluir. Existem unidades no estoque ou registos de locação vinculados a esta ferramenta.", "warning")
         
-    # ATENÇÃO: Se a sua função que carrega a tela do catálogo se chamar "admin_ferramentas", 
-    # troque 'gerenciar_ferramentas' abaixo por 'admin_ferramentas'.
     return redirect(url_for('gerenciar_ferramentas'))
 
 if __name__ == "__main__":

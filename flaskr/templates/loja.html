@@ -52,7 +52,7 @@
                 <div class="col-md-4">
                     <div class="product-card-custom p-3 h-100 d-flex flex-column justify-content-between">
                         <div>
-                            <img src="{{ url_for('static', filename=item.imagem) }}" class="card-img-top rounded mb-3" alt="{{ item.nome }}" style="height: 180px; object-fit: cover;">
+                            <img src="{{ url_for('static', filename=item.imagem.replace('static/', '')) if item.imagem else url_for('static', filename='img/produto.png') }}" class="card-img-top img-fluid" alt="{{ item.modelo }}">
                             <h3 class="h6 fw-bold mb-2 text-dark">{{ item.nome }}</h3>
                             <p class="price text-danger fw-bold fs-5">{{ item.preco|moeda }}{% if item.tipo == 'Alugar' %}/dia{% endif %}</p>
                         </div>
