@@ -10,14 +10,14 @@
 </div>
 
 Projeto universitario ( Univesp ) <br>
-Orientadora: Crislandy Barreiro <br>
+Orientador: Tiago Matheus Nordi <br>
 Participantes: <br>
 
 ```text
-Alexandre Fortunato         Allan Ferreira
-Jose Venancio Filho         Jaqueline Moratto
-Larissa Vieira              Miguel Correira
-Monique Jesus               Ronaldo Alves de Souza
+Alexandre Fortunato         David William da Silva
+Jaqueline Moratto           Miguel de Souza Correia da Silva
+Monique C. C. de Jesus      Silas Bomfim Lopes Ferreira
+Vitória Alves de Oliveira              
 ```
 
 ## 🛠️ Tecnologias e Conceitos
