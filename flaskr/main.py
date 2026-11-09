@@ -694,29 +694,22 @@ def gerenciar_ferramentas():
         return redirect(url_for('main_page'))
         
     if request.method == 'POST':
+        # Captura os dados existentes
         marca = request.form.get('marca')
         modelo = request.form.get('modelo')
         descricao = request.form.get('descricao')
         id_tipo = request.form.get('tipo_ferramenta')
         operacao = request.form.get('operacao')
+        
+        # NOVOS DADOS
         potencia = request.form.get('potencia', 'Consulte')
         peso = request.form.get('peso', 'Consulte')
         velocidade = request.form.get('velocidade', 'Consulte')
+        
         foto = request.files.get('foto_ferramenta')
         caminho_foto = None
         
-        try:
-            cursor = jb_solucoes_db.connection.cursor()
-            # O INSERT AGORA INCLUI AS NOVAS COLUNAS
-            cursor.execute("""
-                INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo, operacao, imagem, potencia, peso, velocidade) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (marca, modelo, descricao, id_tipo, operacao, caminho_foto, potencia, peso, velocidade))
-            jb_solucoes_db.connection.commit()
-            cursor.close()
-        
         if foto and foto.filename != '':
-            # [ATUALIZAÇÃO - PROFESSOR] Proteção de upload (Ponto 3)
             if not arquivo_permitido(foto.filename):
                 flash("Formato não permitido. Use apenas imagens (PNG, JPG, WEBP).", "danger")
                 return redirect(url_for('gerenciar_ferramentas'))
@@ -731,9 +724,9 @@ def gerenciar_ferramentas():
         try:
             cursor = jb_solucoes_db.connection.cursor()
             cursor.execute("""
-                INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo, operacao, imagem) 
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (marca, modelo, descricao, id_tipo, operacao, caminho_foto))
+                INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo, operacao, imagem, potencia, peso, velocidade) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (marca, modelo, descricao, id_tipo, operacao, caminho_foto, potencia, peso, velocidade))
             jb_solucoes_db.connection.commit()
             cursor.close()
             flash("Ferramenta cadastrada com sucesso no catálogo!", "success")
