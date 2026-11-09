@@ -1018,7 +1018,7 @@ def servicos_page():
     try:
         cursor = jb_solucoes_db.connection.cursor()
         query = """
-            SELECT s.id, s.titulo_servico, p.nome, s.servico_solicitado, s.status_servico, DATE_FORMAT(s.data_abertura, '%d/%m/%Y %H:%i'), s.descricao_servico, s.valor_servico, p.telefone
+            SELECT s.id, s.titulo_servico, p.nome, s.servico_solicitado, s.status_servico, DATE_FORMAT(s.data_abertura, '%%d/%%m/%%Y %%H:%%i'), s.descricao_servico, s.valor_servico, p.telefone
             FROM servicos s
             JOIN pessoas p ON s.id_pessoa_solicitante = p.id
             WHERE (s.id_filial = %s OR %s IS NULL)
@@ -1032,7 +1032,6 @@ def servicos_page():
         lista_servicos = []
         
     return render_template('servicos.html', servicos=lista_servicos)
-
 
 # === 25. TELA DE CLIENTES (COLABORADOR) ===
 @app.route("/colaborador/clientes", methods=["GET", "POST"])
@@ -1167,7 +1166,7 @@ def gerenciar_locacoes():
     ferramentas = cursor.fetchall()
 
     query_locacoes = """
-        SELECT l.id, p.nome, f.marca, f.modelo, l.dias, l.valor_total, DATE_FORMAT(l.data_locacao, '%d/%m/%Y'), l.status
+        SELECT l.id, p.nome, f.marca, f.modelo, l.dias, l.valor_total, DATE_FORMAT(l.data_locacao, '%%d/%%m/%%Y'), l.status
         FROM locacoes l
         JOIN pessoas p ON l.id_pessoa = p.id
         JOIN ferramentas f ON l.id_ferramenta = f.id
@@ -1179,7 +1178,6 @@ def gerenciar_locacoes():
     cursor.close()
 
     return render_template('locacoes.html', clientes=clientes, ferramentas=ferramentas, locacoes=locacoes)
-
 
 # === EXCLUIR FERRAMENTA DO CATÁLOGO ===
 @app.route('/admin/ferramenta/excluir/<int:id>', methods=['POST'])
