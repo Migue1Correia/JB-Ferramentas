@@ -914,22 +914,40 @@ def admin_filiais():
     return render_template('admin_filiais.html', filiais=filiais)
 
 
-# === 21. UNIDADES ===
+# === 21. UNIDADES (COM QUANTIDADE EM LOTE) ===
 @app.route('/admin/unidades', methods=['POST'])
 def admin_unidades():
-    # [ATUALIZAÇÃO - PROFESSOR] Proteção de rota administrativa (Ponto 1)
-    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for('main_page'))
+if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+    flash("Acesso não autorizado.", "danger")
+    return redirect(url_for('main_page'))
+    
+numero_serie_base = request.form.get('numero_serie')
+id_ferramenta = request.form.get('id_ferramenta')
+id_filial = request.form.get('id_filial')
+quantidade = int(request.form.get('quantidade', 1))
+
+sucesso_total = True
+msg_final = ""
+
+for i in range(quantidade):
+    # Se for mais de 1, adiciona um sufixo ao final do número de série para não dar erro de duplicidade
+    if quantidade > 1 and numero_serie_base:
+        numero_serie = f"{numero_serie_base}-{i+1}"
+    else:
+        numero_serie = numero_serie_base
         
-    numero_serie = request.form.get('numero_serie')
-    id_ferramenta = request.form.get('id_ferramenta')
-    id_filial = request.form.get('id_filial')
     sucesso, msg = AdminModel.create_unidade_ferramenta(numero_serie, id_ferramenta, id_filial)
-    flash(msg, "success" if sucesso else "danger")
-    return redirect(url_for('gerenciar_ferramentas'))
-
-
+    if not sucesso:
+        sucesso_total = False
+        msg_final = msg
+        break # Interrompe se houver erro (ex: número de série base já existe)
+        
+if sucesso_total:
+    flash(f"{quantidade} unidade(s) lançada(s) com sucesso no estoque!", "success")
+else:
+    flash(f"Erro ao lançar algumas unidades: {msg_final}", "danger")
+    
+return redirect(url_for('gerenciar_ferramentas'))
 # === 22. PAINEL COM GRÁFICOS ===
 @app.route('/colaborador/graficos')
 def painel_graficos():

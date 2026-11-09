@@ -185,15 +185,22 @@
                             </select>
                         </div>
 
+                        <!-- NOVO CAMPO: QUANTIDADE -->
+                        <div class="mb-3">
+                            <label for="quantidade" class="form-label fw-bold text-secondary small">Quantidade</label>
+                            <input type="number" class="form-control" id="quantidade" name="quantidade" value="1" min="1" required>
+                            <div class="form-text">Se for maior que 1, o número de série receberá um sufixo sequencial (-1, -2...).</div>
+                        </div>
+
                         <div class="mb-4">
-                            <label for="numero_serie" class="form-label fw-bold text-secondary small">Número de Série (Identificador Único)</label>
+                            <label for="numero_serie" class="form-label fw-bold text-secondary small">Número de Série (Identificador Único Base)</label>
                             <input type="text" class="form-control" id="numero_serie" name="numero_serie" maxlength="50" placeholder="Ex: SN-9008234" required>
                             <div class="form-text">Este número não pode ser repetido no sistema.</div>
                         </div>
 
                         <div class="d-grid mt-auto pt-3">
                             <button type="submit" class="btn btn-dark fw-bold">
-                                <i class="fas fa-barcode me-2"></i> Registar Unidade
+                                <i class="fas fa-barcode me-2"></i> Registar Unidade(s)
                             </button>
                         </div>
                     </form>
@@ -204,8 +211,6 @@
                     {% endif %}
                 </div>
             </div>
-
-        </div>
 
         <!-- ============================================== -->
         <!-- SESSÃO DE RECURSOS HUMANOS / GESTÃO DE EQUIPA  -->
