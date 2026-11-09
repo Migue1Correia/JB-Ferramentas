@@ -46,7 +46,7 @@
                 <!-- Imagem do Produto -->
                 <div class="col-md-5 text-center">
                     {% if ferramenta.imagem %}
-                        <img src="{{ url_for('static', filename=ferramenta.imagem.replace('static/', '')) if ferramenta.imagem else url_for('static', filename='img/produto.png') }}" class="SUAS-CLASSES-AQUI" alt="{{ ferramenta.modelo }}">
+                        <img src="{{ url_for('static', filename=ferramenta.imagem.replace('static/', '')) if ferramenta.imagem else url_for('static', filename='img/produto.png') }}" class="img-fluid" alt="{{ ferramenta.modelo }}">
                     {% else %}
                         <div class="bg-light rounded-4 p-4 h-100 d-flex align-items-center justify-content-center border" style="min-height: 320px;">
                             <i class="fas fa-tools text-secondary" style="font-size: 8rem; opacity: 0.15;"></i>
@@ -66,21 +66,21 @@
                             <div class="p-2 border rounded bg-light">
                                 <i class="fas fa-bolt text-danger mb-1"></i>
                                 <div class="small fw-bold text-dark">Potência</div>
-                                <span class="text-muted" style="font-size: 0.8rem;">Consulte</span>
+                                <span class="text-muted" style="font-size: 0.8rem;">{{ ferramenta.potencia }}</span>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="p-2 border rounded bg-light">
                                 <i class="fas fa-weight-hanging text-danger mb-1"></i>
                                 <div class="small fw-bold text-dark">Peso</div>
-                                <span class="text-muted" style="font-size: 0.8rem;">Leve</span>
+                                <span class="text-muted" style="font-size: 0.8rem;">{{ ferramenta.peso }}</span>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="p-2 border rounded bg-light">
                                 <i class="fas fa-cogs text-danger mb-1"></i>
                                 <div class="small fw-bold text-dark">Velocidade</div>
-                                <span class="text-muted" style="font-size: 0.8rem;">Variável</span>
+                                <span class="text-muted" style="font-size: 0.8rem;">{{ ferramenta.velocidade }}</span>
                             </div>
                         </div>
                     </div>

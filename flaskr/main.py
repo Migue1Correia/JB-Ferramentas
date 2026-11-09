@@ -201,10 +201,13 @@ def detalhe_produto(id):
             ferramenta_db["modelo"], ferramenta_db["descricao"]
         )
         ferramenta_selecionada['imagem'] = ferramenta_db.get("imagem")
+        # ADICIONA AS INFORMAÇÕES TÉCNICAS
+        ferramenta_selecionada['potencia'] = ferramenta_db.get("potencia", "Consulte")
+        ferramenta_selecionada['peso'] = ferramenta_db.get("peso", "Consulte")
+        ferramenta_selecionada['velocidade'] = ferramenta_db.get("velocidade", "Consulte")
     else:
         ferramenta_selecionada = None
     return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
-
 
 # === 5. PROCESSAMENTO DE LOGIN ===
 @app.route("/login", methods=["GET", "POST"])
@@ -696,9 +699,21 @@ def gerenciar_ferramentas():
         descricao = request.form.get('descricao')
         id_tipo = request.form.get('tipo_ferramenta')
         operacao = request.form.get('operacao')
-        
+        potencia = request.form.get('potencia', 'Consulte')
+        peso = request.form.get('peso', 'Consulte')
+        velocidade = request.form.get('velocidade', 'Consulte')
         foto = request.files.get('foto_ferramenta')
         caminho_foto = None
+        
+        try:
+            cursor = jb_solucoes_db.connection.cursor()
+            # O INSERT AGORA INCLUI AS NOVAS COLUNAS
+            cursor.execute("""
+                INSERT INTO ferramentas (marca, modelo, descricao, id_ferramenta_tipo, operacao, imagem, potencia, peso, velocidade) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (marca, modelo, descricao, id_tipo, operacao, caminho_foto, potencia, peso, velocidade))
+            jb_solucoes_db.connection.commit()
+            cursor.close()
         
         if foto and foto.filename != '':
             # [ATUALIZAÇÃO - PROFESSOR] Proteção de upload (Ponto 3)
@@ -1032,6 +1047,17 @@ def servicos_page():
         lista_servicos = []
         
     return render_template('servicos.html', servicos=lista_servicos)
+
+
+# === 27. CONTROLE INTERNO DE LOCAÇÕES ===
+@app.route("/colaborador/locacoes", methods=["GET", "POST"])
+def gerenciar_locacoes():
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        flash("Acesso restrito à equipa interna.", "danger")
+        return redirect(url_for('login'))
+
+    id_filial = session.get('id_filial')
+    # ... (restante do código)
 
 # === 25. TELA DE CLIENTES (COLABORADOR) ===
 @app.route("/colaborador/clientes", methods=["GET", "POST"])
