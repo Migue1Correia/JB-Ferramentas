@@ -37,7 +37,7 @@ app.config['SECRET_KEY'] = chave_secreta
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Impede que scripts maliciosos leiam os cookies (Proteção XSS)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' # Previne ataques de falsificação de solicitações (CSRF)
 
-# [ATUALIZAÇÃO - PROFESSOR] Limite de Tamanho e Segurança de Uploads (Ponto 3)
+# Limite de Tamanho e Segurança de Uploads
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # Limite máximo de 5MB por ficheiro
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 
@@ -136,6 +136,7 @@ def main_page():
 
     return render_template('landing.html', ferramentas=lista_ferramentas, resultado_os=resultado_os, os_busca=os_busca)
 
+
 # === 2. TELA DE TRANSIÇÃO / DESTAQUES ===
 @app.route("/ferramentas")
 def ferramentas_page():
@@ -209,6 +210,7 @@ def detalhe_produto(id):
         ferramenta_selecionada = None
     return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
 
+
 # === 5. PROCESSAMENTO DE LOGIN ===
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -267,7 +269,7 @@ def login():
     return render_template('index.html')
 
 
-# === [NOVO] 5.1 RECUPERAÇÃO DE SENHA ===
+# === 5.1 RECUPERAÇÃO DE SENHA ===
 @app.route("/esqueci_senha", methods=["GET", "POST"])
 def esqueci_senha():
     if request.method == "POST":
@@ -321,7 +323,6 @@ def perfil_page():
         if not nome or not email:
             flash("Nome e e-mail são obrigatórios.", "danger")
         elif PersonModel.update(user_code, name=nome, address=endereco, email=email, phone_number=telefone):
-            # [NOVO] Adicionada funcionalidade para alterar a senha
             nova_senha = request.form.get('nova_senha')
             if nova_senha:
                 senha_hash = jb_bcrypt.generate_password_hash(nova_senha).decode("utf-8")
@@ -358,7 +359,7 @@ def perfil_page():
     return render_template('perfil.html', user_infos=user_infos, status=status, historico=historico_servicos)
 
 
-# === 7. CADASTRO (COM LÓGICA DE PRÉ-CADASTRO) ===
+# === 7. CADASTRO ===
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     if request.method == "GET":
@@ -510,7 +511,6 @@ def comprar_ferramenta(ferramenta_id):
 # === 12. DASHBOARD / GERENCIADOR ===
 @app.route('/colaborador/dashboard')
 def colaborador_dashboard():
-    # [ATUALIZAÇÃO - PROFESSOR] Checagem de perfil (Ponto 1)
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador', 'gerente']:
         flash("Acesso restrito à equipa interna e administradores.", "danger")
         return redirect(url_for('login'))
@@ -555,7 +555,6 @@ def criar_os():
             if fotos and fotos[0].filename != '':
                 foto = fotos[0]
                 
-                # [ATUALIZAÇÃO - PROFESSOR] Checagem de segurança do arquivo (Ponto 3)
                 if not arquivo_permitido(foto.filename):
                     flash("Formato de imagem não permitido. Use PNG, JPG ou WEBP.", "danger")
                     return redirect(url_for('criar_os'))
@@ -626,7 +625,6 @@ def atualizar_orcamento(id_servico):
     caminho_relativo = None
     
     if imagem and imagem.filename != '':
-        # [ATUALIZAÇÃO - PROFESSOR] Checagem de arquivo (Ponto 3)
         if not arquivo_permitido(imagem.filename):
             flash("Formato de imagem não permitido.", "danger")
             return redirect(url_for('painel_colaborador'))
@@ -694,14 +692,12 @@ def gerenciar_ferramentas():
         return redirect(url_for('main_page'))
         
     if request.method == 'POST':
-        # Captura os dados existentes
         marca = request.form.get('marca')
         modelo = request.form.get('modelo')
         descricao = request.form.get('descricao')
         id_tipo = request.form.get('tipo_ferramenta')
         operacao = request.form.get('operacao')
         
-        # NOVOS DADOS
         potencia = request.form.get('potencia', 'Consulte')
         peso = request.form.get('peso', 'Consulte')
         velocidade = request.form.get('velocidade', 'Consulte')
@@ -761,7 +757,6 @@ def gerenciar_ferramentas():
 # === 16.1 CADASTRAR CONTA DA EQUIPA (ADMIN) ===
 @app.route('/admin/equipe', methods=['POST'])
 def cadastrar_equipe():
-    # [ATUALIZAÇÃO - PROFESSOR] Bloqueio rigoroso de perfil (Ponto 1 e 2)
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
         flash("Acesso negado. Apenas administradores podem criar contas para a equipa.", "danger")
         return redirect(url_for('gerenciar_ferramentas'))
@@ -886,7 +881,6 @@ def relatorio_caixa():
 # === 19. PERFIS ===
 @app.route('/admin/perfis', methods=['GET', 'POST'])
 def admin_perfis():
-    # [ATUALIZAÇÃO - PROFESSOR] Proteção de rota administrativa (Ponto 1)
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
         flash("Acesso restrito apenas a administradores.", "danger")
         return redirect(url_for('main_page'))
@@ -905,7 +899,6 @@ def admin_perfis():
 # === 20. FILIAIS ===
 @app.route('/admin/filiais', methods=['GET', 'POST'])
 def admin_filiais():
-    # [ATUALIZAÇÃO - PROFESSOR] Proteção de rota administrativa (Ponto 1)
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
         flash("Acesso restrito apenas a administradores.", "danger")
         return redirect(url_for('main_page'))
@@ -925,37 +918,38 @@ def admin_filiais():
 # === 21. UNIDADES (COM QUANTIDADE EM LOTE) ===
 @app.route('/admin/unidades', methods=['POST'])
 def admin_unidades():
-if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
-    flash("Acesso não autorizado.", "danger")
-    return redirect(url_for('main_page'))
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for('main_page'))
+        
+    numero_serie_base = request.form.get('numero_serie')
+    id_ferramenta = request.form.get('id_ferramenta')
+    id_filial = request.form.get('id_filial')
+    quantidade = int(request.form.get('quantidade', 1))
     
-numero_serie_base = request.form.get('numero_serie')
-id_ferramenta = request.form.get('id_ferramenta')
-id_filial = request.form.get('id_filial')
-quantidade = int(request.form.get('quantidade', 1))
-
-sucesso_total = True
-msg_final = ""
-
-for i in range(quantidade):
-    # Se for mais de 1, adiciona um sufixo ao final do número de série para não dar erro de duplicidade
-    if quantidade > 1 and numero_serie_base:
-        numero_serie = f"{numero_serie_base}-{i+1}"
+    sucesso_total = True
+    msg_final = ""
+    
+    for i in range(quantidade):
+        if quantidade > 1 and numero_serie_base:
+            numero_serie = f"{numero_serie_base}-{i+1}"
+        else:
+            numero_serie = numero_serie_base
+            
+        sucesso, msg = AdminModel.create_unidade_ferramenta(numero_serie, id_ferramenta, id_filial)
+        if not sucesso:
+            sucesso_total = False
+            msg_final = msg
+            break
+            
+    if sucesso_total:
+        flash(f"{quantidade} unidade(s) lançada(s) com sucesso no estoque!", "success")
     else:
-        numero_serie = numero_serie_base
+        flash(f"Erro ao lançar algumas unidades: {msg_final}", "danger")
         
-    sucesso, msg = AdminModel.create_unidade_ferramenta(numero_serie, id_ferramenta, id_filial)
-    if not sucesso:
-        sucesso_total = False
-        msg_final = msg
-        break # Interrompe se houver erro (ex: número de série base já existe)
-        
-if sucesso_total:
-    flash(f"{quantidade} unidade(s) lançada(s) com sucesso no estoque!", "success")
-else:
-    flash(f"Erro ao lançar algumas unidades: {msg_final}", "danger")
-    
-return redirect(url_for('gerenciar_ferramentas'))
+    return redirect(url_for('gerenciar_ferramentas'))
+
+
 # === 22. PAINEL COM GRÁFICOS ===
 @app.route('/colaborador/graficos')
 def painel_graficos():
@@ -994,6 +988,7 @@ def orcamentos_page():
         orcamentos_pendentes = []
         
     return render_template('orcamentos.html', orcamentos=orcamentos_pendentes)
+
 
 # === 23.1 MUDAR STATUS DA OS VIA DROPDOWN ===
 @app.route('/colaborador/atualizar_status_os/<int:id_servico>', methods=['POST'])
@@ -1041,16 +1036,6 @@ def servicos_page():
         
     return render_template('servicos.html', servicos=lista_servicos)
 
-
-# === 27. CONTROLE INTERNO DE LOCAÇÕES ===
-@app.route("/colaborador/locacoes", methods=["GET", "POST"])
-def gerenciar_locacoes():
-    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
-        flash("Acesso restrito à equipa interna.", "danger")
-        return redirect(url_for('login'))
-
-    id_filial = session.get('id_filial')
-    # ... (restante do código)
 
 # === 25. TELA DE CLIENTES (COLABORADOR) ===
 @app.route("/colaborador/clientes", methods=["GET", "POST"])
@@ -1153,7 +1138,6 @@ def gerenciar_locacoes():
         id_colab = session.get('user_code')
 
         try:
-            # [ATUALIZAÇÃO - PROFESSOR] Regra de Negócio: Validação de Estoque antes de locar (Ponto 5)
             cursor.execute("""
                 SELECT COUNT(*) FROM unidades_ferramenta 
                 WHERE id_ferramenta = %s AND id_filial = %s AND status = 'Disponível'
@@ -1198,7 +1182,8 @@ def gerenciar_locacoes():
 
     return render_template('locacoes.html', clientes=clientes, ferramentas=ferramentas, locacoes=locacoes)
 
-# === EXCLUIR FERRAMENTA DO CATÁLOGO ===
+
+# === 28. EXCLUIR FERRAMENTA DO CATÁLOGO ===
 @app.route('/admin/ferramenta/excluir/<int:id>', methods=['POST'])
 def excluir_ferramenta(id):
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
@@ -1207,9 +1192,6 @@ def excluir_ferramenta(id):
     
     try:
         cursor = jb_solucoes_db.connection.cursor()
-        
-        # [ATUALIZAÇÃO - PROFESSOR] O tratamento da restrição de chave estrangeira (Ponto 4)
-        # O try/except já impede a quebra do sistema se houver dependências.
         cursor.execute("DELETE FROM ferramentas WHERE id = %s", (id,))
         jb_solucoes_db.connection.commit()
         cursor.close()
