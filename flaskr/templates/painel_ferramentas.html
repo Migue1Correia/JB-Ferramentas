@@ -13,15 +13,17 @@
 </head>
 <body class="dashboard-body">
     <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
-{% include '_topo_colaborador.html' %}
+    {% include '_topo_colaborador.html' %}
 
     <main id="conteudo" class="dashboard-content">
+        <!-- SECÇÃO DE CADASTRAR FERRAMENTA E GERIR TIPOS -->
         <section class="profile-card">
             <div class="card-header">
                 <i class="fas fa-plus" aria-hidden="true"></i>
                 <h2>Cadastrar ferramenta</h2>
             </div>
-            {% if tipos %}
+            
+            <!-- FORMULÁRIO DE FERRAMENTAS -->
             <form method="POST" action="{{ url_for('gerenciar_ferramentas') }}" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-grid">
@@ -36,9 +38,13 @@
                     <div class="input-group">
                         <label for="tipo_ferramenta">Tipo</label>
                         <select id="tipo_ferramenta" name="tipo_ferramenta" required>
-                            {% for tipo in tipos %}
-                            <option value="{{ tipo[0] }}">{{ tipo[1] }}</option>
-                            {% endfor %}
+                            {% if tipos %}
+                                {% for tipo in tipos %}
+                                <option value="{{ tipo[0] if tipo is sequence else tipo.id }}">{{ tipo[1] if tipo is sequence else tipo.tipo }}</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled selected>Cadastre um tipo abaixo primeiro</option>
+                            {% endif %}
                         </select>
                     </div>
                     <div class="input-group">
@@ -65,17 +71,50 @@
                     <button type="submit" class="btn-save"><i class="fas fa-save" aria-hidden="true"></i> Cadastrar ferramenta</button>
                 </div>
             </form>
-            {% else %}
-            <p style="color: #aaaaaa;">Ainda não há tipos de ferramenta no banco (tabela ferramenta_tipos), então não dá para cadastrar ferramentas por aqui.</p>
-            {% endif %}
+
+            <!-- GESTÃO DE TIPOS: ADICIONAR E APAGAR DIRETO NA TELA -->
+            <div style="margin-top: 25px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <details open>
+                    <summary style="cursor: pointer; color: #ffaa00; font-size: 0.95rem; font-weight: bold;">Gerenciar Tipos de Ferramentas (Adicionar / Excluir)</summary>
+                    
+                    <form method="POST" action="{{ url_for('cadastrar_tipo_ferramenta') }}" style="margin-top: 15px; display: flex; gap: 10px; align-items: flex-end;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="input-group" style="flex: 1; margin: 0;">
+                            <label for="tipo_novo" style="font-size: 0.85rem;">Nome do novo tipo</label>
+                            <input type="text" id="tipo_novo" name="tipo_novo" maxlength="20" placeholder="Ex: Martelete, Serra..." required style="padding: 8px;">
+                        </div>
+                        <button type="submit" class="btn-save" style="padding: 9px 15px; height: fit-content;"><i class="fas fa-plus" aria-hidden="true"></i> Adicionar</button>
+                    </form>
+
+                    <p style="color: #aaaaaa; font-size: 0.85rem; margin: 15px 0 8px 0;">Tipos já cadastrados:</p>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        {% if tipos %}
+                            {% for tipo in tipos %}
+                            <li style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <span style="font-size: 0.9rem;">{{ tipo[1] if tipo is sequence else tipo.tipo }}</span>
+                                <form method="POST" action="{{ url_for('excluir_tipo_ferramenta', id_tipo=tipo[0] if tipo is sequence else tipo.id) }}" onsubmit="return confirm('Deseja excluir este tipo?')" style="margin: 0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" style="background: #d9534f; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Excluir</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li style="color: #aaaaaa; font-size: 0.85rem; padding: 5px 0;">Nenhum tipo cadastrado ainda.</li>
+                        {% endif %}
+                    </ul>
+                </details>
+            </div>
         </section>
 
+        <!-- SECÇÃO DE CADASTRAR UNIDADE EM ESTOQUE E GERIR FILIAIS -->
         <section class="profile-card">
             <div class="card-header">
                 <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
                 <h2>Cadastrar unidade em estoque</h2>
             </div>
+            
             {% if ferramentas and filiais %}
+            <!-- FORMULÁRIO DE UNIDADES -->
             <form method="POST" action="{{ url_for('cadastrar_unidade') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-grid">
@@ -83,7 +122,7 @@
                         <label for="id_ferramenta">Ferramenta</label>
                         <select id="id_ferramenta" name="id_ferramenta" required>
                             {% for ferramenta in ferramentas %}
-                            <option value="{{ ferramenta.id }}">{{ ferramenta.nome }}</option>
+                            <option value="{{ ferramenta.id }}">{{ ferramenta.marca }} - {{ ferramenta.modelo }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -105,10 +144,58 @@
                 </div>
             </form>
             {% else %}
-            <p style="color: #aaaaaa;">Cadastre pelo menos uma ferramenta e uma filial para lançar unidades em estoque.</p>
+            <p style="color: #aaaaaa; margin-bottom: 15px;">Cadastre pelo menos uma ferramenta no catálogo acima para lançar unidades em estoque.</p>
             {% endif %}
+
+            <!-- GESTÃO DE FILIAIS: ADICIONAR E APAGAR DIRETO NA TELA -->
+            <div style="margin-top: 25px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <details open>
+                    <summary style="cursor: pointer; color: #ffaa00; font-size: 0.95rem; font-weight: bold;">Gerenciar Filiais (Adicionar / Excluir)</summary>
+                    
+                    <!-- Formulário para cadastrar nova filial -->
+                    <form method="POST" action="{{ url_for('cadastrar_filial_painel') }}" style="margin-top: 15px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="codigo_filial" style="font-size: 0.85rem;">Código da Filial (ex: MATRIZ)</label>
+                                <input type="text" id="codigo_filial" name="codigo_filial" maxlength="20" required style="padding: 8px;">
+                            </div>
+                            <div class="input-group">
+                                <label for="nome_filial" style="font-size: 0.85rem;">Nome da Filial</label>
+                                <input type="text" id="nome_filial" name="nome_filial" maxlength="50" required style="padding: 8px;">
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="endereco_filial" style="font-size: 0.85rem;">Endereço (opcional)</label>
+                                <input type="text" id="endereco_filial" name="endereco_filial" maxlength="255" style="padding: 8px;">
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: 15px;">
+                            <button type="submit" class="btn-save" style="padding: 9px 15px;"><i class="fas fa-plus" aria-hidden="true"></i> Cadastrar filial</button>
+                        </div>
+                    </form>
+
+                    <!-- Lista de filiais cadastradas -->
+                    <p style="color: #aaaaaa; font-size: 0.85rem; margin: 20px 0 8px 0;">Filiais já cadastradas:</p>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        {% if filiais %}
+                            {% for filial in filiais %}
+                            <li style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <span style="font-size: 0.9rem;"><strong>{{ filial[1] }}</strong> - {{ filial[2] }}</span>
+                                <form method="POST" action="{{ url_for('excluir_filial_painel', id_filial=filial[0]) }}" onsubmit="return confirm('Deseja excluir a filial {{ filial[2] }}?')" style="margin: 0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" style="background: #d9534f; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Excluir</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li style="color: #aaaaaa; font-size: 0.85rem; padding: 5px 0;">Nenhuma filial cadastrada ainda. Cadastre a primeira acima.</li>
+                        {% endif %}
+                    </ul>
+                </details>
+            </div>
         </section>
 
+        <!-- SECÇÃO DE FERRAMENTAS CADASTRADAS -->
         <section class="profile-card">
             <div class="card-header">
                 <i class="fas fa-toolbox" aria-hidden="true"></i>
@@ -138,11 +225,17 @@
                             <td>{{ ferramenta.preco|moeda }}{% if ferramenta.tipo == 'Alugar' %}/dia{% endif %}</td>
                             <td>{% if ferramenta.ativo %}Na loja{% else %}<span class="type-tag tag-alugar">Desativada</span>{% endif %}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('ativar_ferramenta', ferramenta_id=ferramenta.id) }}" {% if ferramenta.ativo %}onsubmit="return confirm('Desativar ' + {{ ferramenta.nome|tojson|forceescape }} + '? Ela sai da loja.')" {% endif %}style="display: flex; gap: 10px; align-items: center;">
+                                <form method="POST" action="{{ url_for('ativar_ferramenta', ferramenta_id=ferramenta.id) }}" {% if ferramenta.ativo %}onsubmit="return confirm('Desativar ' + {{ ferramenta.nome|tojson|forceescape }} + '? Ela sai da loja.')" {% endif %}style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="ativo" value="{{ 0 if ferramenta.ativo else 1 }}">
-                                    <a href="{{ url_for('editar_ferramenta', ferramenta_id=ferramenta.id) }}" class="btn-remover" style="text-decoration: none; font-size: 0.83rem;" aria-label="Editar {{ ferramenta.nome }}">Editar</a>
-                                    <button type="submit" class="btn-remover" aria-label="{{ 'Desativar' if ferramenta.ativo else 'Reativar' }} {{ ferramenta.nome }}">{{ 'Desativar' if ferramenta.ativo else 'Reativar' }}</button>
+                                    <a href="{{ url_for('editar_ferramenta', ferramenta_id=ferramenta.id) }}" class="btn-remover" style="text-decoration: none; font-size: 0.83rem; padding: 4px 8px;" aria-label="Editar {{ ferramenta.nome }}">Editar</a>
+                                    <button type="submit" class="btn-remover" style="padding: 4px 8px; font-size: 0.83rem;" aria-label="{{ 'Desativar' if ferramenta.ativo else 'Reativar' }} {{ ferramenta.nome }}">{{ 'Desativar' if ferramenta.ativo else 'Reativar' }}</button>
+                                </form>
+
+                                <!-- Botão de Excluir Permanente -->
+                                <form method="POST" action="{{ url_for('excluir_ferramenta', ferramenta_id=ferramenta.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir PERMANENTEMENTE esta ferramenta?')" style="margin-top: 5px;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" style="background: #d9534f; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; width: 100%;">Excluir</button>
                                 </form>
                             </td>
                         </tr>
@@ -157,3 +250,4 @@
     </main>
 </body>
 </html>
+
