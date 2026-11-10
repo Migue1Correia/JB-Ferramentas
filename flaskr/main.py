@@ -624,42 +624,41 @@ def criar_os():
     
     return render_template('criar_os.html', clientes=clientes)
 
+
 # === 13.1 IMPRESSÃO DE ETIQUETA TÉRMICA DA OS ===
 @app.route("/colaborador/etiqueta/<numero_os>")
 def imprimir_etiqueta(numero_os):
-if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
-    return redirect(url_for('login'))
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        return redirect(url_for('login'))
 
-try:
-    cursor = jb_solucoes_db.connection.cursor()
-    cursor.execute("""
-        SELECT s.titulo_servico, p.nome, s.descricao_servico, DATE_FORMAT(s.data_abertura, '%%d/%%m/%%Y')
-        FROM servicos s
-        JOIN pessoas p ON s.id_pessoa_solicitante = p.id
-        WHERE s.titulo_servico = %s
-    """, (numero_os,))
-    os_data = cursor.fetchone()
-    cursor.close()
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("""
+            SELECT s.titulo_servico, p.nome, s.descricao_servico, DATE_FORMAT(s.data_abertura, '%%d/%%m/%%Y')
+            FROM servicos s
+            JOIN pessoas p ON s.id_pessoa_solicitante = p.id
+            WHERE s.titulo_servico = %s
+        """, (numero_os,))
+        os_data = cursor.fetchone()
+        cursor.close()
 
-    if os_data:
-        # Limpa o texto da descrição para extrair apenas o nome do equipamento
-        descricao_bruta = os_data[2]
-        equipamento = descricao_bruta.split('\n')[0].replace('Equipamento: ', '') if descricao_bruta else "N/A"
-        
-        dados_etiqueta = {
-            "os": os_data[0],
-            "cliente": os_data[1].split()[0], # Imprime só o primeiro nome para caber na etiqueta
-            "equipamento": equipamento[:30],  # Limita a 30 caracteres
-            "data": os_data[3]
-        }
-        return render_template('etiqueta_os.html', dados=dados_etiqueta)
-    else:
-        return "Ordem de Serviço não encontrada", 404
-        
-except Exception as e:
-    print("Erro ao gerar etiqueta:", e)
-    return "Erro interno ao gerar etiqueta", 500
-
+        if os_data:
+            descricao_bruta = os_data[2]
+            equipamento = descricao_bruta.split('\n')[0].replace('Equipamento: ', '') if descricao_bruta else "N/A"
+            
+            dados_etiqueta = {
+                "os": os_data[0],
+                "cliente": os_data[1].split()[0],
+                "equipamento": equipamento[:30],
+                "data": os_data[3]
+            }
+            return render_template('etiqueta_os.html', dados=dados_etiqueta)
+        else:
+            return "Ordem de Serviço não encontrada", 404
+            
+    except Exception as e:
+        print("Erro ao gerar etiqueta:", e)
+        return "Erro interno ao gerar etiqueta", 500
 
 # === 14. ATUALIZAR ORÇAMENTO ===
 @app.route('/colaborador/orcamento/<int:id_servico>', methods=['POST'])
