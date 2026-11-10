@@ -151,27 +151,24 @@
     {% if sucesso %}
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Abre automaticamente a aba de impressão térmica da etiqueta
-            window.open("{{ url_for('imprimir_etiqueta', numero_os=numero_os) }}", "_blank", "width=400,height=400");
-
             Swal.fire({
                 icon: 'success',
                 title: 'OS Gerada com Sucesso!',
-                html: 'Passe este código para o cliente consultar o estado:<br><br><strong style="font-size: 2.5rem; color: #ff2b2b; letter-spacing: 2px;">{{ numero_os }}</strong>',
+                html: 'Código gerado:<br><br><strong style="font-size: 2.5rem; color: #ff2b2b; letter-spacing: 2px;">{{ numero_os }}</strong>',
                 showCancelButton: true,
-                confirmButtonColor: '#ff2b2b',
-                cancelButtonColor: '#121820',
-                confirmButtonText: '<i class="fas fa-plus me-1"></i> Abrir Mais Uma',
-                cancelButtonText: '<i class="fas fa-arrow-left me-1"></i> Voltar para Manutenção',
+                confirmButtonColor: '#151a21',
+                cancelButtonColor: '#ff2b2b',
+                confirmButtonText: '<i class="fas fa-file-invoice-dollar me-1"></i> Ir para Orçamentos',
+                cancelButtonText: '<i class="fas fa-plus me-1"></i> Nova OS',
                 allowOutsideClick: false,
                 reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Redireciona para recarregar a tela limpa de Nova OS
-                    window.location.href = "{{ url_for('criar_os') }}";
+                    // Redireciona para a tela interna de orçamentos da equipa
+                    window.location.href = "{{ url_for('orcamentos_page') }}"; 
                 } else {
-                    // Redireciona de volta para a tabela de pedidos
-                    window.location.href = "{{ url_for('painel_colaborador') }}";
+                    // Recarrega para criar uma nova OS
+                    window.location.href = "{{ url_for('criar_os') }}";
                 }
             });
         });
