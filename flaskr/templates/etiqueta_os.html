@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Etiqueta {{ dados.os }}</title>
+    <style>
+        /* Define o tamanho exato da etiqueta térmica (Ajuste se o seu rolo for diferente) */
+        @page {
+            size: 80mm 40mm; 
+            margin: 0;
+        }
+        body {
+            margin: 0;
+            padding: 4mm;
+            font-family: Arial, sans-serif;
+            width: 80mm;
+            height: 40mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: white;
+            color: black;
+        }
+        .os-title {
+            font-size: 26pt;
+            font-weight: 900;
+            text-align: center;
+            margin: 0 0 2mm 0;
+            border-bottom: 2px solid black;
+            padding-bottom: 2mm;
+        }
+        .info-line {
+            font-size: 11pt;
+            margin: 1mm 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .fw-bold { font-weight: bold; }
+        
+        /* Oculta os botões na hora da impressão térmica */
+        @media print {
+            .no-print { display: none !important; }
+        }
+        
+        .btn-imprimir {
+            margin-top: 15px;
+            padding: 8px 15px;
+            background-color: #151a21;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<!-- O onload aciona a janela de impressão do Windows/Chrome automaticamente -->
+<body onload="window.print();">
+    
+    <div class="os-title">{{ dados.os }}</div>
+    <div class="info-line"><span class="fw-bold">Cli:</span> {{ dados.cliente }}</div>
+    <div class="info-line"><span class="fw-bold">Eqp:</span> {{ dados.equipamento }}</div>
+    <div class="info-line"><span class="fw-bold">Data:</span> {{ dados.data }}</div>
+    
+    <!-- Botão auxiliar caso a caixa de impressão seja fechada sem querer -->
+    <button class="no-print btn-imprimir" onclick="window.print()">🖨️ Reimprimir Etiqueta</button>
+    
+</body>
+</html>

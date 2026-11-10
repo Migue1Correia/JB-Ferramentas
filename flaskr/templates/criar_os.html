@@ -28,7 +28,7 @@
                     <!-- Coluna Esquerda: Dados Gerais e Peças -->
                     <div class="col-lg-7">
                         
-                        <!-- Busca de Cliente -->
+                    <!-- Busca de Cliente -->
                     <h5 class="jb-section-title">Dados do Cliente</h5>
                     <div class="mb-3">
                         <label for="cliente" class="form-label fw-bold text-secondary">Selecione o Cliente</label>
@@ -147,10 +147,13 @@
     <!-- Importação do SweetAlert2 para Popups -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- Script de Ativação do Popup de Sucesso -->
+    <!-- Script de Ativação do Popup de Sucesso e Abertura da Etiqueta Térmica -->
     {% if sucesso %}
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            // Abre automaticamente a aba de impressão térmica da etiqueta
+            window.open("{{ url_for('imprimir_etiqueta', numero_os=numero_os) }}", "_blank", "width=400,height=400");
+
             Swal.fire({
                 icon: 'success',
                 title: 'OS Gerada com Sucesso!',
