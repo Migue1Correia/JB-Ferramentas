@@ -1135,53 +1135,100 @@ def carrinho_pagar_servico(id_servico):
 # === 15. GERENCIAR FERRAMENTAS ===
 @app.route('/colaborador/ferramentas', methods=['GET', 'POST'])
 def gerenciar_ferramentas():
-    """
-    Gerenciar Catálogo
-    Lista e permite adicionar novas ferramentas ao catálogo.
-    ---
-    tags:
-      - Gestão / Colaborador
-    parameters:
-      - name: marca
-        in: formData
-        type: string
-      - name: modelo
-        in: formData
-        type: string
-      - name: descricao
-        in: formData
-        type: string
-      - name: tipo_ferramenta
-        in: formData
-        type: integer
-    responses:
-      200:
-        description: Retorna painel.
-    """
     if request.method == 'POST':
         marca = request.form.get('marca')
         modelo = request.form.get('modelo')
         descricao = request.form.get('descricao')
         id_tipo = request.form.get('tipo_ferramenta')
         imagem = salvar_imagem(request.files.get('imagem'), "ferramenta")
+        
         if imagem is False:
             flash("Envie a foto em PNG, JPG ou WEBP.", "danger")
             return redirect(url_for('gerenciar_ferramentas'))
+            
         sucesso, mensagem = ToolModel.create(
             marca, modelo, descricao, id_tipo,
             request.form.get('preco'), request.form.get('tipo_oferta'), imagem)
+            
         if not sucesso:
             apagar_imagem(imagem)
-        if sucesso:
-            flash(mensagem, "success")
-        else:
-            flash(mensagem, "danger")
+            
+        flash(mensagem, "success" if sucesso else "danger")
         return redirect(url_for('gerenciar_ferramentas'))
+        
     tipos = ToolModel.get_tipos()
-    todas_ferramentas = ToolModel.get_all(apenas_ativas=False)  # o Catálogo mostra também as desativadas
+    todas_ferramentas = ToolModel.get_all(apenas_ativas=False)
     filiais = AdminModel.get_filiais()
     return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais)
 
+@app.route('/colaborador/ferramentas/<int:ferramenta_id>/excluir', methods=['POST'])
+def excluir_ferramenta(ferramenta_id):
+    """Exclui permanentemente uma ferramenta do catálogo caso não esteja em uso."""
+    if not pode_ver_painel():
+        return redirect(url_for('login'))
+        
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        
+        # Tenta deletar diretamente. Se houver qualquer unidade alugada ou histórico, 
+        # o MySQL vai disparar um erro de chave estrangeira (IntegrityError).
+        cursor.execute("DELETE FROM ferramentas WHERE id = %s", (ferramenta_id,))
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        
+        flash("Ferramenta excluída permanentemente com sucesso!", "success")
+        
+    except Exception as e:
+        # Qualquer erro de vínculo (como ferramenta alugada ou com unidades) cai aqui
+        flash("❌ Não é possível excluir esta ferramenta pois ela possui unidades atualmente alugadas ou histórico vinculado.", "danger")
+        
+    return redirect(url_for('gerenciar_ferramentas'))
+
+#nova rota cadastrar primeira filial direto no painel para desbloquear o proximo formulario
+@app.route('/colaborador/filial/novo', methods=['POST'])
+def cadastrar_filial_painel():
+    """Cadastra uma nova filial diretamente pelo painel do colaborador."""
+    if not pode_ver_painel():
+        return redirect(url_for('login'))
+        
+    codigo_filial = (request.form.get('codigo_filial') or '').strip()
+    nome = (request.form.get('nome_filial') or '').strip()
+    endereco = (request.form.get('endereco_filial') or '').strip()
+    
+    if not codigo_filial or not nome:
+        flash("Informe o código e o nome da filial.", "danger")
+        return redirect(url_for('gerenciar_ferramentas'))
+        
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        # Inserindo apenas os campos reais da tabela filiais
+        cursor.execute(
+            "INSERT INTO filiais (codigo_filial, nome, endereco) VALUES (%s, %s, %s)", 
+            (codigo_filial, nome, endereco)
+        )
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        flash("Filial cadastrada com sucesso!", "success")
+    except Exception as e:
+        flash(f"Erro ao cadastrar filial (código já pode existir): {e}", "danger")
+        
+    return redirect(url_for('gerenciar_ferramentas'))
+
+
+@app.route('/colaborador/filial/<int:id_filial>/excluir', methods=['POST'])
+def excluir_filial_painel(id_filial):
+    """Apaga uma filial se ela não estiver vinculada a unidades em estoque."""
+    if not pode_ver_painel():
+        return redirect(url_for('login'))
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("DELETE FROM filiais WHERE id = %s", (id_filial,))
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        flash("Filial excluída com sucesso!", "success")
+    except Exception as e:
+        flash("Não é possível excluir esta filial pois ela possui unidades vinculadas.", "danger")
+    return redirect(url_for('gerenciar_ferramentas'))
 
 @app.route('/colaborador/ferramentas/<int:ferramenta_id>/editar', methods=['GET', 'POST'])
 def editar_ferramenta(ferramenta_id):
@@ -1247,7 +1294,47 @@ def ativar_ferramenta(ferramenta_id):
     else:
         flash("Não foi possível alterar a ferramenta.", "danger")
     return redirect(url_for('gerenciar_ferramentas'))
+  
+  
+  #nova rota de cadastrar ferramenta
+@app.route('/colaborador/ferramentas/tipo/novo', methods=['POST'])
+def cadastrar_tipo_ferramenta():
+    """Cadastra um novo tipo de ferramenta diretamente pelo painel."""
+    if not pode_ver_painel():
+        return redirect(url_for('login'))
+        
+    tipo = (request.form.get('tipo_novo') or '').strip()
+    
+    if not tipo:
+        flash("Informe o nome do tipo de ferramenta.", "danger")
+        return redirect(url_for('gerenciar_ferramentas'))
+        
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("INSERT INTO ferramenta_tipos (tipo) VALUES (%s)", (tipo,))
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        flash("Tipo de ferramenta cadastrado com sucesso!", "success")
+    except Exception as e:
+        flash(f"Erro ao cadastrar o tipo: {e}", "danger")
+        
+    return redirect(url_for('gerenciar_ferramentas'))
 
+
+@app.route('/colaborador/ferramentas/tipo/<int:id_tipo>/excluir', methods=['POST'])
+def excluir_tipo_ferramenta(id_tipo):
+    """Apaga um tipo de ferramenta se ele não estiver em uso."""
+    if not pode_ver_painel():
+        return redirect(url_for('login'))
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        cursor.execute("DELETE FROM ferramenta_tipos WHERE id = %s", (id_tipo,))
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        flash("Tipo de ferramenta excluído com sucesso!", "success")
+    except Exception as e:
+        flash("Não é possível excluir este tipo pois ele está vinculado a ferramentas cadastradas.", "danger")
+    return redirect(url_for('gerenciar_ferramentas'))
 
 @app.route('/colaborador/pecas', methods=['GET', 'POST'])
 def gerenciar_pecas():
