@@ -752,6 +752,8 @@ def gerenciar_ferramentas():
     
     try:
         cursor = jb_solucoes_db.connection.cursor()
+        
+        # 1. Busca equipa ativa
         cursor.execute("""
             SELECT u.nome_usuario, p.nome, p.codigo, p.perfil, p.telefone
             FROM usuarios u
@@ -760,64 +762,91 @@ def gerenciar_ferramentas():
             ORDER BY p.nome ASC
         """)
         equipe = cursor.fetchall()
+        
+        # 2. Busca clientes que já têm conta de login (para promover)
+        cursor.execute("""
+            SELECT p.id, p.nome, p.codigo
+            FROM pessoas p
+            JOIN usuarios u ON p.id = u.id_pessoa
+            WHERE p.perfil NOT IN ('colaborador', 'admin', 'administrador') 
+               OR p.perfil IS NULL
+            ORDER BY p.nome ASC
+        """)
+        clientes_promover = cursor.fetchall()
+        
         cursor.close()
     except Exception as e:
         print("Erro ao buscar equipa:", e)
         equipe = []
+        clientes_promover = []
 
-    return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais, equipe=equipe)
+    return render_template('painel_ferramentas.html', tipos=tipos, ferramentas=todas_ferramentas, filiais=filiais, equipe=equipe, clientes_promover=clientes_promover)
 
 
-# === 16.1 CADASTRAR CONTA DA EQUIPA (ADMIN) ===
+# === 16.1 CADASTRAR OU PROMOVER CONTA DA EQUIPA (ADMIN) ===
 @app.route('/admin/equipe', methods=['POST'])
 def cadastrar_equipe():
     if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador']:
-        flash("Acesso negado. Apenas administradores podem criar contas para a equipa.", "danger")
+        flash("Acesso negado. Apenas administradores podem gerir a equipa.", "danger")
         return redirect(url_for('gerenciar_ferramentas'))
 
-    nome = request.form.get('nome')
-    cpf = somente_numeros(request.form.get('cpf'))
-    email = request.form.get('email')
-    telefone = request.form.get('telefone')
-    usuario = request.form.get('usuario')
-    senha = request.form.get('senha')
+    tipo_acao = request.form.get('tipo_acao', 'novo')
     nivel = request.form.get('nivel')
     id_filial = request.form.get('id_filial')
 
     try:
         cursor = jb_solucoes_db.connection.cursor()
-        
-        cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (cpf,))
-        if cursor.fetchone():
-            flash("Já existe uma pessoa cadastrada com este CPF/CNPJ.", "danger")
-            return redirect(url_for('gerenciar_ferramentas'))
+
+        if tipo_acao == 'existente':
+            id_pessoa = request.form.get('id_pessoa')
+            id_perfil = 3 if nivel == 'admin' else 2
             
-        cursor.execute("SELECT id FROM usuarios WHERE nome_usuario = %s", (usuario,))
-        if cursor.fetchone():
-            flash("Este nome de login já está a ser utilizado por outro membro.", "danger")
-            return redirect(url_for('gerenciar_ferramentas'))
+            # Atualiza perfil na tabela pessoas e usuarios simultaneamente
+            cursor.execute("UPDATE pessoas SET perfil = %s WHERE id = %s", (nivel, id_pessoa))
+            cursor.execute("UPDATE usuarios SET id_perfil = %s WHERE id_pessoa = %s", (id_perfil, id_pessoa))
+            
+            jb_solucoes_db.connection.commit()
+            flash("Cliente promovido à equipa com sucesso!", "success")
+            
+        else:
+            nome = request.form.get('nome')
+            cpf = somente_numeros(request.form.get('cpf'))
+            email = request.form.get('email')
+            telefone = request.form.get('telefone')
+            usuario = request.form.get('usuario')
+            senha = request.form.get('senha')
 
-        cursor.execute("""
-            INSERT INTO pessoas (nome, tipo, codigo, email, telefone, endereco, perfil, id_filial)
-            VALUES (%s, 'pf', %s, %s, %s, 'Sede JB Ferramentas', %s, %s)
-        """, (nome, cpf, email, telefone, nivel, id_filial))
-        id_pessoa = cursor.lastrowid
+            cursor.execute("SELECT id FROM pessoas WHERE codigo = %s", (cpf,))
+            if cursor.fetchone():
+                flash("Já existe uma pessoa cadastrada com este CPF/CNPJ.", "danger")
+                return redirect(url_for('gerenciar_ferramentas'))
+                
+            cursor.execute("SELECT id FROM usuarios WHERE nome_usuario = %s", (usuario,))
+            if cursor.fetchone():
+                flash("Este nome de login já está a ser utilizado por outro membro.", "danger")
+                return redirect(url_for('gerenciar_ferramentas'))
 
-        senha_hash = jb_bcrypt.generate_password_hash(senha).decode('utf-8')
-        id_perfil = 3 if nivel == 'admin' else 2
-        
-        cursor.execute("""
-            INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo)
-            VALUES (%s, %s, %s, %s, 1)
-        """, (usuario, senha_hash, id_pessoa, id_perfil))
+            cursor.execute("""
+                INSERT INTO pessoas (nome, tipo, codigo, email, telefone, endereco, perfil, id_filial)
+                VALUES (%s, 'pf', %s, %s, %s, 'Sede JB Ferramentas', %s, %s)
+            """, (nome, cpf, email, telefone, nivel, id_filial))
+            id_pessoa = cursor.lastrowid
 
-        jb_solucoes_db.connection.commit()
+            senha_hash = jb_bcrypt.generate_password_hash(senha).decode('utf-8')
+            id_perfil = 3 if nivel == 'admin' else 2
+            
+            cursor.execute("""
+                INSERT INTO usuarios (nome_usuario, senha, id_pessoa, id_perfil, ativo)
+                VALUES (%s, %s, %s, %s, 1)
+            """, (usuario, senha_hash, id_pessoa, id_perfil))
+
+            jb_solucoes_db.connection.commit()
+            flash(f"Conta de {nivel.capitalize()} criada com sucesso para {nome.split()[0]}!", "success")
+
         cursor.close()
         
-        flash(f"Conta de {nivel.capitalize()} criada com sucesso para {nome.split()[0]}!", "success")
-        
     except Exception as e:
-        print("Erro ao cadastrar membro da equipa:", e)
+        print("Erro ao gerir membro da equipa:", e)
         flash("Ocorreu um erro ao registar a conta na base de dados.", "danger")
 
     return redirect(url_for('gerenciar_ferramentas'))

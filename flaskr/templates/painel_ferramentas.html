@@ -143,7 +143,7 @@
                             <input type="text" class="form-control" id="descricao" name="descricao" maxlength="255" placeholder="Detalhes adicionais da ferramenta">
                         </div>
 
-                        <!-- NOVO BLOCO: ESPECIFICAÇÕES TÉCNICAS -->
+                        <!-- BLOCO: ESPECIFICAÇÕES TÉCNICAS -->
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <label class="form-label fw-bold text-secondary small">Potência</label>
@@ -226,6 +226,7 @@
                     {% endif %}
                 </div>
             </div>
+        </div>
 
         <!-- ============================================== -->
         <!-- SESSÃO DE RECURSOS HUMANOS / GESTÃO DE EQUIPA  -->
@@ -233,50 +234,101 @@
         <h4 class="fw-bold text-dark mb-4 mt-5 pt-3 border-top"><i class="fas fa-users-cog text-danger me-2"></i> Gestão de Contas Internas</h4>
         
         <div class="row g-4 mb-5">
-            <!-- Formulário: Cadastrar Conta Interna -->
+            <!-- Formulário: Gerenciar Conta Interna -->
             <div class="col-lg-4">
                 <div class="jb-form-card shadow-sm" style="background-color: #ffffff;">
-                    <h6 class="fw-bold text-dark mb-4"><i class="fas fa-user-shield text-danger me-2"></i> Nova Conta</h6>
+                    <h6 class="fw-bold text-dark mb-3"><i class="fas fa-user-shield text-danger me-2"></i> Adicionar à Equipa</h6>
                     
-                    <form method="POST" action="{{ url_for('cadastrar_equipe') }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        
-                        <div class="mb-3">
-                            <input type="text" class="form-control form-control-sm" name="nome" placeholder="Nome Completo" required>
-                        </div>
-                        <div class="mb-3">
-                            <input type="text" class="form-control form-control-sm" name="cpf" placeholder="CPF (Apenas números)" required>
-                        </div>
-                        <div class="mb-3">
-                            <input type="email" class="form-control form-control-sm" name="email" placeholder="E-mail" required>
-                        </div>
-                        <div class="mb-3">
-                            <input type="text" class="form-control form-control-sm" name="telefone" placeholder="Telefone/WhatsApp" required>
-                        </div>
-                        
-                        <hr class="border-secondary opacity-25">
-                        
-                        <div class="mb-3">
-                            <input type="text" class="form-control form-control-sm fw-bold text-primary" name="usuario" placeholder="Nome de Usuário (Login)" required>
-                        </div>
-                        <div class="mb-3">
-                            <input type="password" class="form-control form-control-sm" name="senha" placeholder="Senha Provisória" required>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-secondary small">Nível de Acesso</label>
-                            <select class="form-select form-select-sm" name="nivel" required>
-                                <option value="colaborador" selected>Colaborador (Equipa Técnica)</option>
-                                <option value="admin">Administrador (Acesso Total)</option>
-                            </select>
+                    <!-- Tabs de Navegação -->
+                    <ul class="nav nav-pills nav-fill mb-4" id="pills-tab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-1 border" id="pills-novo-tab" data-bs-toggle="pill" data-bs-target="#pills-novo" type="button" role="tab" style="font-size: 0.85rem; font-weight: bold;">Criar do Zero</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-1 border ms-2" id="pills-existente-tab" data-bs-toggle="pill" data-bs-target="#pills-existente" type="button" role="tab" style="font-size: 0.85rem; font-weight: bold;">Promover Cliente</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="pills-tabContent">
+                        <!-- Tab 1: Nova Conta -->
+                        <div class="tab-pane fade show active" id="pills-novo" role="tabpanel" tabindex="0">
+                            <form method="POST" action="{{ url_for('cadastrar_equipe') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="tipo_acao" value="novo">
+                                
+                                <div class="mb-3">
+                                    <input type="text" class="form-control form-control-sm" name="nome" placeholder="Nome Completo" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="text" class="form-control form-control-sm" name="cpf" placeholder="CPF (Apenas números)" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="email" class="form-control form-control-sm" name="email" placeholder="E-mail" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="text" class="form-control form-control-sm" name="telefone" placeholder="Telefone/WhatsApp" required>
+                                </div>
+                                
+                                <hr class="border-secondary opacity-25">
+                                
+                                <div class="mb-3">
+                                    <input type="text" class="form-control form-control-sm fw-bold text-primary" name="usuario" placeholder="Nome de Usuário (Login)" required>
+                                </div>
+                                <div class="mb-3">
+                                    <input type="password" class="form-control form-control-sm" name="senha" placeholder="Senha Provisória" required>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-secondary small">Nível de Acesso</label>
+                                    <select class="form-select form-select-sm" name="nivel" required>
+                                        <option value="colaborador" selected>Colaborador (Equipa Técnica)</option>
+                                        <option value="admin">Administrador (Acesso Total)</option>
+                                    </select>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-sm jb-btn-primary fw-bold">
+                                        <i class="fas fa-check me-1"></i> Criar Nova Conta
+                                    </button>
+                                </div>
+                            </form>
                         </div>
 
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-sm jb-btn-primary fw-bold">
-                                <i class="fas fa-check me-1"></i> Criar Conta
-                            </button>
+                        <!-- Tab 2: Promover Cliente Existente -->
+                        <div class="tab-pane fade" id="pills-existente" role="tabpanel" tabindex="0">
+                            <form method="POST" action="{{ url_for('cadastrar_equipe') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="tipo_acao" value="existente">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-secondary small">Selecione o Cliente</label>
+                                    <select class="form-select form-select-sm" name="id_pessoa" required>
+                                        <option value="" disabled selected>Escolha um cliente cadastrado...</option>
+                                        {% if clientes_promover %}
+                                            {% for c in clientes_promover %}
+                                                <option value="{{ c[0] }}">{{ c[1] }} (CPF: {{ c[2] }})</option>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold text-secondary small">Nível de Acesso</label>
+                                    <select class="form-select form-select-sm" name="nivel" required>
+                                        <option value="colaborador" selected>Colaborador (Equipa Técnica)</option>
+                                        <option value="admin">Administrador (Acesso Total)</option>
+                                    </select>
+                                </div>
+
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-sm btn-success fw-bold text-white">
+                                        <i class="fas fa-arrow-up me-1"></i> Promover a Equipa
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                    </form>
+                    </div>
+
                 </div>
             </div>
 
