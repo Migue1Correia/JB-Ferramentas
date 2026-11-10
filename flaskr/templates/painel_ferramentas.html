@@ -138,9 +138,25 @@
                             <input type="file" class="form-control" id="foto_ferramenta" name="foto_ferramenta" accept="image/*">
                         </div>
 
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <label for="descricao" class="form-label fw-bold text-secondary small">Descrição Breve</label>
                             <input type="text" class="form-control" id="descricao" name="descricao" maxlength="255" placeholder="Detalhes adicionais da ferramenta">
+                        </div>
+
+                        <!-- NOVO BLOCO: ESPECIFICAÇÕES TÉCNICAS -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary small">Potência</label>
+                                <input type="text" class="form-control shadow-none" name="potencia" placeholder="Ex: 20V, 1500W">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary small">Peso</label>
+                                <input type="text" class="form-control shadow-none" name="peso" placeholder="Ex: 1.5 kg">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary small">Velocidade</label>
+                                <input type="text" class="form-control shadow-none" name="velocidade" placeholder="Ex: 3000 RPM">
+                            </div>
                         </div>
 
                         <div class="d-grid mt-auto pt-3">
@@ -185,7 +201,6 @@
                             </select>
                         </div>
 
-                        <!-- NOVO CAMPO: QUANTIDADE -->
                         <div class="mb-3">
                             <label for="quantidade" class="form-label fw-bold text-secondary small">Quantidade</label>
                             <input type="number" class="form-control" id="quantidade" name="quantidade" value="1" min="1" required>

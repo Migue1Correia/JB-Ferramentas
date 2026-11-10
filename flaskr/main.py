@@ -195,21 +195,35 @@ def detalhe_produto(id):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
-    ferramenta_db = ToolModel.get_by_id(id)
-    if ferramenta_db:
-        ferramenta_selecionada = ToolModel.montar_item(
-            ferramenta_db["id"], ferramenta_db["marca"],
-            ferramenta_db["modelo"], ferramenta_db["descricao"]
-        )
-        ferramenta_selecionada['imagem'] = ferramenta_db.get("imagem")
-        # ADICIONA AS INFORMAÇÕES TÉCNICAS
-        ferramenta_selecionada['potencia'] = ferramenta_db.get("potencia", "Consulte")
-        ferramenta_selecionada['peso'] = ferramenta_db.get("peso", "Consulte")
-        ferramenta_selecionada['velocidade'] = ferramenta_db.get("velocidade", "Consulte")
-    else:
-        ferramenta_selecionada = None
-    return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
+    ferramenta_selecionada = None
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        # Fazemos um SELECT * direto para garantir que puxa TODAS as colunas (imagem, potencia, peso, etc)
+        cursor.execute("SELECT * FROM ferramentas WHERE id = %s", (id,))
+        colunas = [col[0] for col in cursor.description]
+        row = cursor.fetchone()
+        cursor.close()
 
+        if row:
+            # Conforma a linha da base de dados num dicionário
+            f_db = dict(zip(colunas, row))
+            
+            # Monta a estrutura base (preço e ID)
+            ferramenta_selecionada = ToolModel.montar_item(
+                f_db["id"], f_db["marca"], f_db["modelo"], f_db.get("descricao")
+            )
+            
+            # Força a injeção dos dados completos no item
+            ferramenta_selecionada['imagem'] = f_db.get("imagem")
+            ferramenta_selecionada['potencia'] = f_db.get("potencia") or "Consulte"
+            ferramenta_selecionada['peso'] = f_db.get("peso") or "Consulte"
+            ferramenta_selecionada['velocidade'] = f_db.get("velocidade") or "Consulte"
+            ferramenta_selecionada['tipo'] = f_db.get("operacao") or ferramenta_selecionada.get('tipo', 'Ambos')
+            
+    except Exception as e:
+        print("Erro ao buscar detalhes da ferramenta:", e)
+
+    return render_template('detalhes.html', ferramenta=ferramenta_selecionada)
 
 # === 5. PROCESSAMENTO DE LOGIN ===
 @app.route("/login", methods=["GET", "POST"])
