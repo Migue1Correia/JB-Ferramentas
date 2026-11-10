@@ -46,7 +46,7 @@
                 <!-- Imagem do Produto -->
                 <div class="col-md-5 text-center">
                     {% if ferramenta.imagem %}
-                        <img src="{{ url_for('static', filename=ferramenta.imagem) if ferramenta.imagem else url_for('static', filename='img/produto.png') }}" class="img-fluid rounded" alt="{{ ferramenta.modelo }}">
+                        <img src="{{ url_for('static', filename=ferramenta.imagem.replace('static/', '')) if ferramenta.imagem else url_for('static', filename='img/produto.png') }}" class="img-fluid rounded" alt="{{ ferramenta.modelo }}">
                     {% else %}
                         <div class="bg-light rounded-4 p-4 h-100 d-flex align-items-center justify-content-center border" style="min-height: 320px;">
                             <i class="fas fa-tools text-secondary" style="font-size: 8rem; opacity: 0.15;"></i>
