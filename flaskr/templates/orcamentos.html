@@ -101,10 +101,19 @@
                                     <a href="https://wa.me/{{ o[7]|zap }}?text=Ol%C3%A1%20{{ o[2].split()[0] }}!%20Temos%20uma%20atualiza%C3%A7%C3%A3o%20sobre%20a%20sua%20{{ o[1] }}%20na%20JB%20Ferramentas." target="_blank" class="btn btn-sm btn-success fw-bold px-3 rounded-pill shadow-sm">
                                         <i class="fab fa-whatsapp me-1"></i> Avisar
                                     </a>
-                                    <!-- NOVO BOTÃO: Imprimir Etiqueta Térmica -->
+                                    
+                                    <!-- BOTÃO: Imprimir Etiqueta Térmica -->
                                     <a href="{{ url_for('imprimir_etiqueta', numero_os=o[1]) }}" target="_blank" class="btn btn-sm btn-dark fw-bold px-3 rounded-pill shadow-sm">
                                         <i class="fas fa-print me-1"></i> Etiqueta
                                     </a>
+                                    
+                                    <!-- BOTÃO: Excluir OS -->
+                                    <form action="{{ url_for('excluir_os', id_servico=o[0]) }}" method="POST" class="m-0 p-0 d-inline-block">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold rounded-pill shadow-sm px-2 ms-1" onclick="confirmarExclusaoOS(this)" title="Excluir OS">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -159,6 +168,7 @@
                 let rowStatus = colStatus.value;
                 let matchText = false;
                 let tds = row.getElementsByTagName("td");
+                
                 for (let j = 0; j < tds.length - 2; j++) {
                     if (tds[j]) {
                         let txtValue = tds[j].textContent || tds[j].innerText;
@@ -186,6 +196,23 @@
                     row.style.display = "none";
                 }
             }
+        }
+
+        function confirmarExclusaoOS(buttonElement) {
+            Swal.fire({
+                title: 'Tem certeza?',
+                text: "Deseja realmente excluir esta Ordem de Serviço? Os dados serão apagados permanentemente.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff2b2b',
+                cancelButtonColor: '#151a21',
+                confirmButtonText: '<i class="fas fa-trash-alt me-1"></i> Sim, excluir!',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    buttonElement.closest('form').submit();
+                }
+            });
         }
     </script>
 
