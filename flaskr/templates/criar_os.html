@@ -28,33 +28,40 @@
                     <!-- Coluna Esquerda: Dados Gerais e Peças -->
                     <div class="col-lg-7">
                         
-                    <!-- Busca de Cliente -->
+                    <!-- Busca de Cliente Dinâmica (Datalist) -->
                     <h5 class="jb-section-title">Dados do Cliente</h5>
                     <div class="mb-3">
-                        <label for="cliente" class="form-label fw-bold text-secondary">Selecione o Cliente</label>
+                        <label for="cliente" class="form-label fw-bold text-secondary">Buscar ou Inserir Novo Cliente</label>
                         <div class="input-group">
-                            <select class="form-select jb-input" id="cliente" name="cliente" required>
-                                <option value="" disabled selected>Selecione um cliente cadastrado...</option>
+                            <input type="text" class="form-control jb-input" id="cliente" name="cliente" list="listaClientes" placeholder="Comece a digitar o nome..." autocomplete="off" required>
+                            <datalist id="listaClientes">
                                 {% for c in clientes %}
-                                <option value="{{ c[1] }}" data-telefone="{{ c[2] }}">{{ c[1] }} {% if c[2] %}(Tel: {{ c[2] }}){% endif %}</option>
+                                <option value="{{ c[1] }}" data-telefone="{{ c[2] }}">Tel: {{ c[2] }}</option>
                                 {% endfor %}
-                            </select>
+                            </datalist>
                         </div>
+                        <div class="form-text small text-muted mt-1"><i class="fas fa-info-circle me-1"></i>Se o cliente não existir, basta digitar o nome completo para cadastrá-lo.</div>
                     </div>
+                    
                     <div class="mb-4">
                         <label for="telefone" class="form-label fw-bold text-secondary">Telefone / WhatsApp</label>
                         <input type="text" class="form-control jb-input" id="telefone" name="telefone" placeholder="(11) 90000-0000" required>
                     </div>
 
-                    <!-- Script opcional para preencher o telefone automaticamente ao selecionar o cliente -->
+                    <!-- Script para preencher o telefone automaticamente se escolher da lista -->
                     <script>
-                        document.getElementById('cliente').addEventListener('change', function() {
-                            let selectedOption = this.options[this.selectedIndex];
-                            let telefone = selectedOption.getAttribute('data-telefone');
-                            if (telefone && telefone !== 'None') {
-                                document.getElementById('telefone').value = telefone;
-                            } else {
-                                document.getElementById('telefone').value = '';
+                        document.getElementById('cliente').addEventListener('input', function() {
+                            let val = this.value;
+                            let options = document.getElementById('listaClientes').options;
+                            
+                            for (let i = 0; i < options.length; i++) {
+                                if (options[i].value === val) {
+                                    let telefone = options[i].getAttribute('data-telefone');
+                                    if (telefone && telefone !== 'None') {
+                                        document.getElementById('telefone').value = telefone;
+                                    }
+                                    return; // Para a busca assim que encontrar
+                                }
                             }
                         });
                     </script>

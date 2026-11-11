@@ -1282,5 +1282,31 @@ def excluir_ferramenta(id):
         
     return redirect(url_for('gerenciar_ferramentas'))
 
+# === EXCLUIR ORDEM DE SERVIÇO ===
+@app.route('/colaborador/orcamentos/excluir/<int:id_servico>', methods=['POST'])
+def excluir_os(id_servico):
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        return redirect(url_for('login'))
+
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        
+        # 1º Apaga os dados da manutenção atrelados a esta OS
+        cursor.execute("DELETE FROM manutencoes WHERE id_servico = %s", (id_servico,))
+        
+        # 2º Apaga a Ordem de Serviço principal
+        cursor.execute("DELETE FROM servicos WHERE id = %s", (id_servico,))
+        
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        
+        flash("Ordem de Serviço excluída com sucesso!", "success")
+    except Exception as e:
+        print("Erro ao excluir OS:", e)
+        flash("Erro ao excluir a Ordem de Serviço.", "danger")
+        
+    # Retorna para a página atual (orcamentos)
+    return redirect(request.referrer or url_for('orcamentos_page'))
+
 if __name__ == "__main__":
     app.run(debug=True)
