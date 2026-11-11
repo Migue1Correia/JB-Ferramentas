@@ -202,8 +202,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="quantidade" class="form-label fw-bold text-secondary small">Quantidade</label>
-                            <input type="number" class="form-control" id="quantidade" name="quantidade" value="1" min="1" required>
+                            <label for="quantidade_ferramenta" class="form-label fw-bold text-secondary small">Quantidade</label>
+                            <input type="number" class="form-control" id="quantidade_ferramenta" name="quantidade" value="1" min="1" required>
                             <div class="form-text">Se for maior que 1, o número de série receberá um sufixo sequencial (-1, -2...).</div>
                         </div>
 
@@ -226,6 +226,55 @@
                     {% endif %}
                 </div>
             </div>
+
+            <!-- FORMULÁRIO 3: Cadastrar Peça (Manutenção) -->
+            <div class="col-lg-6">
+                <div class="jb-form-card shadow-sm h-100" style="border-left: 4px solid #fd7e14;">
+                    <h5 class="fw-bold text-dark mb-4"><i class="fas fa-cogs me-2" style="color: #fd7e14;"></i> Cadastrar Peça (Manutenção)</h5>
+                    
+                    <form method="POST" action="{{ url_for('adicionar_peca') }}" class="d-flex flex-column h-100">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="codigo_barras" class="form-label fw-bold text-secondary small">Cód. Barras</label>
+                                <input type="text" class="form-control" name="codigo_barras" id="codigo_barras" placeholder="Ex: 789123456" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="fabricante" class="form-label fw-bold text-secondary small">Fabricante</label>
+                                <input type="text" class="form-control" name="fabricante" id="fabricante" placeholder="Ex: Makita" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="nome_peca" class="form-label fw-bold text-secondary small">Nome da Peça</label>
+                            <input type="text" class="form-control" name="nome" id="nome_peca" placeholder="Ex: Induzido Martelete 110v" required>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label for="custo" class="form-label fw-bold text-secondary small">Custo (R$)</label>
+                                <input type="text" class="form-control" name="custo" id="custo" placeholder="0.00" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="preco_venda" class="form-label fw-bold text-secondary small">Venda (R$)</label>
+                                <input type="text" class="form-control" name="preco_venda" id="preco_venda" placeholder="0.00" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="quantidade_peca" class="form-label fw-bold text-secondary small">Estoque Inicial</label>
+                                <input type="number" class="form-control" name="quantidade" id="quantidade_peca" value="1" min="0" required>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-auto pt-3">
+                            <button type="submit" class="btn fw-bold text-white shadow-sm" style="background-color: #fd7e14; border: none;">
+                                <i class="fas fa-save me-2"></i> Salvar Peça no Estoque
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </div>
 
         <!-- ============================================== -->

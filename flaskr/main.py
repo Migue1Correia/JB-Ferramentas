@@ -1308,5 +1308,52 @@ def excluir_os(id_servico):
     # Retorna para a página atual (orcamentos)
     return redirect(request.referrer or url_for('orcamentos_page'))
 
+
+# ==========================================
+# CADASTRO DE PEÇAS NO PAINEL ADMIN
+# ==========================================
+@app.route('/colaborador/pecas/adicionar', methods=['POST'])
+def adicionar_peca():
+    if not session.get('logged_in') or session.get('user_perfil') not in ['admin', 'administrador', 'colaborador']:
+        return redirect(url_for('login'))
+        
+    codigo_barras = request.form.get('codigo_barras')
+    nome = request.form.get('nome')
+    fabricante = request.form.get('fabricante')
+    custo = request.form.get('custo').replace(',', '.')
+    preco_venda = request.form.get('preco_venda').replace(',', '.')
+    quantidade = request.form.get('quantidade', 0)
+    
+    # Define a filial atual (1 = MATRIZ, de acordo com o seu banco)
+    id_filial = session.get('id_filial', 1) 
+    
+    try:
+        cursor = jb_solucoes_db.connection.cursor()
+        
+        # 1. Insere os dados base da peça
+        cursor.execute("""
+            INSERT INTO pecas (codigo_barras, nome, fabricante, custo, preco_venda) 
+            VALUES (%s, %s, %s, %s, %s)
+        """, (codigo_barras, nome, fabricante, custo, preco_venda))
+        
+        id_peca = cursor.lastrowid # Pega o ID da peça recém criada
+        
+        # 2. Insere a quantidade no estoque atrelada à matriz/filial
+        cursor.execute("""
+            INSERT INTO estoque_pecas (quantidade_atual, quantidade_minima, id_peca, id_filial)
+            VALUES (%s, %s, %s, %s)
+        """, (quantidade, 5, id_peca, id_filial)) 
+        
+        jb_solucoes_db.connection.commit()
+        cursor.close()
+        
+        flash("Peça cadastrada no estoque com sucesso!", "success")
+    except Exception as e:
+        print("Erro ao cadastrar peça:", e)
+        flash("Erro: Verifique se o Código de Barras já está cadastrado.", "danger")
+        
+    # Retorna dinamicamente para a tela em que o utilizador estava (Painel Admin)
+    return redirect(request.referrer or url_for('colaborador_dashboard'))
+
 if __name__ == "__main__":
     app.run(debug=True)
