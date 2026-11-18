@@ -84,19 +84,138 @@
                             <textarea class="form-control jb-input" id="defeito" name="defeito" rows="3" placeholder="Descreva o defeito..." required></textarea>
                         </div>
 
-                        <!-- Serviços e Peças -->
+                        <!-- Serviços e Peças (Orçamento Dinâmico) -->
                         <h5 class="jb-section-title mt-2">Serviços e Peças (Orçamento)</h5>
+                        
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
-                                <input type="text" class="form-control jb-input form-control-sm" placeholder="Buscar peça (Ex: Carvão Makita)">
+                                <input type="text" class="form-control jb-input form-control-sm" id="busca_peca" list="listaPecas" placeholder="Buscar peça (Ex: Carvão Makita)">
+                                <datalist id="listaPecas">
+                                    {% for p in pecas_estoque %}
+                                        <!-- p[0] = id_estoque_peca, p[1] = nome_peca, p[2] = preco_venda -->
+                                        <option value="{{ p[1] }} (R$ {{ '%.2f'|format(p[2]) }})" data-id="{{ p[0] }}" data-preco="{{ p[2] }}"></option>
+                                    {% endfor %}
+                                </datalist>
                             </div>
                             <div class="col-md-2">
-                                <input type="number" class="form-control jb-input form-control-sm" placeholder="Qtd">
+                                <input type="number" class="form-control jb-input form-control-sm" id="qtd_peca" placeholder="Qtd" value="1" min="1">
                             </div>
                             <div class="col-md-4 d-grid">
-                                <button type="button" class="btn btn-dark btn-sm fw-bold"><i class="fas fa-plus me-1"></i> Adicionar</button>
+                                <button type="button" class="btn btn-dark btn-sm fw-bold" onclick="adicionarPecaTabela()">
+                                    <i class="fas fa-plus me-1"></i> Adicionar
+                                </button>
                             </div>
                         </div>
+                        
+                        <!-- Tabela de Itens Adicionados -->
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-bordered align-middle" style="font-size: 0.9rem;" id="tabelaPecasOS">
+                                <thead class="table-light text-secondary">
+                                    <tr>
+                                        <th>Item</th>
+                                        <th class="text-center">Qtd</th>
+                                        <th class="text-center">Subtotal</th>
+                                        <th class="text-center">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="listaPecasBody">
+                                    <tr id="linhaVazia">
+                                        <td colspan="4" class="text-center text-muted py-3">Nenhuma peça ou serviço adicionado.</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-light">
+                                        <th colspan="2" class="text-end text-dark">Total Orçamento:</th>
+                                        <th colspan="2" class="text-start text-danger fw-bold" style="font-size: 1.1rem;">
+                                            R$ <span id="totalOrcamento">0.00</span>
+                                        </th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            <!-- Campo Oculto para enviar o valor total final da OS ao Python -->
+                            <input type="hidden" name="valor_servico" id="valor_servico_input" value="0.00">
+                        </div>
+
+                        <!-- Lógica JS para montar a tabela e somar os valores -->
+                        <script>
+                            let totalOS = 0;
+                            
+                            function adicionarPecaTabela() {
+                                let inputPeca = document.getElementById('busca_peca');
+                                let inputQtd = document.getElementById('qtd_peca');
+                                let val = inputPeca.value;
+                                let qtd = parseInt(inputQtd.value);
+                                
+                                if(!val || isNaN(qtd) || qtd <= 0) return;
+                                
+                                // Localiza a peça selecionada no Datalist para extrair ID e Preço
+                                let options = document.getElementById('listaPecas').options;
+                                let idEstoque = null;
+                                let preco = 0;
+                                
+                                for (let i = 0; i < options.length; i++) {
+                                    if (options[i].value === val) {
+                                        idEstoque = options[i].getAttribute('data-id');
+                                        preco = parseFloat(options[i].getAttribute('data-preco'));
+                                        break;
+                                    }
+                                }
+                                
+                                if(!idEstoque) {
+                                    alert("Por favor, selecione uma peça válida da lista.");
+                                    return;
+                                }
+                                
+                                let subtotal = preco * qtd;
+                                totalOS += subtotal;
+                                atualizarTotal();
+                                
+                                // Remove a mensagem de "linha vazia"
+                                let linhaVazia = document.getElementById('linhaVazia');
+                                if(linhaVazia) linhaVazia.remove();
+                                
+                                // Adiciona a linha na tabela com campos ocultos para o Backend receber
+                                let tbody = document.getElementById('listaPecasBody');
+                                let tr = document.createElement('tr');
+                                
+                                tr.innerHTML = `
+                                    <td>
+                                        ${val}
+                                        <input type="hidden" name="pecas_id[]" value="${idEstoque}">
+                                        <input type="hidden" name="pecas_qtd[]" value="${qtd}">
+                                        <input type="hidden" class="subtotal-row" value="${subtotal}">
+                                    </td>
+                                    <td class="text-center fw-bold">${qtd}</td>
+                                    <td class="text-center">R$ ${subtotal.toFixed(2)}</td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerPeca(this)"><i class="fas fa-trash"></i></button>
+                                    </td>
+                                `;
+                                tbody.appendChild(tr);
+                                
+                                // Limpa os campos para a próxima peça
+                                inputPeca.value = '';
+                                inputQtd.value = '1';
+                            }
+                            
+                            function removerPeca(btn) {
+                                let tr = btn.closest('tr');
+                                let subtotal = parseFloat(tr.querySelector('.subtotal-row').value);
+                                totalOS -= subtotal;
+                                atualizarTotal();
+                                tr.remove();
+                                
+                                let tbody = document.getElementById('listaPecasBody');
+                                if(tbody.children.length === 0) {
+                                    tbody.innerHTML = `<tr id="linhaVazia"><td colspan="4" class="text-center text-muted py-3">Nenhuma peça ou serviço adicionado.</td></tr>`;
+                                }
+                            }
+                            
+                            function atualizarTotal() {
+                                document.getElementById('totalOrcamento').innerText = totalOS.toFixed(2);
+                                document.getElementById('valor_servico_input').value = totalOS.toFixed(2);
+                            }
+                        </script>
                         
                         <!-- Tabela de Itens Adicionados -->
                         <div class="table-responsive mb-4">

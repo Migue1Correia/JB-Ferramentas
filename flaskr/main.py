@@ -607,6 +607,39 @@ def criar_os():
                 VALUES ('Aguardando avaliação técnica', 0, %s, %s)
             """, (caminho_foto_banco, id_servico))
             
+            # --- INTEGRAÇÃO COM AS PEÇAS DE ESTOQUE ---
+            # 1. Recupera as peças e quantidades enviadas pelo HTML via Datalist
+            pecas_ids = request.form.getlist('pecas_id[]')
+            pecas_qtds = request.form.getlist('pecas_qtd[]')
+            valor_total = request.form.get('valor_servico', '0.00')
+
+            id_manutencao = cursor.lastrowid
+
+            # 2. Se houver peças adicionadas, processa cada uma
+            if pecas_ids and pecas_qtds:
+                for idx, id_estoque_peca in enumerate(pecas_ids):
+                    qtd_usada = int(pecas_qtds[idx])
+                    
+                    # A) Regista o uso da peça nesta Manutenção
+                    cursor.execute("""
+                        INSERT INTO manutencao_pecas (quantidade, id_manutencao, id_estoque_peca)
+                        VALUES (%s, %s, %s)
+                    """, (qtd_usada, id_manutencao, id_estoque_peca))
+                    
+                    # B) Dá baixa física da quantidade no Estoque
+                    cursor.execute("""
+                        UPDATE estoque_pecas 
+                        SET quantidade_atual = quantidade_atual - %s 
+                        WHERE id = %s
+                    """, (qtd_usada, id_estoque_peca))
+                    
+            # 3. Atualiza o valor total da OS na tabela de serviços
+            cursor.execute("""
+                UPDATE servicos 
+                SET valor_servico = %s 
+                WHERE id = %s
+            """, (valor_total, id_servico))
+
             jb_solucoes_db.connection.commit()
             cursor.close()
             
@@ -620,9 +653,21 @@ def criar_os():
             
     cursor.execute("SELECT id, nome, telefone, codigo FROM pessoas ORDER BY nome ASC")
     clientes = cursor.fetchall()
+    
+    # Busca o estoque de peças da filial logada
+    id_filial = session.get('id_filial', 1)
+    cursor.execute("""
+        SELECT ep.id, p.nome, p.preco_venda 
+        FROM estoque_pecas ep
+        JOIN pecas p ON ep.id_peca = p.id
+        WHERE ep.id_filial = %s
+        ORDER BY p.nome ASC
+    """, (id_filial,))
+    pecas_estoque = cursor.fetchall()
+    
     cursor.close()
     
-    return render_template('criar_os.html', clientes=clientes)
+    return render_template('criar_os.html', clientes=clientes, pecas_estoque=pecas_estoque)
 
 
 # === 13.1 IMPRESSÃO DE ETIQUETA TÉRMICA DA OS ===
